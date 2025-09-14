@@ -65,4 +65,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'spark-22564.firebasestorage.app',
     iosBundleId: 'com.example.myApp',
   );
+
 }
