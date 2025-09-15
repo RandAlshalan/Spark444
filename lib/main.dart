@@ -9,6 +9,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   runApp(MyApp());
+  
 }
 
 class MyApp extends StatelessWidget {
