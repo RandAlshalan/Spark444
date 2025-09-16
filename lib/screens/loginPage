@@ -1,0 +1,60 @@
+import 'package:flutter/material.dart';
+import 'authService.dart';
+import 'homePage.dart';
+import 'signupPage.dart';
+
+class LoginPage extends StatefulWidget {
+  @override
+  _LoginPageState createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _authService = AuthService();
+  final TextEditingController userController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  /// Login function
+  void login() async {
+    try {
+      await _authService.signIn(userController.text.trim(), passwordController.text.trim());
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomePage()));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  /// Reset password via email
+  void resetPassword() async {
+    try {
+      await _authService.resetPassword(userController.text.trim());
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Password reset email sent successfully.')));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Login')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(controller: userController, decoration: InputDecoration(labelText: 'Email or Username')),
+            TextField(controller: passwordController, decoration: InputDecoration(labelText: 'Password'), obscureText: true),
+            SizedBox(height: 20),
+            ElevatedButton(onPressed: login, child: Text('Login')),
+            TextButton(onPressed: resetPassword, child: Text('Forgot Password?')),
+            TextButton(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => SignUpPage()));
+                },
+                child: Text('Create New Account')),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Student {
-  final String id; // document ID 
+  final String id; // Firestore document ID
   final String firstName;
   final String lastName;
   final String username;
@@ -9,23 +9,22 @@ class Student {
   final String phoneNumber;
   final String university;
   final String major;
-  final String level;
-  final DateTime? expectedGraduation;
-  final double? gpa;
-  final List<String> skills;
-  final String? profilePicture;
+  final String level; // optional, can be empty
+  final DateTime? expectedGraduation; // optional
+  final double? gpa; // optional
+  final List<String> skills; // optional
+  final String? profilePicture; // optional
   final String? shortSummary;
 
-  // embedded
+  // Embedded fields
   final List<Map<String, dynamic>> supportingDocuments;
   final Map<String, dynamic> resume;
 
+  // Interaction fields
   final List<String> followedCompanies;
   final List<String> bookmarkedOpportunities;
   final List<Map<String, dynamic>> applications;
   final List<Map<String, dynamic>> notifications;
-
-
 
   Student({
     required this.id,
@@ -50,7 +49,7 @@ class Student {
     required this.notifications,
   });
 
-  /// from Firestore
+  /// Convert Firestore document to Student object
   factory Student.fromMap(String id, Map<String, dynamic> data) {
     return Student(
       id: id,
@@ -82,7 +81,7 @@ class Student {
     );
   }
 
-  /// to Firestore
+  /// Convert Student object to Map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'first_name': firstName,

@@ -1,0 +1,33 @@
+import 'package:flutter/material.dart';
+import 'authService.dart';
+import 'loginPage.dart';
+
+class HomePage extends StatelessWidget {
+  final _authService = AuthService();
+
+  /// Logout function
+  void logout(BuildContext context) async {
+    await _authService.logout();
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LoginPage()));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = _authService.auth.currentUser;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Home Page'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout),
+            onPressed: () => logout(context),
+          )
+        ],
+      ),
+      body: Center(
+        child: Text('Welcome, ${user?.email ?? 'Student'}!'),
+      ),
+    );
+  }
+}
