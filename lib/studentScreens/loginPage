@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'authService.dart';
-import 'homePage.dart';
-import 'signupPage.dart';
+import '../screens/authService.dart';
+import '../screens/homePage.dart';
+import '../screens/signupPage.dart';
 
 class LoginPage extends StatefulWidget {
   @override

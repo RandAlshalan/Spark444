@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'authService.dart';
-import 'loginPage.dart';
+import '../screens/authService.dart';
+import '../screens/loginPage.dart';
 
 class HomePage extends StatelessWidget {
   final _authService = AuthService();
