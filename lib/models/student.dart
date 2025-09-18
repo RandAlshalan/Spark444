@@ -1,108 +1,93 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Student {
-  final String id; // Firestore document ID
+  final String email;
+  final String username;
   final String firstName;
   final String lastName;
-  final String username;
-  final String email;
-  final String phoneNumber;
   final String university;
   final String major;
-  final String level; // optional, can be empty
-  final DateTime? expectedGraduation; // optional
-  final double? gpa; // optional
-  final List<String> skills; // optional
-  final String? profilePicture; // optional
+  final String phoneNumber;
+  final String? level;
+  final String? expectedGraduationDate;
+  final double? gpa;
+  final List<String> skills;
+  final String? profilePictureUrl;
   final String? shortSummary;
-
-  // Embedded fields
-  final List<Map<String, dynamic>> supportingDocuments;
-  final Map<String, dynamic> resume;
-
-  // Interaction fields
+  final String userType;
+  final DateTime? createdAt;
+  final bool isVerified;
+  final String resumeVisibility;
+  final String documentsVisibility;
   final List<String> followedCompanies;
-  final List<String> bookmarkedOpportunities;
-  final List<Map<String, dynamic>> applications;
-  final List<Map<String, dynamic>> notifications;
 
   Student({
-    required this.id,
+    required this.email,
+    required this.username,
     required this.firstName,
     required this.lastName,
-    required this.username,
-    required this.email,
-    required this.phoneNumber,
     required this.university,
     required this.major,
-    required this.level,
-    this.expectedGraduation,
+    required this.phoneNumber,
+    this.level,
+    this.expectedGraduationDate,
     this.gpa,
-    required this.skills,
-    this.profilePicture,
+    this.skills = const [],
+    this.profilePictureUrl,
     this.shortSummary,
-    required this.supportingDocuments,
-    required this.resume,
-    required this.followedCompanies,
-    required this.bookmarkedOpportunities,
-    required this.applications,
-    required this.notifications,
+    required this.userType,
+    this.createdAt,
+    this.isVerified = false,
+    this.resumeVisibility = "private",
+    this.documentsVisibility = "private",
+    this.followedCompanies = const [],
   });
 
-  /// Convert Firestore document to Student object
-  factory Student.fromMap(String id, Map<String, dynamic> data) {
-    return Student(
-      id: id,
-      firstName: data['first_name'] ?? '',
-      lastName: data['last_name'] ?? '',
-      username: data['username'] ?? '',
-      email: data['email'] ?? '',
-      phoneNumber: data['phone_number'] ?? '',
-      university: data['university'] ?? '',
-      major: data['major'] ?? '',
-      level: data['level'] ?? '',
-      expectedGraduation: data['expected_graduation'] != null
-          ? (data['expected_graduation'] as Timestamp).toDate()
-          : null,
-      gpa: (data['GPA'] != null) ? data['GPA'].toDouble() : null,
-      skills: List<String>.from(data['skills'] ?? []),
-      profilePicture: data['profile_picture'],
-      shortSummary: data['short_summary'],
-      supportingDocuments:
-          List<Map<String, dynamic>>.from(data['supporting_documents'] ?? []),
-      resume: Map<String, dynamic>.from(data['resume'] ?? {}),
-      followedCompanies: List<String>.from(data['followed_companies'] ?? []),
-      bookmarkedOpportunities:
-          List<String>.from(data['bookmarked_opportunities'] ?? []),
-      applications:
-          List<Map<String, dynamic>>.from(data['applications'] ?? []),
-      notifications:
-          List<Map<String, dynamic>>.from(data['notifications'] ?? []),
-    );
-  }
-
-  /// Convert Student object to Map for Firestore
   Map<String, dynamic> toMap() {
     return {
-      'first_name': firstName,
-      'last_name': lastName,
-      'username': username,
       'email': email,
-      'phone_number': phoneNumber,
+      'username': username,
+      'firstName': firstName,
+      'lastName': lastName,
       'university': university,
       'major': major,
+      'phoneNumber': phoneNumber,
       'level': level,
-      'expected_graduation': expectedGraduation,
-      'GPA': gpa,
+      'expectedGraduationDate': expectedGraduationDate,
+      'gpa': gpa,
       'skills': skills,
-      'profile_picture': profilePicture,
-      'short_summary': shortSummary,
-      'supporting_documents': supportingDocuments,
-      'resume': resume,
-      'followed_companies': followedCompanies,
-      'bookmarked_opportunities': bookmarkedOpportunities,
-      'applications': applications,
-      'notifications': notifications,
+      'profilePictureUrl': profilePictureUrl,
+      'shortSummary': shortSummary,
+      'userType': userType,
+      'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
+      'isVerified': isVerified,
+      'resumeVisibility': resumeVisibility,
+      'documentsVisibility': documentsVisibility,
+      'followedCompanies': followedCompanies,
     };
+  }
+
+  factory Student.fromMap(Map<String, dynamic> map) {
+    return Student(
+      email: map['email'],
+      username: map['username'],
+      firstName: map['firstName'],
+      lastName: map['lastName'],
+      university: map['university'],
+      major: map['major'],
+      phoneNumber: map['phoneNumber'],
+      level: map['level'],
+      expectedGraduationDate: map['expectedGraduationDate'],
+      gpa: map['gpa']?.toDouble(),
+      skills: List<String>.from(map['skills'] ?? []),
+      profilePictureUrl: map['profilePictureUrl'],
+      shortSummary: map['shortSummary'],
+      userType: map['userType'],
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
+      isVerified: map['isVerified'] ?? false,
+      resumeVisibility: map['resumeVisibility'] ?? "private",
+      documentsVisibility: map['documentsVisibility'] ?? "private",
+      followedCompanies: List<String>.from(map['followedCompanies'] ?? []),
+    );
   }
 }
