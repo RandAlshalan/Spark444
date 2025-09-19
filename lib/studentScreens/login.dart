@@ -15,7 +15,24 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
+  // 👇 جديد: إخفاء/إظهار كلمة المرور
+  bool _obscurePassword = true;
+
   final AuthService _authService = AuthService();
+
+  // pressed state for segmented sign-up buttons: 0 => student, 1 => company
+  int? _signUpPressedIndex;
+
+  // Colors (same palette you already use)
+  static const Color kOrange = Color(0xFFFF7043);
+  static const Color kOrangeLight = Color(0xFFFFAB40);
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
@@ -28,31 +45,133 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Call AuthService to login
       final userType = await _authService.login(
-        _emailController.text,
+        _emailController.text.trim(),
         _passwordController.text,
       );
 
-      // Navigate to appropriate home page
+      if (!mounted) return;
       if (userType == 'student') {
-        // TODO: Navigate to StudentHomePage
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Welcome Student!")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Welcome Student!")));
       } else {
-        // TODO: Navigate to CompanyHomePage
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Welcome Company!")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Welcome Company!")));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _forgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Enter your email first.")));
+      return;
+    }
+    try {
+      await _authService.resetPassword(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Password reset link sent to your email."),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Reset error: $e")));
+    }
+  }
+
+  // Navigate with pressed highlight
+  Future<void> _goTo(Widget page, int index) async {
+    setState(() => _signUpPressedIndex = index);
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+    if (mounted) setState(() => _signUpPressedIndex = null);
+  }
+
+  // Segmented "Sign Up" buttons (press turns orange)
+  Widget _signupSegmentedButtons() {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _goTo(const StudentSignup(), 0),
+              onTapDown: (_) => setState(() => _signUpPressedIndex = 0),
+              onTapCancel: () => setState(() => _signUpPressedIndex = null),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: _signUpPressedIndex == 0
+                      ? const LinearGradient(colors: [kOrange, kOrangeLight])
+                      : null,
+                  color: _signUpPressedIndex == 0
+                      ? null
+                      : Colors.white.withOpacity(0.15),
+                ),
+                child: const Text(
+                  "Sign Up as Student",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _goTo(const companySignup(), 1),
+              onTapDown: (_) => setState(() => _signUpPressedIndex = 1),
+              onTapCancel: () => setState(() => _signUpPressedIndex = null),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: _signUpPressedIndex == 1
+                      ? const LinearGradient(colors: [kOrange, kOrangeLight])
+                      : null,
+                  color: _signUpPressedIndex == 1
+                      ? null
+                      : Colors.white.withOpacity(0.15),
+                ),
+                child: const Text(
+                  "Sign Up as Company",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -64,7 +183,11 @@ class _LoginScreenState extends State<LoginScreen> {
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF6A1B9A), Color(0xFF8E24AA), Color(0xFFFF7043)],
+                colors: [
+                  Color(0xFF6A1B9A),
+                  Color(0xFF8E24AA),
+                  Color(0xFFFF7043),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -77,53 +200,75 @@ class _LoginScreenState extends State<LoginScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  Image.asset(
-                    'assets/spark_logo.png',
-                    height: 100,
-                    width: 100,
-                  ),
+                  Image.asset('assets/spark_logo.png', height: 190, width: 200),
                   const SizedBox(height: 10),
                   const Text(
                     'SPARK',
                     style: TextStyle(
-                        fontSize: 34, fontWeight: FontWeight.bold, color: Colors.white),
+                      fontSize: 34,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 5),
                   const Text(
                     'Ignite your future',
-                    style: TextStyle(color: Colors.white70, fontStyle: FontStyle.italic),
+                    style: TextStyle(
+                      color: kOrangeLight,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                   const SizedBox(height: 50),
 
-                  // Email TextField
+                  // Email
                   TextField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    enabled: !_isLoading,
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.mail_outline),
                       labelText: 'Email',
                       filled: true,
                       fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 15),
 
-                  // Password TextField
+                  // Password with show/hide toggle 👇
                   TextField(
                     controller: _passwordController,
-                    obscureText: true,
+                    obscureText: _obscurePassword,
+                    enabled: !_isLoading,
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.lock_outline),
                       labelText: 'Password',
                       filled: true,
                       fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      // زرّ العين
+                      suffixIcon: IconButton(
+                        tooltip: _obscurePassword
+                            ? 'Show password'
+                            : 'Hide password',
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () {
+                          setState(() => _obscurePassword = !_obscurePassword);
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(height: 30),
 
-                  // Login Button
+                  // Login
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -139,41 +284,21 @@ class _LoginScreenState extends State<LoginScreen> {
                           : const Text('Login', style: TextStyle(fontSize: 18)),
                     ),
                   ),
-                  const SizedBox(height: 20),
 
-                  // Sign Up links
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(context,
-                              MaterialPageRoute(builder: (_) => const StudentSignup()));
-                        },
-                        child: const Text(
-                          'Sign Up as Student',
-                          style: TextStyle(
-                            color: Colors.deepOrangeAccent,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
+                  // Segmented Sign Up + Forgot password
+                  const SizedBox(height: 22),
+                  _signupSegmentedButtons(),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: _isLoading ? null : _forgotPassword,
+                    child: const Text(
+                      'Forgot password?',
+                      style: TextStyle(
+                        color: Color(0xFFFFFFFF),
+                        decoration: TextDecoration.none,
                       ),
-                      const SizedBox(width: 20),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(context,
-                              MaterialPageRoute(builder: (_) => const companySignup()));
-                        },
-                        child: const Text(
-                          'Sign Up as Company',
-                          style: TextStyle(
-                            color: Colors.deepOrangeAccent,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -183,5 +308,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-
-

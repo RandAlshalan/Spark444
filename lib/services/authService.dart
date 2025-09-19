@@ -126,4 +126,15 @@ class AuthService {
   Future<void> signOut() async {
     await _auth.signOut();
   }
+
+  // ------------------------------
+  // Reset Password (send reset email)
+  // ------------------------------
+  Future<void> resetPassword(String email) async {
+    final e = email.trim();
+    if (e.isEmpty) {
+      throw Exception('Email cannot be empty');
+    }
+    await _auth.sendPasswordResetEmail(email: e);
+  }
 }
