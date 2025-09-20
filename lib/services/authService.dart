@@ -23,7 +23,7 @@ class AuthService {
         final studentMap = student.toMap();
         studentMap['createdAt'] = FieldValue.serverTimestamp();
 
-        await _db.collection('students').doc(user.uid).set(studentMap);
+        await _db.collection('student').doc(user.uid).set(studentMap);
       }
       return user;
     } on FirebaseAuthException catch (e) {
@@ -73,7 +73,7 @@ class AuthService {
       if (user == null) throw Exception("User not found.");
 
       // Check if student
-      final studentDoc = await _db.collection('students').doc(user.uid).get();
+      final studentDoc = await _db.collection('student').doc(user.uid).get();
       if (studentDoc.exists) return 'student';
 
       // Check if company
@@ -92,7 +92,7 @@ class AuthService {
   // Get Student by UID
   // ------------------------------
   Future<Student?> getStudent(String uid) async {
-    final doc = await _db.collection('students').doc(uid).get();
+    final doc = await _db.collection('student').doc(uid).get();
     if (!doc.exists) return null;
     return Student.fromMap(doc.data()!);
   }
@@ -101,7 +101,7 @@ class AuthService {
   // Update Student
   // ------------------------------
   Future<void> updateStudent(String uid, Student student) async {
-    await _db.collection('students').doc(uid).update(student.toMap());
+    await _db.collection('student').doc(uid).update(student.toMap());
   }
 
   // ------------------------------
@@ -129,7 +129,7 @@ class AuthService {
 
   // ------------------------------
   // Reset Password (send reset email)
-  // ------------------------------
+  // ------------------------------ 
   Future<void> resetPassword(String email) async {
     final e = email.trim();
     if (e.isEmpty) {
