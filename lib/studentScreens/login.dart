@@ -14,18 +14,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
-
-  // 👇 جديد: إخفاء/إظهار كلمة المرور
   bool _obscurePassword = true;
-
   final AuthService _authService = AuthService();
-
-  // pressed state for segmented sign-up buttons: 0 => student, 1 => company
-  int? _signUpPressedIndex;
-
-  // Colors (same palette you already use)
-  static const Color kOrange = Color(0xFFFF7043);
-  static const Color kOrangeLight = Color(0xFFFFAB40);
 
   @override
   void dispose() {
@@ -93,217 +83,204 @@ class _LoginScreenState extends State<LoginScreen> {
       ).showSnackBar(SnackBar(content: Text("Reset error: $e")));
     }
   }
-
-  // Navigate with pressed highlight
+  
   Future<void> _goTo(Widget page, int index) async {
-    setState(() => _signUpPressedIndex = index);
     await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-    if (mounted) setState(() => _signUpPressedIndex = null);
+    if (mounted) setState(() => {});
   }
-
-  // Segmented "Sign Up" buttons (press turns orange)
-  Widget _signupSegmentedButtons() {
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _goTo(const StudentSignup(), 0),
-              onTapDown: (_) => setState(() => _signUpPressedIndex = 0),
-              onTapCancel: () => setState(() => _signUpPressedIndex = null),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: _signUpPressedIndex == 0
-                      ? const LinearGradient(colors: [kOrange, kOrangeLight])
-                      : null,
-                  color: _signUpPressedIndex == 0
-                      ? null
-                      : Colors.white.withOpacity(0.15),
-                ),
-                child: const Text(
-                  "Sign Up as Student",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _goTo(const companySignup(), 1),
-              onTapDown: (_) => setState(() => _signUpPressedIndex = 1),
-              onTapCancel: () => setState(() => _signUpPressedIndex = null),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: _signUpPressedIndex == 1
-                      ? const LinearGradient(colors: [kOrange, kOrangeLight])
-                      : null,
-                  color: _signUpPressedIndex == 1
-                      ? null
-                      : Colors.white.withOpacity(0.15),
-                ),
-                child: const Text(
-                  "Sign Up as Company",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // Background gradient
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF6A1B9A),
-                  Color(0xFF8E24AA),
-                  Color(0xFFFF7043),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      backgroundColor: const Color(0xFFF7F4F0),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Shorter distance under the logo
+              Image.asset('assets/spark_logo.png', height: 300),
+              const SizedBox(height: 0),
+              const Text(
+                'SPARK',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF422F5D),
+                ),
               ),
-            ),
-          ),
-
-          // Main content
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
+              const SizedBox(height: 5),
+              const Text(
+                'Ignite your future',
+                style: TextStyle(
+                  color: Color(0xFFF99D46),
+                  fontStyle: FontStyle.italic,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 50),
+              const Text(
+                'Welcome Back!',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E1E1E),
+                ),
+              ),
+              const SizedBox(height: 30),
+              
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.2),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  enabled: !_isLoading,
+                  decoration: const InputDecoration(
+                    hintText: 'Email Address',
+                    prefixIcon: Icon(Icons.mail_outline, color: Colors.grey),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 15),
+              
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.2),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  enabled: !_isLoading,
+                  decoration: InputDecoration(
+                    hintText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    border: InputBorder.none,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+              
+              SizedBox(
+                width: double.infinity,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFF99D46), Color(0xFFD64483)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _login,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            'Log In',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              GestureDetector(
+                onTap: _isLoading ? null : _forgotPassword,
+                child: const Text(
+                  'Forgot Password?',
+                  style: TextStyle(
+                    color: Color(0xFF6B4791),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 25), // Increased space after 'Forgot Password?'
+              
+              const Text(
+                "Don't have an account?",
+                style: TextStyle(color: Color(0xFF888888)),
+              ),
+              const SizedBox(height: 1), // Reduced space before sign-up options
+              
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset('assets/spark_logo.png', height: 190, width: 200),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'SPARK',
-                    style: TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  const Text(
-                    'Ignite your future',
-                    style: TextStyle(
-                      color: kOrangeLight,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                  const SizedBox(height: 50),
-
-                  // Email
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    enabled: !_isLoading,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.mail_outline),
-                      labelText: 'Email',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-
-                  // Password with show/hide toggle 👇
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    enabled: !_isLoading,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      labelText: 'Password',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      // زرّ العين
-                      suffixIcon: IconButton(
-                        tooltip: _obscurePassword
-                            ? 'Show password'
-                            : 'Hide password',
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                        onPressed: () {
-                          setState(() => _obscurePassword = !_obscurePassword);
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-
-                  // Login
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _login,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Login', style: TextStyle(fontSize: 18)),
-                    ),
-                  ),
-
-                  // Segmented Sign Up + Forgot password
-                  const SizedBox(height: 22),
-                  _signupSegmentedButtons(),
-                  const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: _isLoading ? null : _forgotPassword,
+                  TextButton(
+                    onPressed: () => _goTo(const StudentSignup(), 0),
                     child: const Text(
-                      'Forgot password?',
+                      'Sign Up as Student',
                       style: TextStyle(
-                        color: Color(0xFFFFFFFF),
-                        decoration: TextDecoration.none,
+                        color: Color(0xFF6B4791),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  TextButton(
+                    onPressed: () => _goTo(const companySignup(), 1),
+                    child: const Text(
+                      'Sign Up as Company',
+                      style: TextStyle(
+                        color: Color(0xFF6B4791),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
