@@ -4,7 +4,7 @@ import 'studentSignup.dart';
 import '../companyScreens/companySignup.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -266,7 +266,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(width: 10),
                   TextButton(
-                    onPressed: () => _goTo(const companySignup(), 1),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const CompanySignup()),
+                      );
+                    },
                     child: const Text(
                       'Sign Up as Company',
                       style: TextStyle(

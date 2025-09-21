@@ -4,7 +4,7 @@ import '../services/authService.dart';
 //import 'package:file_picker/file_picker.dart';
 
 class StudentSignup extends StatefulWidget {
-  const StudentSignup({Key? key}) : super(key: key);
+  const StudentSignup({super.key});
 
   @override
   _StudentSignupState createState() => _StudentSignupState();
@@ -211,7 +211,7 @@ class _StudentSignupState extends State<StudentSignup> {
     );
   }
 
- /* Future<void> _pickFile(bool isProfilePic) async {
+  /*Future<void> _pickFile(bool isProfilePic) async {
     final result = await FilePicker.platform.pickFiles(
       type: isProfilePic ? FileType.image : FileType.custom,
       allowedExtensions: isProfilePic ? ['jpg', 'png'] : ['pdf'],
