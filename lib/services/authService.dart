@@ -137,4 +137,17 @@ class AuthService {
     }
     await _auth.sendPasswordResetEmail(email: e);
   }
+
+ 
+  Future<Student?> getCurrentStudent() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return null; 
+    }
+    final doc = await _db.collection('student').doc(user.uid).get();
+    if (!doc.exists) {
+      return null;
+    }
+    return Student.fromMap(doc.data()!);
+  }
 }

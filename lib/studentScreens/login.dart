@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/authService.dart';
 import 'studentSignup.dart';
 import '../companyScreens/companySignup.dart';
+import 'studentProfilePage.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -42,10 +43,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
       if (userType == 'student') {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Welcome Student!")));
+        // توجيه المستخدم إلى صفحة الملف الشخصي للطالب
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const StudentProfilePage(),
+          ),
+        );
       } else {
+        // يمكنك توجيه المستخدمين من نوع "شركة" إلى صفحة أخرى
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text("Welcome Company!")));
