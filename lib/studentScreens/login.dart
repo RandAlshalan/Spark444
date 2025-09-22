@@ -43,14 +43,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
       if (userType == 'student') {
-        // توجيه المستخدم إلى صفحة الملف الشخصي للطالب
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => const StudentProfilePage(),
+            builder: (context) => StudentProfilePage(),
           ),
         );
       } else {
-        // يمكنك توجيه المستخدمين من نوع "شركة" إلى صفحة أخرى
+
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text("Welcome Company!")));

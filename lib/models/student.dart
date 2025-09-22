@@ -1,25 +1,25 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Student {
-  final String email;
-  final String username;
-  final String firstName;
-  final String lastName;
-  final String university;
-  final String major;
-  final String phoneNumber;
-  final String? level;
-  final String? expectedGraduationDate;
-  final double? gpa;
-  final List<String> skills;
-  final String? profilePictureUrl;
-  final String? shortSummary;
-  final String userType;
+  final String email; 
+  String username;
+  String firstName;
+  String lastName;
+  String university;
+  String major;
+  String phoneNumber;
+  String? level;
+  String? expectedGraduationDate;
+  double? gpa;
+  List<String> skills;
+  String? profilePictureUrl;
+  String? shortSummary;
+  final String userType; 
   final DateTime? createdAt;
-  final bool isVerified;
-  final String resumeVisibility;
-  final String documentsVisibility;
-  final List<String> followedCompanies;
+  bool isVerified;
+  String resumeVisibility;
+  String documentsVisibility;
+  List<String> followedCompanies;
 
   Student({
     required this.email,
@@ -78,7 +78,7 @@ class Student {
       phoneNumber: map['phoneNumber'],
       level: map['level'],
       expectedGraduationDate: map['expectedGraduationDate'],
-      gpa: map['gpa']?.toDouble(),
+      gpa: map['gpa'] != null ? double.tryParse(map['gpa'].toString()) : null,
       skills: List<String>.from(map['skills'] ?? []),
       profilePictureUrl: map['profilePictureUrl'],
       shortSummary: map['shortSummary'],
