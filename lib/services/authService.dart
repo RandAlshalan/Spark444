@@ -1,11 +1,13 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/student.dart';
 import '../models/company.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseFunctions _functions = FirebaseFunctions.instance;
 
   // ------------------------------
   // Sign Up Student
@@ -128,14 +130,66 @@ class AuthService {
   }
 
   // ------------------------------
-  // Reset Password (send reset email)
-  // ------------------------------ 
-  Future<void> resetPassword(String email) async {
-    final e = email.trim();
-    if (e.isEmpty) {
+  // Reset Password (send OTP via Cloud Function)
+  // ------------------------------
+  Future<String> resetPassword(String email) async {
+    final trimmedEmail = email.trim();
+    if (trimmedEmail.isEmpty) {
       throw Exception('Email cannot be empty');
     }
-    await _auth.sendPasswordResetEmail(email: e);
+
+    try {
+      final response = await _functions
+          .httpsCallable('sendPasswordOtp')
+          .call(<String, dynamic>{'email': trimmedEmail});
+
+      final data = response.data;
+      if (data is Map && data['message'] is String) {
+        return data['message'] as String;
+      }
+      return 'OTP sent successfully.';
+    } on FirebaseFunctionsException catch (e) {
+      throw Exception(e.message ?? 'Failed to send OTP.');
+    } catch (e) {
+      throw Exception('Failed to send OTP: $e');
+    }
+  }
+
+  // ------------------------------
+  // Confirm Password Reset using OTP
+  // ------------------------------
+  Future<String> confirmPasswordResetOtp(
+    String email,
+    String otp,
+    String newPassword,
+  ) async {
+    final trimmedEmail = email.trim();
+    final trimmedOtp = otp.trim();
+    final trimmedPassword = newPassword.trim();
+
+    if (trimmedEmail.isEmpty || trimmedOtp.isEmpty || trimmedPassword.isEmpty) {
+      throw Exception('Email, OTP, and new password are required.');
+    }
+
+    try {
+      final response = await _functions.httpsCallable('verifyPasswordOtp').call(
+        <String, dynamic>{
+          'email': trimmedEmail,
+          'otp': trimmedOtp,
+          'newPassword': trimmedPassword,
+        },
+      );
+
+      final data = response.data;
+      if (data is Map && data['message'] is String) {
+        return data['message'] as String;
+      }
+      return 'Password reset successful.';
+    } on FirebaseFunctionsException catch (e) {
+      throw Exception(e.message ?? 'Failed to verify OTP.');
+    } catch (e) {
+      throw Exception('Failed to verify OTP: $e');
+    }
   }
 
  

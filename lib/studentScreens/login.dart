@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/authService.dart';
+import 'otpResetScreen.dart';
 import 'studentSignup.dart';
 import '../companyScreens/companySignup.dart';
 import 'studentProfilePage.dart';
@@ -73,11 +74,17 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     try {
-      await _authService.resetPassword(email);
+      final message = await _authService.resetPassword(email);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Password reset link sent to your email."),
+        SnackBar(content: Text(message)),
+      );
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => OtpResetScreen(
+            email: email,
+            authService: _authService,
+          ),
         ),
       );
     } catch (e) {

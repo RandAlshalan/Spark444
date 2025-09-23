@@ -43,6 +43,7 @@ dependencies:
   firebase_crashlytics: ^5.0.1
   firebase_remote_config: ^6.0.1
   gradient_borders: ^1.0.0
+  cloud_functions: ^5.0.1
 
 dev_dependencies:
   flutter_test:
