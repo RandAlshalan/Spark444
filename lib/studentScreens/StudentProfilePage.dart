@@ -82,6 +82,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
     final String? shortSummary = student.shortSummary;
     final String? profilePictureUrl = student.profilePictureUrl;
     final List<String> followedCompanies = student.followedCompanies;
+    final String? location = student.location; // ✅ New location variable
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -214,6 +215,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
                       ),
                     ),
                     const Divider(height: 20, thickness: 1),
+                    if (location != null && location.isNotEmpty) _buildInfoRow('Location', location), // ✅ Added location
                     _buildInfoRow('University', university),
                     _buildInfoRow('Major', major),
                     if (level != null && level.isNotEmpty) _buildInfoRow('Level', level),
