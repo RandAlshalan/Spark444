@@ -5,7 +5,6 @@ import 'package:geocoding/geocoding.dart';
 import 'package:my_app/studentScreens/welcomeScreen.dart';
 import '../models/student.dart';
 import '../services/authService.dart';
-//import 'package:file_picker/file_picker.dart';
 
 class StudentSignup extends StatefulWidget {
   const StudentSignup({super.key});
@@ -15,6 +14,8 @@ class StudentSignup extends StatefulWidget {
 }
 
 class _StudentSignupState extends State<StudentSignup> {
+  final _formKey = GlobalKey<FormState>();
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
@@ -34,10 +35,22 @@ class _StudentSignupState extends State<StudentSignup> {
   bool _isLoading = false;
   String? _cvPath;
   String? _profilePicPath;
-  final List<String> _selectedSkills = []; // New list to store skills
+  final List<String> _selectedSkills = [];
+  bool _isUniversityEmail = false;
+
+  final List<String> _universityDomains = [
+    '.edu', '.ac.uk', '.edu.sa', '.edu.au', '.edu.ca', '.edu.cn'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_validateEmailDomain);
+  }
 
   @override
   void dispose() {
+    _emailController.removeListener(_validateEmailDomain);
     _emailController.dispose();
     _passwordController.dispose();
     _usernameController.dispose();
@@ -52,6 +65,16 @@ class _StudentSignupState extends State<StudentSignup> {
     _skillsController.dispose();
     _locationController.dispose();
     super.dispose();
+  }
+
+  void _validateEmailDomain() {
+    final email = _emailController.text.trim();
+    bool isValid = _universityDomains.any((domain) => email.endsWith(domain));
+    if (isValid != _isUniversityEmail) {
+      setState(() {
+        _isUniversityEmail = isValid;
+      });
+    }
   }
 
   void _addSkill() {
@@ -74,36 +97,28 @@ class _StudentSignupState extends State<StudentSignup> {
     const Color primaryColor = Color(0xFF422F5D);
     const Color secondaryColor = Color(0xFFF99D46);
     const Color backgroundColor = Color(0xFFF7F4F0);
+    const LatLng initialLocation = LatLng(24.7136, 46.6753); // Riyadh
 
-    const LatLng initialLocation = LatLng(24.7136, 46.6753); // Riyadh, Saudi Arabia
+    String? finalSelectedLocationName;
 
     await showDialog(
       context: context,
       builder: (BuildContext context) {
-        String? selectedLocationName;
-        LatLng? selectedLatLng;
         final Set<Marker> markers = {};
 
         return AlertDialog(
           backgroundColor: backgroundColor,
-          contentPadding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(
-            'Select Location',
-            style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
-          ),
+          title: Text('Select Location', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
           content: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
               return SizedBox(
                 width: MediaQuery.of(context).size.width * 0.9,
                 height: MediaQuery.of(context).size.height * 0.6,
                 child: GoogleMap(
-                  initialCameraPosition: const CameraPosition(
-                    target: initialLocation,
-                    zoom: 10,
-                  ),
+                  initialCameraPosition: const CameraPosition(target: initialLocation, zoom: 10),
+                  markers: markers,
                   onTap: (latLng) async {
-                    selectedLatLng = latLng;
                     setState(() {
                       markers.clear();
                       markers.add(
@@ -113,17 +128,20 @@ class _StudentSignupState extends State<StudentSignup> {
                         ),
                       );
                     });
+
                     try {
                       List<Placemark> placemarks = await placemarkFromCoordinates(latLng.latitude, latLng.longitude);
                       if (placemarks.isNotEmpty) {
-                        final location = placemarks.first;
-                        selectedLocationName = "${location.locality}, ${location.administrativeArea}, ${location.country}";
+                        final p = placemarks.first;
+                        finalSelectedLocationName = "${p.street}, ${p.locality}, ${p.country}";
+                      } else {
+                        finalSelectedLocationName = "Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}";
                       }
                     } catch (e) {
-                      selectedLocationName = "Unknown location";
+                      print("Error getting placemark: $e");
+                      finalSelectedLocationName = "Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}";
                     }
                   },
-                  markers: markers,
                 ),
               );
             },
@@ -131,9 +149,7 @@ class _StudentSignupState extends State<StudentSignup> {
           actions: [
             TextButton(
               child: Text('Cancel', style: TextStyle(color: secondaryColor)),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+              onPressed: () => Navigator.of(context).pop(),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -141,8 +157,8 @@ class _StudentSignupState extends State<StudentSignup> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               ),
               onPressed: () {
-                if (selectedLocationName != null) {
-                  _locationController.text = selectedLocationName!;
+                if (finalSelectedLocationName != null) {
+                  _locationController.text = finalSelectedLocationName!;
                 }
                 Navigator.of(context).pop();
               },
@@ -154,125 +170,60 @@ class _StudentSignupState extends State<StudentSignup> {
     );
   }
 
+  Future<bool> _showManualReviewDialog() async {
+    bool proceed = false;
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unrecognized University Email'),
+        content: const Text('The email domain you provided is not on our recognized list. Would you like to submit it for manual review and proceed?'),
+        actions: [
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () {
+              proceed = false;
+              Navigator.of(context).pop();
+            },
+          ),
+          ElevatedButton(
+            child: const Text('Proceed'),
+            onPressed: () {
+              proceed = true;
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      ),
+    );
+    return proceed;
+  }
+
   Future<void> _signUpStudent() async {
-    // Trim spaces from email and username
-    final email = _emailController.text.trim();
-    final username = _usernameController.text.trim().replaceAll(' ', '');
-    final password = _passwordController.text;
-    final firstName = _firstNameController.text.trim();
-    final lastName = _lastNameController.text.trim();
-    final university = _universityController.text.trim();
-    final major = _majorController.text.trim();
-    final phone = _phoneController.text.trim();
-    final location = _locationController.text.trim();
-
-    // Required fields check
-    if (firstName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter first name.')));
-      return;
-    }
-    if (lastName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter last name.')));
-      return;
-    }
-    if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter university email.')));
-      return;
-    }
-    if (password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter password.')));
-      return;
-    }
-    if (username.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter username.')));
-      return;
-    }
-    if (phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter phone number.')));
-      return;
-    }
-    if (university.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter university.')));
-      return;
-    }
-    if (major.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter major.')));
-      return;
-    }
-    if (location.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter location.')));
-      return;
-    }
-
-    // Email format check
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    if (!emailRegex.hasMatch(email)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid email format.')));
-      return;
-    }
-
-    // University domain check
-    final allowedDomains = ['.edu', '.edu.sa', '.ac.uk'];
-    final domain = email.split('@').last;
-    if (!allowedDomains.any((d) => domain.endsWith(d))) {
-      bool submitForReview = false;
-      await showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Unrecognized university domain'),
-          content: const Text('Do you want to submit your email for manual review?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                submitForReview = false;
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                submitForReview = true;
-                Navigator.of(context).pop();
-              },
-              child: const Text('Submit'),
-            ),
-          ],
-        ),
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please correct the errors in the form.')),
       );
-      if (!submitForReview) return;
-    }
-
-    // Password checks
-    if (password.length < 8) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password too short (min 8 characters).')));
-      return;
-    }
-    final pwComplexity = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$');
-    if (!pwComplexity.hasMatch(password)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password must include uppercase, lowercase, number, and symbol.')));
       return;
     }
 
-    // Phone number regex (example: 10-15 digits)
-    final phoneRegex = RegExp(r'^\+?\d{10,15}$');
-    if (!phoneRegex.hasMatch(phone)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid phone number format.')));
-      return;
+    if (!_isUniversityEmail) {
+      bool userWantsToProceed = await _showManualReviewDialog();
+      if (!userWantsToProceed) {
+        return;
+      }
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final student = Student(
-        email: email,
-        username: username,
-        firstName: firstName,
-        lastName: lastName,
-        university: university,
-        major: major,
-        phoneNumber: phone,
+        email: _emailController.text.trim(),
+        username: _usernameController.text.trim(),
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        university: _universityController.text.trim(),
+        major: _majorController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
         userType: 'student',
         level: _levelController.text.isNotEmpty ? _levelController.text.trim() : null,
         expectedGraduationDate: _graduationController.text.isNotEmpty ? _graduationController.text.trim() : null,
@@ -281,76 +232,55 @@ class _StudentSignupState extends State<StudentSignup> {
         profilePictureUrl: _profilePicPath,
         createdAt: DateTime.now(),
         followedCompanies: [],
-        location: location,
+        location: _locationController.text.trim(),
       );
 
       final authService = AuthService();
-      await authService.signUpStudent(student, password);
+      await authService.signUpStudent(student, _passwordController.text.trim());
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Student account created successfully!')),
+        const SnackBar(content: Text('Student account created successfully! Check your email to verify.')),
       );
-
       Navigator.of(context).pop();
 
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Widget _buildStyledTextField({
+  Widget _buildStyledTextFormField({
     required TextEditingController controller,
     required String hintText,
     IconData? icon,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
     Widget? suffixIcon,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: TextField(
+      child: TextFormField(
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
+        validator: validator,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
           hintText: hintText,
           prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          border: InputBorder.none,
-          suffixIcon: suffixIcon ??
-              (hintText == 'Password'
-                  ? IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: Colors.grey,
-                      ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
-                    )
-                  : null),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Color(0xFF422F5D))),
+          errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red, width: 1.5)),
+          focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red, width: 2)),
+          suffixIcon: suffixIcon,
         ),
       ),
     );
@@ -374,20 +304,11 @@ class _StudentSignupState extends State<StudentSignup> {
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
             padding: const EdgeInsets.symmetric(vertical: 18),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
           ),
           child: _isLoading
               ? const CircularProgressIndicator(color: Colors.white)
-              : Text(
-                  text,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+              : Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
         ),
       ),
     );
@@ -402,42 +323,15 @@ class _StudentSignupState extends State<StudentSignup> {
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Image.asset('assets/spark_logo.png', height: 250),
+              Image.asset('assets/spark_logo.png', height: 200),
               const SizedBox(height: 5),
-              const Text(
-                'SPARK',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF422F5D),
-                ),
-              ),
-              const SizedBox(height: 5),
-              const Text(
-                'Ignite your future',
-                style: TextStyle(
-                  color: Color(0xFFF99D46),
-                  fontStyle: FontStyle.italic,
-                  fontSize: 14,
-                ),
-              ),
+              const Text('SPARK', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF422F5D))),
+              const Text('Ignite your future', style: TextStyle(color: Color(0xFFF99D46), fontStyle: FontStyle.italic, fontSize: 14)),
               const SizedBox(height: 30),
-              // Step Selector
+              
               Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
-                      spreadRadius: 2,
-                      blurRadius: 5,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
                 child: Row(
                   children: [
                     Expanded(
@@ -447,46 +341,32 @@ class _StudentSignupState extends State<StudentSignup> {
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           decoration: BoxDecoration(
-                            gradient: _currentStep == 0
-                                ? const LinearGradient(colors: [Color(0xFFF99D46), Color(0xFFD64483)])
-                                : null,
+                            gradient: _currentStep == 0 ? const LinearGradient(colors: [Color(0xFFF99D46), Color(0xFFD64483)]) : null,
                             color: _currentStep == 0 ? null : Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Center(
-                            child: Text(
-                              'Step 1',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: _currentStep == 0 ? Colors.white : Colors.grey[700],
-                              ),
-                            ),
-                          ),
+                          child: Center(child: Text('Step 1', style: TextStyle(fontWeight: FontWeight.bold, color: _currentStep == 0 ? Colors.white : Colors.grey[700]))),
                         ),
                       ),
                     ),
                     Expanded(
                       child: GestureDetector(
-                        onTap: () => setState(() => _currentStep = 1),
+                        onTap: () {
+                          if (_formKey.currentState?.validate() ?? false) {
+                            setState(() => _currentStep = 1);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please complete Step 1 first.')));
+                          }
+                        },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           decoration: BoxDecoration(
-                            gradient: _currentStep == 1
-                                ? const LinearGradient(colors: [Color(0xFFF99D46), Color(0xFFD64483)])
-                                : null,
+                            gradient: _currentStep == 1 ? const LinearGradient(colors: [Color(0xFFF99D46), Color(0xFFD64483)]) : null,
                             color: _currentStep == 1 ? null : Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Center(
-                            child: Text(
-                              'Step 2',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: _currentStep == 1 ? Colors.white : Colors.grey[700],
-                              ),
-                            ),
-                          ),
+                          child: Center(child: Text('Step 2', style: TextStyle(fontWeight: FontWeight.bold, color: _currentStep == 1 ? Colors.white : Colors.grey[700]))),
                         ),
                       ),
                     ),
@@ -495,164 +375,147 @@ class _StudentSignupState extends State<StudentSignup> {
               ),
               const SizedBox(height: 30),
 
-              if (_currentStep == 0) ...[
-                _buildStyledTextField(controller: _firstNameController, hintText: 'First Name', icon: Icons.person_outline),
-                _buildStyledTextField(controller: _lastNameController, hintText: 'Last Name', icon: Icons.person_outline),
-                _buildStyledTextField(controller: _emailController, hintText: 'University Email', icon: Icons.mail_outline, keyboardType: TextInputType.emailAddress),
-                _buildStyledTextField(controller: _passwordController, hintText: 'Password', obscureText: true, icon: Icons.lock_outline),
-                _buildStyledTextField(controller: _usernameController, hintText: 'Username', icon: Icons.person_pin_outlined),
-                _buildStyledTextField(controller: _phoneController, hintText: 'Phone Number', icon: Icons.phone_android_outlined, keyboardType: TextInputType.phone),
-                _buildStyledTextField(controller: _universityController, hintText: 'University', icon: Icons.school_outlined),
-                _buildStyledTextField(controller: _majorController, hintText: 'Major', icon: Icons.book_outlined),
-                GestureDetector(
-                  onTap: _selectLocation,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 8.0),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
-                          spreadRadius: 2,
-                          blurRadius: 5,
-                          offset: const Offset(0, 3),
+              if (_currentStep == 0)
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      _buildStyledTextFormField(
+                        controller: _firstNameController,
+                        hintText: 'First Name',
+                        icon: Icons.person_outline,
+                        validator: (value) => value == null || value.isEmpty ? 'Please enter first name' : null,
+                      ),
+                      _buildStyledTextFormField(
+                        controller: _lastNameController,
+                        hintText: 'Last Name',
+                        icon: Icons.person_outline,
+                        validator: (value) => value == null || value.isEmpty ? 'Please enter last name' : null,
+                      ),
+                      _buildStyledTextFormField(
+                        controller: _emailController,
+                        hintText: 'University Email',
+                        icon: Icons.mail_outline,
+                        keyboardType: TextInputType.emailAddress,
+                        suffixIcon: _isUniversityEmail ? const Icon(Icons.check_circle, color: Colors.green) : null,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Please enter university email';
+                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Invalid email format';
+                          return null;
+                        },
+                      ),
+                      _buildStyledTextFormField(
+                        controller: _passwordController,
+                        hintText: 'Password',
+                        icon: Icons.lock_outline,
+                        obscureText: _obscurePassword,
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                         ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.location_on_outlined, color: Colors.grey),
-                        const SizedBox(width: 15),
-                        Expanded(
-                          child: Text(
-                            _locationController.text.isNotEmpty ? _locationController.text : 'Location',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: _locationController.text.isNotEmpty ? Colors.black : Colors.grey,
-                            ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Please enter password';
+                          if (value.length < 8) return 'Password must be at least 8 characters long';
+                          if (!RegExp(r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{8,}$').hasMatch(value)) {
+                            return 'Use uppercase, lowercase, number & symbol';
+                          }
+                          return null;
+                        },
+                      ),
+                      _buildStyledTextFormField(
+                        controller: _usernameController,
+                        hintText: 'Username',
+                        icon: Icons.person_pin_outlined,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Please enter username';
+                          if (value.contains(' ')) return 'Username cannot contain spaces';
+                          return null;
+                        },
+                      ),
+                      _buildStyledTextFormField(
+                        controller: _phoneController,
+                        hintText: 'Phone Number',
+                        icon: Icons.phone_android_outlined,
+                        keyboardType: TextInputType.phone,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Please enter phone number';
+                          if (!RegExp(r'^\+?[0-9]{10,}$').hasMatch(value)) return 'Invalid phone number format';
+                          return null;
+                        },
+                      ),
+                      _buildStyledTextFormField(
+                        controller: _universityController,
+                        hintText: 'University',
+                        icon: Icons.school_outlined,
+                        validator: (value) => value == null || value.isEmpty ? 'Please enter university' : null,
+                      ),
+                      _buildStyledTextFormField(
+                        controller: _majorController,
+                        hintText: 'Major',
+                        icon: Icons.book_outlined,
+                        validator: (value) => value == null || value.isEmpty ? 'Please enter major' : null,
+                      ),
+                      
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: TextFormField(
+                          controller: _locationController,
+                          readOnly: true,
+                          onTap: _selectLocation,
+                          validator: (value) => value == null || value.isEmpty ? 'Please enter location' : null,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white,
+                            hintText: 'Location',
+                            prefixIcon: const Icon(Icons.location_on_outlined, color: Colors.grey),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red, width: 1.5)),
+                            focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red, width: 2)),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _buildGradientButton(
-                  text: 'Next Step',
-                  onPressed: () {
-                    setState(() => _currentStep = 1);
-                  },
-                ),
-              ],
+                      ),
 
-              if (_currentStep == 1) ...[
-                const Text(
-                  'You can skip these fields for now!',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 15),
-                _buildStyledTextField(controller: _levelController, hintText: 'Level', icon: Icons.trending_up),
-                _buildStyledTextField(controller: _graduationController, hintText: 'Expected Graduation Date', icon: Icons.calendar_today),
-                _buildStyledTextField(controller: _gpaController, hintText: 'GPA', icon: Icons.grade),
-                _buildStyledTextField(
-                  controller: _skillsController,
-                  hintText: 'Skills',
-                  icon: Icons.lightbulb_outline,
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.add_circle, color: Colors.blue),
-                    onPressed: _addSkill,
+                      const SizedBox(height: 20),
+                      _buildGradientButton(
+                        text: 'Next Step',
+                        onPressed: () {
+                           if (_formKey.currentState!.validate()) {
+                             setState(() => _currentStep = 1);
+                           }
+                         },
+                      ),
+                    ],
                   ),
+                ),
+              
+              if (_currentStep == 1) ...[
+                const Text('You can skip these fields for now!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey), textAlign: TextAlign.center),
+                const SizedBox(height: 15),
+                _buildStyledTextFormField(controller: _levelController, hintText: 'Level (e.g., Junior, Senior)', icon: Icons.trending_up),
+                _buildStyledTextFormField(controller: _graduationController, hintText: 'Expected Graduation Date (e.g., May 2025)', icon: Icons.calendar_today),
+                _buildStyledTextFormField(controller: _gpaController, hintText: 'GPA (e.g., 3.8)', icon: Icons.grade, keyboardType: TextInputType.numberWithOptions(decimal: true)),
+
+                _buildStyledTextFormField(
+                  controller: _skillsController,
+                  hintText: 'Add a Skill',
+                  icon: Icons.lightbulb_outline,
+                  suffixIcon: IconButton(icon: const Icon(Icons.add_circle, color: Colors.blue), onPressed: _addSkill),
                 ),
                 Wrap(
                   spacing: 8.0,
-                  children: _selectedSkills.map((skill) {
-                    return Chip(
-                      label: Text(skill),
-                      backgroundColor: const Color(0xFFF99D46).withOpacity(0.8),
-                      labelStyle: const TextStyle(color: Colors.white),
-                      onDeleted: () => _removeSkill(skill),
-                      deleteIconColor: Colors.white,
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 15),
-
-                // CV Upload Section
-                GestureDetector(
-                 // onTap: () => _pickFile(false),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
-                          spreadRadius: 2,
-                          blurRadius: 5,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _cvPath != null ? 'CV Uploaded' : 'Upload your CV',
-                          style: TextStyle(color: _cvPath != null ? Colors.black : Colors.grey),
-                        ),
-                        Icon(
-                          _cvPath != null ? Icons.check_circle_outline : Icons.file_upload,
-                          color: _cvPath != null ? Colors.green : Colors.grey,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
-
-                // Profile Picture Upload Section
-                GestureDetector(
-                  //onTap: () => _pickFile(true),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
-                          spreadRadius: 2,
-                          blurRadius: 5,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _profilePicPath != null ? 'Profile Picture Uploaded' : 'Upload Profile Picture',
-                          style: TextStyle(color: _profilePicPath != null ? Colors.black : Colors.grey),
-                        ),
-                        Icon(
-                          _profilePicPath != null ? Icons.check_circle_outline : Icons.file_upload,
-                          color: _profilePicPath != null ? Colors.green : Colors.grey,
-                        ),
-                      ],
-                    ),
-                  ),
+                  children: _selectedSkills.map((skill) => Chip(
+                    label: Text(skill),
+                    backgroundColor: const Color(0xFFF99D46).withOpacity(0.8),
+                    labelStyle: const TextStyle(color: Colors.white),
+                    onDeleted: () => _removeSkill(skill),
+                    deleteIconColor: Colors.white,
+                  )).toList(),
                 ),
                 const SizedBox(height: 30),
                 _buildGradientButton(text: 'Sign Up', onPressed: _signUpStudent),
-                const SizedBox(height: 20),
               ],
 
-              // Back to Welcome Page link
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -669,8 +532,6 @@ class _StudentSignupState extends State<StudentSignup> {
                   ),
                 ],
               ),
-
-              // Back to Welcome Screen link
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -692,7 +553,6 @@ class _StudentSignupState extends State<StudentSignup> {
                   ),
                 ],
               ),
-
             ],
           ),
         ),
@@ -700,4 +560,3 @@ class _StudentSignupState extends State<StudentSignup> {
     );
   }
 }
-
