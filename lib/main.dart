@@ -1,267 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({super.key});
+// الشاشات حسب هيكلة مشروعك
+import 'studentScreens/welcomeScreen.dart';
+import 'studentScreens/login.dart';
+import 'studentScreens/studentSignup.dart';
+import 'companyScreens/companySignup.dart';
 
-  void _showRolePicker(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // handle bar
-              Container(
-                width: 44,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const Text(
-                'Continue as',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 16),
-
-              // فقاعات دائرية ملوّنة
-              Wrap(
-                spacing: 28,
-                runSpacing: 16,
-                alignment: WrapAlignment.center,
-                children: [
-                  _Bubble(
-                    icon: Icons.school_outlined,
-                    label: 'Student',
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      Navigator.pushNamed(context, '/signup');
-                    },
-                  ),
-                  _Bubble(
-                    icon: Icons.business_center_outlined,
-                    label: 'Company',
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      Navigator.pushNamed(context, '/companySignup');
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              children: [
-                const SizedBox(height: 28),
-
-                // Logo + tagline
-                Column(
-                  children: [
-                    Image.asset(
-                      'assets/spark_logo.png',
-                      height: 96,
-                      errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.image, size: 48),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'SPARK',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF422F5D),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Ignite your future',
-                      style: TextStyle(
-                        color: Color(0xFFF99D46),
-                        fontStyle: FontStyle.italic,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 36),
-
-                // Headline + sub
-                const Text(
-                  'Unlock Your Future.\nYour Way',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 28,
-                    height: 1.25,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1E1E1E),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Connect with careers that fit your skills, ambition, and personality',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    height: 1.4,
-                    color: Colors.black54,
-                  ),
-                ),
-
-                const Spacer(),
-
-                // Illustration (تأكدي الاسم مطابق للملف داخل assets/)
-                Image.asset(
-                  'assets/students.png',
-                  height: 200,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) =>
-                      const Icon(Icons.image_not_supported, size: 64),
-                ),
-
-                const Spacer(),
-
-                // Get Started (Gradient) → يفتح الفقاعات
-                SizedBox(
-                  width: double.infinity,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFF99D46), Color(0xFFD64483)],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: ElevatedButton(
-                      onPressed: () => _showRolePicker(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: const Text(
-                        'Get Started',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Log In
-                TextButton(
-                  onPressed: () => Navigator.pushNamed(context, '/login'),
-                  child: const Text(
-                    'Log In',
-                    style: TextStyle(fontSize: 16, color: Colors.black54),
-                  ),
-                ),
-
-                const SizedBox(height: 18),
-
-                // Footer
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Text(
-                      'Privacy Policy',
-                      style: TextStyle(color: Colors.blueGrey),
-                    ),
-                    SizedBox(width: 18),
-                    Text(
-                      'Terms of Service',
-                      style: TextStyle(color: Colors.blueGrey),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  runApp(const MyApp());
 }
 
-// فقاعات دائرية ملوّنة بنفس تدرّج الزر
-class _Bubble extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _Bubble({required this.icon, required this.label, required this.onTap});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(50),
-      child: Container(
-        width: 96,
-        height: 96,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const LinearGradient(
-            colors: [Color(0xFFF99D46), Color(0xFFD64483)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.12),
-              blurRadius: 8,
-              offset: const Offset(2, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 30),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
+    return MaterialApp(
+      title: 'SPARK',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6A4EA5)),
+        useMaterial3: true,
       ),
+
+      // افتحي التطبيق على صفحة الترحيب
+      initialRoute: '/welcome',
+
+      // الراوتس
+      routes: {
+        '/welcome': (_) => const WelcomeScreen(),
+        '/login': (_) => const LoginScreen(),
+        '/signup': (_) => const StudentSignup(),
+        '/companySignup': (_) => const CompanySignup(),
+      },
+
+      // في حال تم استدعاء مسار غير معرّف
+      onUnknownRoute: (settings) =>
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
     );
   }
 }
