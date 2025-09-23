@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'login.dart'; // لأنه داخل studentScreens مع welcomeScreen
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -16,7 +17,6 @@ class WelcomeScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // handle bar
               Container(
                 width: 44,
                 height: 4,
@@ -28,22 +28,23 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const Text(
                 'Continue as',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 16),
 
-              // فقاعات دائرية ملوّنة
               Wrap(
-                spacing: 28,
-                runSpacing: 16,
-                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
                 children: [
                   _Bubble(
                     icon: Icons.school_outlined,
                     label: 'Student',
                     onTap: () {
                       Navigator.pop(ctx);
-                      Navigator.pushNamed(context, '/signup');
+                      Navigator.pushNamed(
+                        context,
+                        '/signup',
+                      ); // يفتح صفحة الطالب
                     },
                   ),
                   _Bubble(
@@ -51,12 +52,15 @@ class WelcomeScreen extends StatelessWidget {
                     label: 'Company',
                     onTap: () {
                       Navigator.pop(ctx);
-                      Navigator.pushNamed(context, '/companySignup');
+                      Navigator.pushNamed(
+                        context,
+                        '/companySignup',
+                      ); // يفتح صفحة الشركة
                     },
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
             ],
           ),
         );
@@ -108,7 +112,6 @@ class WelcomeScreen extends StatelessWidget {
 
                 const SizedBox(height: 36),
 
-                // Headline + sub
                 const Text(
                   'Unlock Your Future.\nYour Way',
                   textAlign: TextAlign.center,
@@ -132,10 +135,10 @@ class WelcomeScreen extends StatelessWidget {
 
                 const Spacer(),
 
-                // Illustration (تأكدي الاسم مطابق للملف داخل assets/)
+                // Illustration (تأكدي الاسم مطابق للملف students.png)
                 Image.asset(
                   'assets/students.png',
-                  height: 200,
+                  height: 300,
                   fit: BoxFit.contain,
                   errorBuilder: (_, __, ___) =>
                       const Icon(Icons.image_not_supported, size: 64),
@@ -143,7 +146,7 @@ class WelcomeScreen extends StatelessWidget {
 
                 const Spacer(),
 
-                // Get Started (Gradient) → يفتح الفقاعات
+                // Get Started → يفتح فقاعات
                 SizedBox(
                   width: double.infinity,
                   child: DecoratedBox(
@@ -179,7 +182,7 @@ class WelcomeScreen extends StatelessWidget {
 
                 const SizedBox(height: 8),
 
-                // Log In
+                // Log In → login.dart
                 TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/login'),
                   child: const Text(
@@ -190,7 +193,6 @@ class WelcomeScreen extends StatelessWidget {
 
                 const SizedBox(height: 18),
 
-                // Footer
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: const [
@@ -215,49 +217,32 @@ class WelcomeScreen extends StatelessWidget {
   }
 }
 
-// فقاعات دائرية ملوّنة بنفس تدرّج الزر
 class _Bubble extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-
   const _Bubble({required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
+      borderRadius: BorderRadius.circular(28),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(50),
       child: Container(
-        width: 96,
-        height: 96,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const LinearGradient(
-            colors: [Color(0xFFF99D46), Color(0xFFD64483)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.12),
-              blurRadius: 8,
-              offset: const Offset(2, 4),
-            ),
-          ],
+          color: const Color(0xFFF6F6F6),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: const Color(0xFFE7E7E7)),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.white, size: 30),
-            const SizedBox(height: 6),
+            Icon(icon, size: 20, color: const Color(0xFF5B4B7A)),
+            const SizedBox(width: 8),
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             ),
           ],
         ),
