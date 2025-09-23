@@ -1,4 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:my_app/studentScreens/welcomeScreen.dart';
 import '../models/student.dart';
 import '../services/authService.dart';
 //import 'package:file_picker/file_picker.dart';
@@ -66,18 +70,193 @@ class _StudentSignupState extends State<StudentSignup> {
     });
   }
 
+  Future<void> _selectLocation() async {
+    const Color primaryColor = Color(0xFF422F5D);
+    const Color secondaryColor = Color(0xFFF99D46);
+    const Color backgroundColor = Color(0xFFF7F4F0);
+
+    const LatLng initialLocation = LatLng(24.7136, 46.6753); // Riyadh, Saudi Arabia
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        String? selectedLocationName;
+        LatLng? selectedLatLng;
+        final Set<Marker> markers = {};
+
+        return AlertDialog(
+          backgroundColor: backgroundColor,
+          contentPadding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            'Select Location',
+            style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+          ),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SizedBox(
+                width: MediaQuery.of(context).size.width * 0.9,
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: GoogleMap(
+                  initialCameraPosition: const CameraPosition(
+                    target: initialLocation,
+                    zoom: 10,
+                  ),
+                  onTap: (latLng) async {
+                    selectedLatLng = latLng;
+                    setState(() {
+                      markers.clear();
+                      markers.add(
+                        Marker(
+                          markerId: const MarkerId('selected-location'),
+                          position: latLng,
+                        ),
+                      );
+                    });
+                    try {
+                      List<Placemark> placemarks = await placemarkFromCoordinates(latLng.latitude, latLng.longitude);
+                      if (placemarks.isNotEmpty) {
+                        final location = placemarks.first;
+                        selectedLocationName = "${location.locality}, ${location.administrativeArea}, ${location.country}";
+                      }
+                    } catch (e) {
+                      selectedLocationName = "Unknown location";
+                    }
+                  },
+                  markers: markers,
+                ),
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              child: Text('Cancel', style: TextStyle(color: secondaryColor)),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () {
+                if (selectedLocationName != null) {
+                  _locationController.text = selectedLocationName!;
+                }
+                Navigator.of(context).pop();
+              },
+              child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _signUpStudent() async {
-    if (_emailController.text.isEmpty ||
-        _passwordController.text.isEmpty ||
-        _usernameController.text.isEmpty ||
-        _firstNameController.text.isEmpty ||
-        _lastNameController.text.isEmpty ||
-        _universityController.text.isEmpty ||
-        _majorController.text.isEmpty ||
-        _phoneController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all required fields.')),
+    // Trim spaces from email and username
+    final email = _emailController.text.trim();
+    final username = _usernameController.text.trim().replaceAll(' ', '');
+    final password = _passwordController.text;
+    final firstName = _firstNameController.text.trim();
+    final lastName = _lastNameController.text.trim();
+    final university = _universityController.text.trim();
+    final major = _majorController.text.trim();
+    final phone = _phoneController.text.trim();
+    final location = _locationController.text.trim();
+
+    // Required fields check
+    if (firstName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter first name.')));
+      return;
+    }
+    if (lastName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter last name.')));
+      return;
+    }
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter university email.')));
+      return;
+    }
+    if (password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter password.')));
+      return;
+    }
+    if (username.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter username.')));
+      return;
+    }
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter phone number.')));
+      return;
+    }
+    if (university.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter university.')));
+      return;
+    }
+    if (major.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter major.')));
+      return;
+    }
+    if (location.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter location.')));
+      return;
+    }
+
+    // Email format check
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid email format.')));
+      return;
+    }
+
+    // University domain check
+    final allowedDomains = ['.edu', '.edu.sa', '.ac.uk'];
+    final domain = email.split('@').last;
+    if (!allowedDomains.any((d) => domain.endsWith(d))) {
+      bool submitForReview = false;
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Unrecognized university domain'),
+          content: const Text('Do you want to submit your email for manual review?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                submitForReview = false;
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                submitForReview = true;
+                Navigator.of(context).pop();
+              },
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
       );
+      if (!submitForReview) return;
+    }
+
+    // Password checks
+    if (password.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password too short (min 8 characters).')));
+      return;
+    }
+    final pwComplexity = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$');
+    if (!pwComplexity.hasMatch(password)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password must include uppercase, lowercase, number, and symbol.')));
+      return;
+    }
+
+    // Phone number regex (example: 10-15 digits)
+    final phoneRegex = RegExp(r'^\+?\d{10,15}$');
+    if (!phoneRegex.hasMatch(phone)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid phone number format.')));
       return;
     }
 
@@ -87,13 +266,13 @@ class _StudentSignupState extends State<StudentSignup> {
 
     try {
       final student = Student(
-        email: _emailController.text.trim(),
-        username: _usernameController.text.trim(),
-        firstName: _firstNameController.text.trim(),
-        lastName: _lastNameController.text.trim(),
-        university: _universityController.text.trim(),
-        major: _majorController.text.trim(),
-        phoneNumber: _phoneController.text.trim(),
+        email: email,
+        username: username,
+        firstName: firstName,
+        lastName: lastName,
+        university: university,
+        major: major,
+        phoneNumber: phone,
         userType: 'student',
         level: _levelController.text.isNotEmpty ? _levelController.text.trim() : null,
         expectedGraduationDate: _graduationController.text.isNotEmpty ? _graduationController.text.trim() : null,
@@ -102,11 +281,11 @@ class _StudentSignupState extends State<StudentSignup> {
         profilePictureUrl: _profilePicPath,
         createdAt: DateTime.now(),
         followedCompanies: [],
-        location: _locationController.text.isNotEmpty ? _locationController.text.trim() : null,
+        location: location,
       );
 
       final authService = AuthService();
-      await authService.signUpStudent(student, _passwordController.text.trim());
+      await authService.signUpStudent(student, password);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -214,22 +393,6 @@ class _StudentSignupState extends State<StudentSignup> {
     );
   }
 
-  /*Future<void> _pickFile(bool isProfilePic) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: isProfilePic ? FileType.image : FileType.custom,
-      allowedExtensions: isProfilePic ? ['jpg', 'png'] : ['pdf'],
-    );
-    if (result != null) {
-      setState(() {
-        if (isProfilePic) {
-          _profilePicPath = result.files.single.path;
-        } else {
-          _cvPath = result.files.single.path;
-        }
-      });
-    }
-  }*/
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -261,7 +424,7 @@ class _StudentSignupState extends State<StudentSignup> {
                 ),
               ),
               const SizedBox(height: 30),
-              
+              // Step Selector
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -341,8 +504,40 @@ class _StudentSignupState extends State<StudentSignup> {
                 _buildStyledTextField(controller: _phoneController, hintText: 'Phone Number', icon: Icons.phone_android_outlined, keyboardType: TextInputType.phone),
                 _buildStyledTextField(controller: _universityController, hintText: 'University', icon: Icons.school_outlined),
                 _buildStyledTextField(controller: _majorController, hintText: 'Major', icon: Icons.book_outlined),
-                _buildStyledTextField(controller: _locationController,hintText: 'Location', icon: Icons.location_on_outlined,),
-
+                GestureDetector(
+                  onTap: _selectLocation,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 8.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.2),
+                          spreadRadius: 2,
+                          blurRadius: 5,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, color: Colors.grey),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Text(
+                            _locationController.text.isNotEmpty ? _locationController.text : 'Location',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: _locationController.text.isNotEmpty ? Colors.black : Colors.grey,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 20),
                 _buildGradientButton(
                   text: 'Next Step',
@@ -351,7 +546,7 @@ class _StudentSignupState extends State<StudentSignup> {
                   },
                 ),
               ],
-              
+
               if (_currentStep == 1) ...[
                 const Text(
                   'You can skip these fields for now!',
@@ -362,8 +557,6 @@ class _StudentSignupState extends State<StudentSignup> {
                 _buildStyledTextField(controller: _levelController, hintText: 'Level', icon: Icons.trending_up),
                 _buildStyledTextField(controller: _graduationController, hintText: 'Expected Graduation Date', icon: Icons.calendar_today),
                 _buildStyledTextField(controller: _gpaController, hintText: 'GPA', icon: Icons.grade),
-
-                // Skills Input with Add Button and Chips
                 _buildStyledTextField(
                   controller: _skillsController,
                   hintText: 'Skills',
@@ -420,6 +613,7 @@ class _StudentSignupState extends State<StudentSignup> {
                   ),
                 ),
                 const SizedBox(height: 15),
+
                 // Profile Picture Upload Section
                 GestureDetector(
                   //onTap: () => _pickFile(true),
@@ -455,8 +649,50 @@ class _StudentSignupState extends State<StudentSignup> {
                 const SizedBox(height: 30),
                 _buildGradientButton(text: 'Sign Up', onPressed: _signUpStudent),
                 const SizedBox(height: 20),
-
               ],
+
+              // Back to Welcome Page link
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("Already have an account?"),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text(
+                      'Login',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF422F5D),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Back to Welcome Screen link
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("Want to go back?"),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+                        (Route<dynamic> route) => false,
+                      );
+                    },
+                    child: const Text(
+                      'Welcome Screen',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF422F5D),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
             ],
           ),
         ),
@@ -464,3 +700,4 @@ class _StudentSignupState extends State<StudentSignup> {
     );
   }
 }
+

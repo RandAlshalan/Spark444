@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart'; // لعرض projectId في الـ debug
+import 'package:firebase_core/firebase_core.dart'; 
 import '../models/student.dart';
 import '../models/company.dart';
 
@@ -8,9 +8,9 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // ثبتي الأسماء هنا
-  static const String kStudentCol = 'student'; // مفرد
-  static const String kCompanyCol = 'companies'; // جمع
+ 
+  static const String kStudentCol = 'student'; 
+  static const String kCompanyCol = 'companies';
 
   // ------------------------------
   // Helpers
@@ -21,7 +21,6 @@ class AuthService {
   );
 
   String _normalizeEmail(String raw) {
-    // نشيل المسافات أول/آخر + الداخلية الشائعة، ونخليه lowercase
     final t = raw.trim();
     if (t.isEmpty) return '';
     return t.replaceAll(' ', '').toLowerCase();
@@ -49,10 +48,10 @@ class AuthService {
 
       final studentMap = student.toMap();
 
-      // تأكيد أن email محفوظ normalized (اختياري لكن مفيد للاتساق)
+
       studentMap['email'] = emailNorm;
 
-      // تأكيد username_lower موجود
+
       final usernameRaw = (studentMap['username'] as String?) ?? '';
       studentMap['username_lower'] =
           (studentMap['username_lower'] as String?)
@@ -65,7 +64,7 @@ class AuthService {
 
       await _db.collection(kStudentCol).doc(user.uid).set(studentMap);
 
-      // Debug تحقّق سريع
+
       final written = await _db.collection(kStudentCol).doc(user.uid).get();
       if (!written.exists) {
         throw Exception("Student Firestore doc was not created.");
@@ -130,7 +129,7 @@ class AuthService {
     final raw = identifier.trim();
     if (raw.isEmpty) throw Exception("Please enter username/email");
 
-    // لو فيه @ نعامله كإيميل ونطبّق normalize + فحص الصيغة
+    // 
     if (raw.contains('@')) {
       final email = _normalizeEmail(raw);
       if (!_emailRegex.hasMatch(email)) {
@@ -142,7 +141,7 @@ class AuthService {
     // Username
     final uname = _normalizeUsername(raw);
 
-    // DEBUG: لتثبيت المشروع والفلو
+    // DEBUG: 
     try {
       print('[LOGIN] projectId = ${Firebase.app().options.projectId}');
     } catch (_) {
@@ -153,7 +152,7 @@ class AuthService {
     );
 
     try {
-      // ابحث في الطلاب
+      // 
       final studentSnap = await _db
           .collection(kStudentCol)
           .where('username_lower', isEqualTo: uname)
@@ -175,7 +174,7 @@ class AuthService {
         return email;
       }
 
-      // استعلام احتياطي لو username_lower ما كان موجود قديمًا
+      //
       final altStudentSnap = await _db
           .collection(kStudentCol)
           .where('username', isEqualTo: raw)
@@ -196,7 +195,7 @@ class AuthService {
         return email;
       }
 
-      // ابحث في الشركات
+      //
       final companySnap = await _db
           .collection(kCompanyCol)
           .where('username_lower', isEqualTo: uname)
@@ -218,7 +217,7 @@ class AuthService {
         return email;
       }
 
-      // احتياطي
+      // 
       final altCompanySnap = await _db
           .collection(kCompanyCol)
           .where('username', isEqualTo: raw)
@@ -241,7 +240,7 @@ class AuthService {
     } on FirebaseException catch (e) {
       print('[LOGIN][ERROR] Firestore query failed: ${e.code} - ${e.message}');
       if (e.code == 'permission-denied') {
-        // لو القواعد تمنع القراءة قبل الدخول، هنا السبب الحقيقي
+        //
         throw Exception(
           'Login failed: permission denied while searching username',
         );

@@ -56,7 +56,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       body: SafeArea(
         child: Column(
           children: [
-            // محتوى الصفحة العلوي
             Expanded(
               child: Center(
                 child: Padding(
@@ -121,7 +120,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                       const Spacer(),
 
-                      // زر Get Started
+                      // Get Started Button
                       SizedBox(
                         width: double.infinity,
                         child: DecoratedBox(
@@ -151,7 +150,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         ),
                       ),
 
-                      // فقاعتين يطلعن من تحت الزر
+                      // Two rectangular bubbles appear below
                       ClipRect(
                         child: AnimatedSize(
                           duration: const Duration(milliseconds: 250),
@@ -167,8 +166,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     child: SlideTransition(
                                       position: _slide,
                                       child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
+                                        mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           _Bubble(
                                             icon: Icons.school_outlined,
@@ -183,8 +181,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                           ),
                                           const SizedBox(width: 22),
                                           _Bubble(
-                                            icon:
-                                                Icons.business_center_outlined,
+                                            icon: Icons.business_center_outlined,
                                             label: 'as Company',
                                             onTap: () {
                                               _toggle();
@@ -203,7 +200,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         ),
                       ),
 
-                      // Log In أعلى من الصورة وتحت الزر
+                      // Log In
                       TextButton(
                         onPressed: () => Navigator.pushNamed(context, '/login'),
                         child: const Text(
@@ -219,12 +216,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ),
             ),
 
-            // الصورة أسفل الصفحة بعرض كامل
+            // Bottom image
             Image.asset(
               'assets/students.png',
               width: double.infinity,
-              height: 200, // تقدرين تغيرينها (مثلاً 240)
-              fit: BoxFit.cover, // تمتد بعرض الشاشة
+              height: 200,
+              fit: BoxFit.cover,
               errorBuilder: (_, __, ___) =>
                   const Icon(Icons.image_not_supported, size: 64),
             ),
@@ -235,7 +232,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 }
 
-// فقاعة دائرية ملوّنة
+// Rectangular Bubble with rounded corners
 class _Bubble extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -246,30 +243,29 @@ class _Bubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(60),
+      borderRadius: BorderRadius.circular(30),
       onTap: onTap,
       child: Container(
-        width: 96,
-        height: 96,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
             colors: [Color(0xFFF99D46), Color(0xFFD64483)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
+          borderRadius: BorderRadius.circular(30),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.white, size: 28),
-            const SizedBox(height: 6),
+            Icon(icon, color: Colors.white, size: 24),
+            const SizedBox(width: 8),
             Text(
               label,
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: 16,
               ),
             ),
           ],
