@@ -2,24 +2,25 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Student {
   final String email; 
-  String username;
+  String username; 
   String firstName;
   String lastName;
   String university;
-  String major;
-  String phoneNumber;
-  String? level;
+  String major; 
+  String phoneNumber; 
+  String? level; 
   String? expectedGraduationDate;
-  double? gpa;
-  List<String> skills;
-  String? profilePictureUrl;
-  String? shortSummary;
+  double? gpa; 
+  List<String> skills; 
+  String? profilePictureUrl; 
+  String? shortSummary; 
   final String userType; 
-  final DateTime? createdAt;
+  final DateTime? createdAt; 
   bool isVerified;
-  String resumeVisibility;
-  String documentsVisibility;
-  List<String> followedCompanies;
+  String resumeVisibility; 
+  String documentsVisibility; 
+  List<String> followedCompanies; 
+  String? location; 
 
   Student({
     required this.email,
@@ -41,8 +42,10 @@ class Student {
     this.resumeVisibility = "private",
     this.documentsVisibility = "private",
     this.followedCompanies = const [],
+    this.location, 
   });
 
+  /// Convert Student object to a map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'email': email,
@@ -59,14 +62,18 @@ class Student {
       'profilePictureUrl': profilePictureUrl,
       'shortSummary': shortSummary,
       'userType': userType,
-      'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
+      'createdAt': createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp(),
       'isVerified': isVerified,
       'resumeVisibility': resumeVisibility,
       'documentsVisibility': documentsVisibility,
       'followedCompanies': followedCompanies,
+      'location': location, // ✅ Added in map
     };
   }
 
+  /// Create Student object from Firestore document (map)
   factory Student.fromMap(Map<String, dynamic> map) {
     return Student(
       email: map['email'],
@@ -88,6 +95,7 @@ class Student {
       resumeVisibility: map['resumeVisibility'] ?? "private",
       documentsVisibility: map['documentsVisibility'] ?? "private",
       followedCompanies: List<String>.from(map['followedCompanies'] ?? []),
+      location: map['location'], 
     );
   }
 }

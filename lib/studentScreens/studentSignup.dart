@@ -23,7 +23,8 @@ class _StudentSignupState extends State<StudentSignup> {
   final TextEditingController _graduationController = TextEditingController();
   final TextEditingController _gpaController = TextEditingController();
   final TextEditingController _skillsController = TextEditingController();
-  
+  final TextEditingController _locationController = TextEditingController();
+
   bool _obscurePassword = true;
   int _currentStep = 0;
   bool _isLoading = false;
@@ -45,6 +46,7 @@ class _StudentSignupState extends State<StudentSignup> {
     _graduationController.dispose();
     _gpaController.dispose();
     _skillsController.dispose();
+    _locationController.dispose();
     super.dispose();
   }
 
@@ -100,6 +102,7 @@ class _StudentSignupState extends State<StudentSignup> {
         profilePictureUrl: _profilePicPath,
         createdAt: DateTime.now(),
         followedCompanies: [],
+        location: _locationController.text.isNotEmpty ? _locationController.text.trim() : null,
       );
 
       final authService = AuthService();
@@ -338,6 +341,8 @@ class _StudentSignupState extends State<StudentSignup> {
                 _buildStyledTextField(controller: _phoneController, hintText: 'Phone Number', icon: Icons.phone_android_outlined, keyboardType: TextInputType.phone),
                 _buildStyledTextField(controller: _universityController, hintText: 'University', icon: Icons.school_outlined),
                 _buildStyledTextField(controller: _majorController, hintText: 'Major', icon: Icons.book_outlined),
+                _buildStyledTextField(controller: _locationController,hintText: 'Location', icon: Icons.location_on_outlined,),
+
                 const SizedBox(height: 20),
                 _buildGradientButton(
                   text: 'Next Step',
