@@ -3,6 +3,7 @@ import '../services/authService.dart';
 import 'studentSignup.dart';
 import '../companyScreens/companySignup.dart';
 import 'studentProfilePage.dart';
+import 'welcomeScreen.dart'; // Import the WelcomeScreen
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,7 +14,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final _idController = TextEditingController(); // Username أو Email
+  final _idController = TextEditingController(); 
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -125,9 +126,9 @@ class _LoginScreenState extends State<LoginScreen>
     final t = raw.trim();
     if (t.isEmpty) return '';
     if (t.contains('@')) {
-      return t.replaceAll(' ', '').toLowerCase(); // Email: بدون مسافات داخلية
+      return t.replaceAll(' ', '').toLowerCase();
     }
-    return t.toLowerCase(); // Username
+    return t.toLowerCase();
   }
 
   String? _validateIdentifier(String raw) {
@@ -185,7 +186,6 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _isLoading = true);
 
     try {
-      // نرسل المعرف كما هو — الـ AuthService يتكفل بتحويل username إلى email إن لزم
       final userType = await _authService.login(
         idRaw,
         _normalizePassword(pwRaw),
@@ -230,7 +230,7 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  Future<void> _goTo(Widget page, int index) async {
+  Future<void> _goTo(Widget page) async {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
     if (mounted) setState(() {});
   }
@@ -406,54 +406,33 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   ),
                   const SizedBox(height: 25),
-
-                  const Text(
-                    "Don't have an account?",
-                    style: TextStyle(color: Color(0xFF888888)),
-                  ),
-                  const SizedBox(height: 1),
-
+                  
+                  // Back to Welcome Page button
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       TextButton(
-                        onPressed: () => _goTo(const StudentSignup(), 0),
-                        child: const Text(
-                          'Sign Up as Student',
-                          style: TextStyle(
-                            color: Color(0xFF6B4791),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      TextButton(
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const CompanySignup(),
-                            ),
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+                            (Route<dynamic> route) => false,
                           );
                         },
                         child: const Text(
-                          'Sign Up as Company',
+                          'Back to Welcome Page',
                           style: TextStyle(
-                            color: Color(0xFF6B4791),
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            color: Color(0xFF6B4791),
                           ),
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 1),
                 ],
               ),
             ),
           ),
-
-          //
           const SizedBox.shrink(),
         ],
       ),

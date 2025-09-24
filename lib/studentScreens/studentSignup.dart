@@ -21,14 +21,15 @@ class _StudentSignupState extends State<StudentSignup> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
-  final TextEditingController _universityController = TextEditingController();
-  final TextEditingController _majorController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController(text: '+966'); // Changed
   final TextEditingController _levelController = TextEditingController();
   final TextEditingController _graduationController = TextEditingController();
   final TextEditingController _gpaController = TextEditingController();
   final TextEditingController _skillsController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
+
+  String? _selectedUniversity;
+  String? _selectedMajor;
 
   bool _obscurePassword = true;
   int _currentStep = 0;
@@ -40,6 +41,86 @@ class _StudentSignupState extends State<StudentSignup> {
 
   final List<String> _universityDomains = [
     '.edu', '.ac.uk', '.edu.sa', '.edu.au', '.edu.ca', '.edu.cn'
+  ];
+
+  final List<String> ksaUniversities = [
+    'King Saud University',
+    'King Abdulaziz University',
+    'King Fahd University',
+    'King Abdullah University',
+    'King Khalid University',
+    'Alfaisal University',
+    'Umm Al-Qura University',
+    'Imam Abdulrahman University',
+    'Taibah University',
+    'King Saud bin Abdulaziz University',
+    'Qassim University',
+    'Al-Yamamah University',
+    'Effat University',
+    'University of Tabuk',
+    'Imam Mohammad IbnUniversity',
+    'Prince Sultan University',
+    'Taif University',
+    'Najran University',
+    'Al Jouf University',
+    'Prince Mohammad Bin University',
+    'Islamic University of Madinah',
+    'Prince Sattam Bin  University',
+    'Fahad Bin Sultan University',
+    'Jazan University',
+    'Shaqra University',
+    'Majmaah University',
+    'Dar Al-Hekma University',
+    'Dar Al Uloom University',
+    'Northern Border University',
+    'University of Hafr Al Batin',
+    'Arab Open University',
+    'Ibn Sina National College',
+    'Sulaiman Al Rajhi University',
+    'Jubail Industrial College',
+    'University of Prince Mugrin',
+    'Fakeeh College for',
+    'Yanbu Industrial College',
+    'Prince Sultan Aviation Academy',
+    'Prince Mohammed Bin Salman',
+    'Princess Nourah Bint ',
+    'Riyadh Elm University',
+    'University of Jeddah',
+    'University of Bisha',
+    'Jeddah International College',
+    'Prince Sattam bin Abdulaziz ',
+  ];
+
+  final List<String> ksaMajors = [
+    'Computer Science',
+    'Medicine',
+    'Engineering',
+    'Business Administration',
+    'Law',
+    'Information Technology',
+    'Finance',
+    'Accounting',
+    'Architecture',
+    'Humanities',
+    'Education',
+    'Arts & Design',
+    'Nursing',
+    'Pharmacy',
+    'Dentistry',
+    'Mechanical Engineering',
+    'Electrical Engineering',
+    'Civil Engineering',
+    'Chemical Engineering',
+    'Islamic Studies',
+    'Science (Physics, Chemistry, Biology)',
+    'Public Health',
+    'Marketing',
+    'Psychology',
+    'Data Science',
+    'Cybersecurity',
+    'Industrial Engineering',
+    'International Relations',
+    'Tourism and Hospitality',
   ];
 
   @override
@@ -56,8 +137,6 @@ class _StudentSignupState extends State<StudentSignup> {
     _usernameController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
-    _universityController.dispose();
-    _majorController.dispose();
     _phoneController.dispose();
     _levelController.dispose();
     _graduationController.dispose();
@@ -133,7 +212,7 @@ class _StudentSignupState extends State<StudentSignup> {
                       List<Placemark> placemarks = await placemarkFromCoordinates(latLng.latitude, latLng.longitude);
                       if (placemarks.isNotEmpty) {
                         final p = placemarks.first;
-                        finalSelectedLocationName = "${p.street}, ${p.locality}, ${p.country}";
+                        finalSelectedLocationName = p.locality;
                       } else {
                         finalSelectedLocationName = "Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}";
                       }
@@ -221,9 +300,9 @@ class _StudentSignupState extends State<StudentSignup> {
         username: _usernameController.text.trim(),
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
-        university: _universityController.text.trim(),
-        major: _majorController.text.trim(),
-        phoneNumber: _phoneController.text.trim(),
+        university: _selectedUniversity!,
+        major: _selectedMajor!,
+        phoneNumber: _phoneController.text.trim(), // Use the full text with prefix
         userType: 'student',
         level: _levelController.text.isNotEmpty ? _levelController.text.trim() : null,
         expectedGraduationDate: _graduationController.text.isNotEmpty ? _graduationController.text.trim() : null,
@@ -260,6 +339,9 @@ class _StudentSignupState extends State<StudentSignup> {
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
     Widget? suffixIcon,
+    Widget? prefix,
+    String? errorText,
+    TextStyle? errorStyle,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -274,6 +356,7 @@ class _StudentSignupState extends State<StudentSignup> {
           fillColor: Colors.white,
           hintText: hintText,
           prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
+          prefix: prefix,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -281,7 +364,54 @@ class _StudentSignupState extends State<StudentSignup> {
           errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red, width: 1.5)),
           focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red, width: 2)),
           suffixIcon: suffixIcon,
+          errorText: errorText,
+          errorStyle: errorStyle,
         ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownFormField({
+    required String hintText,
+    required List<String> items,
+    required String? selectedValue,
+    required void Function(String?) onChanged,
+    required IconData icon,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      child: DropdownButtonFormField<String>(
+        value: selectedValue,
+        onChanged: onChanged,
+        validator: (value) => value == null ? 'Please select a ${hintText.toLowerCase()}' : null,
+        dropdownColor: const Color(0xFFF7F4F0),
+        menuMaxHeight: 250,
+        icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF422F5D)),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          hintText: hintText,
+          prefixIcon: Icon(icon, color: Colors.grey),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Color(0xFF422F5D))),
+          errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red, width: 1.5)),
+          focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red, width: 2)),
+        ),
+        items: items.map<DropdownMenuItem<String>>((String value) {
+          return DropdownMenuItem<String>(
+            value: value,
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Color(0xFF422F5D),
+                fontSize: 14,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -398,6 +528,8 @@ class _StudentSignupState extends State<StudentSignup> {
                         icon: Icons.mail_outline,
                         keyboardType: TextInputType.emailAddress,
                         suffixIcon: _isUniversityEmail ? const Icon(Icons.check_circle, color: Colors.green) : null,
+                        errorText: _isUniversityEmail || _emailController.text.isEmpty ? null : "We will verify if it's a university email",
+                        errorStyle: const TextStyle(color: Colors.grey),
                         validator: (value) {
                           if (value == null || value.isEmpty) return 'Please enter university email';
                           if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Invalid email format';
@@ -435,25 +567,40 @@ class _StudentSignupState extends State<StudentSignup> {
                       _buildStyledTextFormField(
                         controller: _phoneController,
                         hintText: 'Phone Number',
-                        icon: Icons.phone_android_outlined,
                         keyboardType: TextInputType.phone,
                         validator: (value) {
                           if (value == null || value.isEmpty) return 'Please enter phone number';
-                          if (!RegExp(r'^\+?[0-9]{10,}$').hasMatch(value)) return 'Invalid phone number format';
+                          if (!value.startsWith('+966')) {
+                            return 'Phone number must start with +966';
+                          }
+                          final phoneNumberWithoutPrefix = value.substring(4); // Remove '+966'
+                          if (!RegExp(r'^[0-9]{9}$').hasMatch(phoneNumberWithoutPrefix)) {
+                            return 'Invalid KSA phone number (9 digits after +966)';
+                          }
                           return null;
                         },
                       ),
-                      _buildStyledTextFormField(
-                        controller: _universityController,
+                      _buildDropdownFormField(
                         hintText: 'University',
+                        items: ksaUniversities,
+                        selectedValue: _selectedUniversity,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            _selectedUniversity = newValue;
+                          });
+                        },
                         icon: Icons.school_outlined,
-                        validator: (value) => value == null || value.isEmpty ? 'Please enter university' : null,
                       ),
-                      _buildStyledTextFormField(
-                        controller: _majorController,
+                      _buildDropdownFormField(
                         hintText: 'Major',
+                        items: ksaMajors,
+                        selectedValue: _selectedMajor,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            _selectedMajor = newValue;
+                          });
+                        },
                         icon: Icons.book_outlined,
-                        validator: (value) => value == null || value.isEmpty ? 'Please enter major' : null,
                       ),
                       
                       Padding(
