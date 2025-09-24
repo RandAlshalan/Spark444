@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // مهم لمسك FirebaseAuthException
 import '../services/authService.dart';
-import 'studentSignup.dart';
-import '../companyScreens/companySignup.dart';
 import 'studentProfilePage.dart';
-import 'welcomeScreen.dart'; // Import the WelcomeScreen
+import 'welcomeScreen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,13 +13,17 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final _idController = TextEditingController(); 
+  final _idController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
-  bool _obscurePassword = true;
   final AuthService _authService = AuthService();
 
-  // ====== Top Toast (Overlay) ======
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  String? _idError; // رسالة خطأ تحت حقل المعرّف
+  String? _pwError; // رسالة خطأ تحت حقل الباسوورد
+
+  // ====== Toast (أعلى الشاشة) ======
   OverlayEntry? _toastEntry;
   late final AnimationController _toastController = AnimationController(
     vsync: this,
@@ -53,8 +56,6 @@ class _LoginScreenState extends State<LoginScreen>
               position: _toastSlide,
               child: Material(
                 color: Colors.transparent,
-                elevation: 8,
-                borderRadius: BorderRadius.circular(14),
                 child: Container(
                   margin: EdgeInsets.only(top: topSafe > 0 ? 0 : 12),
                   padding: const EdgeInsets.symmetric(
@@ -108,333 +109,418 @@ class _LoginScreenState extends State<LoginScreen>
     });
   }
 
-  void _showSuccess(String msg) =>
-      _showTopToast(msg, icon: Icons.check_circle_outline);
-
   void _hideTopToast() {
     _toastEntry?..remove();
     _toastEntry = null;
   }
 
-  // ====== Validators & Helpers ======
+  void _setErrors({String? idError, String? pwError}) {
+    setState(() {
+      _idError = idError;
+      _pwError = pwError;
+    });
+  }
+
+  // ====== Validators ======
   final RegExp _emailRegex = RegExp(
     r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
     caseSensitive: false,
   );
 
-  String _normalizeIdentifier(String raw) {
-    final t = raw.trim();
-    if (t.isEmpty) return '';
-    if (t.contains('@')) {
-      return t.replaceAll(' ', '').toLowerCase();
+  // يلتقط حالات "شكله إيميل" لكن بدون @ (مثل: xxxxx.student.ksu.edu.sa)
+  bool _looksLikeEmailWithoutAt(String s) {
+    final t = s.trim();
+    if (t.isEmpty || t.contains('@') || t.contains(' ')) return false;
+    // يحتوي على نقطة ونهاية امتداد أحرف فقط (2-10)
+    final parts = t.split('.');
+    if (parts.length >= 2) {
+      final last = parts.last;
+      if (RegExp(r'^[A-Za-z]{2,10}$').hasMatch(last)) return true;
     }
-    return t.toLowerCase();
+    // مفيد لحالات جامعية/نطاقات معقدة (.edu.sa)
+    if (RegExp(r'\.[A-Za-z]{2,10}\.[A-Za-z]{2,10}$').hasMatch(t)) return true;
+    return false;
   }
 
   String? _validateIdentifier(String raw) {
-    final id = _normalizeIdentifier(raw);
-    if (id.isEmpty) return 'Please enter username/email';
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return "Please enter username/email";
 
-    final isEmail = id.contains('@');
-    if (isEmail) {
-      if (!_emailRegex.hasMatch(id)) return 'Invalid email format';
-      return null;
+    if (trimmed.contains('@')) {
+      final normalized = trimmed.replaceAll(' ', '');
+      if (!_emailRegex.hasMatch(normalized)) return "Invalid email format";
+      return null; // valid email
     } else {
-      if (id.contains(' ')) return 'Username cannot contain spaces';
-      if (id.length < 3) return 'Username must be at least 3 characters';
-      if (id.length > 30) return 'Username is too long';
-      final usernameRegex = RegExp(r'^[a-z0-9._-]+$');
-      if (!usernameRegex.hasMatch(id)) {
-        return 'Username can only contain letters, numbers, dot, underscore, and hyphen';
-      }
-      return null;
+      // هنا التعديل: إذا كان شكله دومين/إيميل لكنه بدون @ → خطأ "Invalid email format"
+      if (_looksLikeEmailWithoutAt(trimmed)) return "Invalid email format";
+
+      // غير ذلك نعامله كـ username عادي
+      if (trimmed.contains(' ')) return "Please enter username/email";
+      if (trimmed.length < 3) return "Please enter username/email";
+      return null; // valid username
     }
   }
 
-  String _normalizePassword(String raw) => raw.trim();
-
   String? _validatePassword(String raw) {
-    final p = _normalizePassword(raw);
-    if (p.isEmpty) return 'Please enter password';
-    if (p.length < 6) return 'Password must be at least 6 characters';
-    if (p.length > 50) return 'Password is too long';
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return "Please enter password";
+    if (trimmed.length < 6) return "Please enter password";
     return null;
   }
 
-  // ====== Lifecycle ======
-  @override
-  void dispose() {
-    _hideTopToast();
-    _toastController.dispose();
-    _idController.dispose();
-    _passwordController.dispose();
-    super.dispose();
+  // ====== مطابقة أخطاء Firebase/الخدمة إلى رسائل الـ UI ======
+  String _mapAuthError(dynamic error) {
+    if (error is FirebaseAuthException) {
+      final code = error.code.toLowerCase();
+      if (code == 'wrong-password' ||
+          code == 'invalid-credential' ||
+          code == 'invalid-credentials' ||
+          code == 'invalid-password') {
+        return "Incorrect password";
+      }
+      if (code == 'user-not-found' || code == 'user-disabled') {
+        return "User not found";
+      }
+      if (code == 'invalid-email') {
+        return "Invalid email format";
+      }
+      if (code == 'too-many-requests') {
+        return "Too many attempts. Please try again later.";
+      }
+      if (code == 'network-request-failed') {
+        return "Network error. Check your connection.";
+      }
+      return "Login failed. Please try again.";
+    }
+
+    final m = error.toString().toLowerCase();
+
+    if (m.contains('wrong-password') ||
+        m.contains('invalid-credential') ||
+        m.contains('invalid-credentials') ||
+        m.contains('invalid password') ||
+        m.contains('password is invalid') ||
+        m.contains('the supplied auth credential is incorrect') ||
+        m.contains('[firebase_auth/wrong-password]') ||
+        m.contains('code 17009')) {
+      return "Incorrect password";
+    }
+
+    if (m.contains('user-not-found') ||
+        m.contains('[firebase_auth/user-not-found]') ||
+        m.contains('no user record') ||
+        m.contains('there is no user record') ||
+        m.contains('user not found')) {
+      return "User not found";
+    }
+
+    if (m.contains('invalid email') ||
+        m.contains('invalid-email') ||
+        m.contains('badly formatted') ||
+        m.contains('[firebase_auth/invalid-email]')) {
+      return "Invalid email format";
+    }
+
+    if (m.contains('too-many-requests')) {
+      return "Too many attempts. Please try again later.";
+    }
+    if (m.contains('network')) {
+      return "Network error. Check your connection.";
+    }
+
+    return "Login failed. Please try again.";
   }
 
-  // ====== Actions ======
+  // ====== Login ======
   Future<void> _login() async {
     final idRaw = _idController.text;
     final pwRaw = _passwordController.text;
 
     final idErr = _validateIdentifier(idRaw);
     final pwErr = _validatePassword(pwRaw);
+
     if (idErr != null || pwErr != null) {
-      _showTopToast(idErr ?? pwErr!);
-      return;
+      _setErrors(idError: idErr, pwError: pwErr);
+      // نفس سلوك التوست كما بالصورة (يطلع بالرسالة نفسها)
+      if (idErr != null && pwErr != null) {
+        _showTopToast("Please enter username/email and password");
+      } else {
+        _showTopToast(idErr ?? pwErr!);
+      }
+      return; // مهم: لا نرسل أي طلب للباكند
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _setErrors(idError: null, pwError: null);
+    });
 
     try {
-      final userType = await _authService.login(
-        idRaw,
-        _normalizePassword(pwRaw),
-      );
+      // نرسل قيم منظّفة
+      final normalizedId = idRaw.trim().contains('@')
+          ? idRaw.trim().replaceAll(' ', '')
+          : idRaw.trim();
+      final normalizedPw = pwRaw.trim();
+
+      final userType = await _authService.login(normalizedId, normalizedPw);
 
       if (!mounted) return;
 
-      if (userType == 'student') {
-        _showSuccess('Welcome back!');
-        await Future.delayed(const Duration(milliseconds: 200));
+      if (userType == "student" || userType == "company") {
+        _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => StudentProfilePage()),
         );
-      } else if (userType == 'company') {
-        _showSuccess('Welcome Company!');
-        // TODO: استبدلي بصفحة الـ Company المناسبة
-        // Navigator.pushReplacementNamed(context, '/companyHome');
       } else {
-        _showTopToast('Unknown user type');
+        _showTopToast("Login failed. Please try again.");
       }
-    } catch (e) {
+    } catch (err) {
       if (!mounted) return;
-      _showTopToast(e.toString());
+      final msg = _mapAuthError(err);
+
+      // نحدّد مكان الخطأ (أحمر) حسب الرسالة
+      if (msg == "Incorrect password") {
+        _setErrors(pwError: msg);
+      } else if (msg == "User not found" || msg == "Invalid email format") {
+        _setErrors(idError: msg);
+      }
+
+      _showTopToast(msg);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _forgotPassword() async {
-    final idRaw = _idController.text;
-    if (idRaw.trim().isEmpty) {
-      _showTopToast('Enter your username/email first.');
-      return;
-    }
-    try {
-      await _authService.resetPassword(idRaw);
-      if (!mounted) return;
-      _showSuccess('Password reset link sent to your email.');
-    } catch (e) {
-      if (!mounted) return;
-      _showTopToast('Reset error: $e');
-    }
+  // ====== Borders ======
+  InputBorder _fieldBorder(bool hasError) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(
+        color: hasError ? Colors.red.shade400 : Colors.transparent,
+        width: hasError ? 1.2 : 0,
+      ),
+    );
   }
 
-  Future<void> _goTo(Widget page) async {
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-    if (mounted) setState(() {});
+  @override
+  void dispose() {
+    _idController.dispose();
+    _passwordController.dispose();
+    _toastController.dispose();
+    super.dispose();
   }
 
   // ====== UI ======
   @override
   Widget build(BuildContext context) {
+    final idHasError = _idError != null && _idError!.isNotEmpty;
+    final pwHasError = _pwError != null && _pwError!.isNotEmpty;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F4F0),
-      body: Stack(
-        children: [
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Image.asset('assets/spark_logo.png', height: 150),
-                  const SizedBox(height: 0),
-                  const Text(
-                    'SPARK',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF422F5D),
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  const Text(
-                    'Ignite your future',
-                    style: TextStyle(
-                      color: Color(0xFFF99D46),
-                      fontStyle: FontStyle.italic,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-
-                  // Identifier
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
-                          spreadRadius: 2,
-                          blurRadius: 5,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      controller: _idController,
-                      keyboardType: TextInputType.emailAddress,
-                      enabled: !_isLoading,
-                      decoration: const InputDecoration(
-                        hintText: 'Username or Email',
-                        prefixIcon: Icon(
-                          Icons.person_outline,
-                          color: Colors.grey,
-                        ),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 15,
-                        ),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-
-                  // Password
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
-                          spreadRadius: 2,
-                          blurRadius: 5,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      enabled: !_isLoading,
-                      decoration: InputDecoration(
-                        hintText: 'Password',
-                        prefixIcon: const Icon(
-                          Icons.lock_outline,
-                          color: Colors.grey,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 15,
-                        ),
-                        border: InputBorder.none,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            color: Colors.grey,
-                          ),
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-
-                  // Log In button
-                  SizedBox(
-                    width: double.infinity,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFF99D46), Color(0xFFD64483)],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _login,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Log In',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Forgot Password
-                  GestureDetector(
-                    onTap: _isLoading ? null : _forgotPassword,
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(
-                        color: Color(0xFF6B4791),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 25),
-                  
-                  // Back to Welcome Page button
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-                            (Route<dynamic> route) => false,
-                          );
-                        },
-                        child: const Text(
-                          'Back to Welcome Page',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF6B4791),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 1),
-                ],
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Image.asset('assets/spark_logo.png', height: 150),
+              const SizedBox(height: 5),
+              const Text(
+                "SPARK",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF422F5D),
+                ),
               ),
-            ),
+              const Text(
+                "Ignite your future",
+                style: TextStyle(
+                  color: Color(0xFFF99D46),
+                  fontStyle: FontStyle.italic,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 30),
+
+              // Identifier
+              TextField(
+                controller: _idController,
+                decoration: InputDecoration(
+                  hintText: "Username or Email",
+                  prefixIcon: const Icon(
+                    Icons.person_outline,
+                    color: Colors.grey,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 15,
+                  ),
+                  border: _fieldBorder(idHasError),
+                  enabledBorder: _fieldBorder(idHasError),
+                  focusedBorder: _fieldBorder(idHasError),
+                ),
+                onChanged: (_) => _setErrors(idError: null),
+              ),
+              if (idHasError)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, left: 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      _idError!,
+                      style: TextStyle(
+                        color: Colors.red.shade600,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 12),
+
+              // Password
+              TextField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  hintText: "Password",
+                  prefixIcon: const Icon(
+                    Icons.lock_outline,
+                    color: Colors.grey,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 15,
+                  ),
+                  border: _fieldBorder(pwHasError),
+                  enabledBorder: _fieldBorder(pwHasError),
+                  focusedBorder: _fieldBorder(pwHasError),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+                onChanged: (_) => _setErrors(pwError: null),
+              ),
+              if (pwHasError)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, left: 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      _pwError!,
+                      style: TextStyle(
+                        color: Colors.red.shade600,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 22),
+
+              // === Log In button with gradient ===
+              SizedBox(
+                width: double.infinity,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 150),
+                  opacity: _isLoading ? 0.85 : 1.0,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFF99D46), Color(0xFFD64483)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.12),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _login,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent, // مهم للتدرّج
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Log In',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Forgot Password
+              GestureDetector(
+                onTap: () {
+                  /* hook reset flow here */
+                },
+                child: const Text(
+                  "Forgot Password?",
+                  style: TextStyle(
+                    color: Color(0xFF6B4791),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 22),
+
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (context) => const WelcomeScreen(),
+                    ),
+                    (route) => false,
+                  );
+                },
+                child: const Text(
+                  "Back to Welcome Page",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF6B4791),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox.shrink(),
-        ],
+        ),
       ),
     );
   }

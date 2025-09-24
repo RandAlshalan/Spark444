@@ -21,7 +21,9 @@ class _StudentSignupState extends State<StudentSignup> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController(text: '+966'); // Changed
+  final TextEditingController _phoneController = TextEditingController(
+    text: '+966',
+  ); // Changed
   final TextEditingController _levelController = TextEditingController();
   final TextEditingController _graduationController = TextEditingController();
   final TextEditingController _gpaController = TextEditingController();
@@ -40,7 +42,12 @@ class _StudentSignupState extends State<StudentSignup> {
   bool _isUniversityEmail = false;
 
   final List<String> _universityDomains = [
-    '.edu', '.ac.uk', '.edu.sa', '.edu.au', '.edu.ca', '.edu.cn'
+    '.edu',
+    '.ac.uk',
+    '.edu.sa',
+    '.edu.au',
+    '.edu.ca',
+    '.edu.cn',
   ];
 
   final List<String> ksaUniversities = [
@@ -187,15 +194,23 @@ class _StudentSignupState extends State<StudentSignup> {
 
         return AlertDialog(
           backgroundColor: backgroundColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('Select Location', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            'Select Location',
+            style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+          ),
           content: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
               return SizedBox(
                 width: MediaQuery.of(context).size.width * 0.9,
                 height: MediaQuery.of(context).size.height * 0.6,
                 child: GoogleMap(
-                  initialCameraPosition: const CameraPosition(target: initialLocation, zoom: 10),
+                  initialCameraPosition: const CameraPosition(
+                    target: initialLocation,
+                    zoom: 10,
+                  ),
                   markers: markers,
                   onTap: (latLng) async {
                     setState(() {
@@ -209,16 +224,22 @@ class _StudentSignupState extends State<StudentSignup> {
                     });
 
                     try {
-                      List<Placemark> placemarks = await placemarkFromCoordinates(latLng.latitude, latLng.longitude);
+                      List<Placemark> placemarks =
+                          await placemarkFromCoordinates(
+                            latLng.latitude,
+                            latLng.longitude,
+                          );
                       if (placemarks.isNotEmpty) {
                         final p = placemarks.first;
                         finalSelectedLocationName = p.locality;
                       } else {
-                        finalSelectedLocationName = "Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}";
+                        finalSelectedLocationName =
+                            "Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}";
                       }
                     } catch (e) {
                       print("Error getting placemark: $e");
-                      finalSelectedLocationName = "Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}";
+                      finalSelectedLocationName =
+                          "Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}";
                     }
                   },
                 ),
@@ -233,7 +254,9 @@ class _StudentSignupState extends State<StudentSignup> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
               onPressed: () {
                 if (finalSelectedLocationName != null) {
@@ -241,7 +264,10 @@ class _StudentSignupState extends State<StudentSignup> {
                 }
                 Navigator.of(context).pop();
               },
-              child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Confirm',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -255,7 +281,9 @@ class _StudentSignupState extends State<StudentSignup> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Unrecognized University Email'),
-        content: const Text('The email domain you provided is not on our recognized list. Would you like to submit it for manual review and proceed?'),
+        content: const Text(
+          'The email domain you provided is not on our recognized list. Would you like to submit it for manual review and proceed?',
+        ),
         actions: [
           TextButton(
             child: const Text('Cancel'),
@@ -302,11 +330,18 @@ class _StudentSignupState extends State<StudentSignup> {
         lastName: _lastNameController.text.trim(),
         university: _selectedUniversity!,
         major: _selectedMajor!,
-        phoneNumber: _phoneController.text.trim(), // Use the full text with prefix
+        phoneNumber: _phoneController.text
+            .trim(), // Use the full text with prefix
         userType: 'student',
-        level: _levelController.text.isNotEmpty ? _levelController.text.trim() : null,
-        expectedGraduationDate: _graduationController.text.isNotEmpty ? _graduationController.text.trim() : null,
-        gpa: _gpaController.text.isNotEmpty ? double.tryParse(_gpaController.text.trim()) : null,
+        level: _levelController.text.isNotEmpty
+            ? _levelController.text.trim()
+            : null,
+        expectedGraduationDate: _graduationController.text.isNotEmpty
+            ? _graduationController.text.trim()
+            : null,
+        gpa: _gpaController.text.isNotEmpty
+            ? double.tryParse(_gpaController.text.trim())
+            : null,
         skills: _selectedSkills,
         profilePictureUrl: _profilePicPath,
         createdAt: DateTime.now(),
@@ -319,13 +354,18 @@ class _StudentSignupState extends State<StudentSignup> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Student account created successfully! Check your email to verify.')),
+        const SnackBar(
+          content: Text(
+            'Student account created successfully! Check your email to verify.',
+          ),
+        ),
       );
       Navigator.of(context).pop();
-
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -357,12 +397,30 @@ class _StudentSignupState extends State<StudentSignup> {
           hintText: hintText,
           prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
           prefix: prefix,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Color(0xFF422F5D))),
-          errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red, width: 1.5)),
-          focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red, width: 2)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 15,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Color(0xFF422F5D)),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.red, width: 1.5),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.red, width: 2),
+          ),
           suffixIcon: suffixIcon,
           errorText: errorText,
           errorStyle: errorStyle,
@@ -383,7 +441,8 @@ class _StudentSignupState extends State<StudentSignup> {
       child: DropdownButtonFormField<String>(
         value: selectedValue,
         onChanged: onChanged,
-        validator: (value) => value == null ? 'Please select a ${hintText.toLowerCase()}' : null,
+        validator: (value) =>
+            value == null ? 'Please select a ${hintText.toLowerCase()}' : null,
         dropdownColor: const Color(0xFFF7F4F0),
         menuMaxHeight: 250,
         icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF422F5D)),
@@ -392,22 +451,37 @@ class _StudentSignupState extends State<StudentSignup> {
           fillColor: Colors.white,
           hintText: hintText,
           prefixIcon: Icon(icon, color: Colors.grey),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Color(0xFF422F5D))),
-          errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red, width: 1.5)),
-          focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red, width: 2)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 15,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Color(0xFF422F5D)),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.red, width: 1.5),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.red, width: 2),
+          ),
         ),
         items: items.map<DropdownMenuItem<String>>((String value) {
           return DropdownMenuItem<String>(
             value: value,
             child: Text(
               value,
-              style: const TextStyle(
-                color: Color(0xFF422F5D),
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: Color(0xFF422F5D), fontSize: 14),
               overflow: TextOverflow.ellipsis,
             ),
           );
@@ -416,7 +490,10 @@ class _StudentSignupState extends State<StudentSignup> {
     );
   }
 
-  Widget _buildGradientButton({required String text, required VoidCallback onPressed}) {
+  Widget _buildGradientButton({
+    required String text,
+    required VoidCallback onPressed,
+  }) {
     return SizedBox(
       width: double.infinity,
       child: DecoratedBox(
@@ -434,11 +511,20 @@ class _StudentSignupState extends State<StudentSignup> {
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
             padding: const EdgeInsets.symmetric(vertical: 18),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
           ),
           child: _isLoading
               ? const CircularProgressIndicator(color: Colors.white)
-              : Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              : Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
         ),
       ),
     );
@@ -454,14 +540,31 @@ class _StudentSignupState extends State<StudentSignup> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset('assets/spark_logo.png', height: 200),
+              Image.asset('assets/spark_logo.png', height: 120),
               const SizedBox(height: 5),
-              const Text('SPARK', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF422F5D))),
-              const Text('Ignite your future', style: TextStyle(color: Color(0xFFF99D46), fontStyle: FontStyle.italic, fontSize: 14)),
+              const Text(
+                'SPARK',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF422F5D),
+                ),
+              ),
+              const Text(
+                'Ignite your future',
+                style: TextStyle(
+                  color: Color(0xFFF99D46),
+                  fontStyle: FontStyle.italic,
+                  fontSize: 14,
+                ),
+              ),
               const SizedBox(height: 30),
-              
+
               Container(
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Row(
                   children: [
                     Expanded(
@@ -471,11 +574,28 @@ class _StudentSignupState extends State<StudentSignup> {
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           decoration: BoxDecoration(
-                            gradient: _currentStep == 0 ? const LinearGradient(colors: [Color(0xFFF99D46), Color(0xFFD64483)]) : null,
+                            gradient: _currentStep == 0
+                                ? const LinearGradient(
+                                    colors: [
+                                      Color(0xFFF99D46),
+                                      Color(0xFFD64483),
+                                    ],
+                                  )
+                                : null,
                             color: _currentStep == 0 ? null : Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Center(child: Text('Step 1', style: TextStyle(fontWeight: FontWeight.bold, color: _currentStep == 0 ? Colors.white : Colors.grey[700]))),
+                          child: Center(
+                            child: Text(
+                              'Step 1',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: _currentStep == 0
+                                    ? Colors.white
+                                    : Colors.grey[700],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -485,18 +605,39 @@ class _StudentSignupState extends State<StudentSignup> {
                           if (_formKey.currentState?.validate() ?? false) {
                             setState(() => _currentStep = 1);
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please complete Step 1 first.')));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please complete Step 1 first.'),
+                              ),
+                            );
                           }
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           decoration: BoxDecoration(
-                            gradient: _currentStep == 1 ? const LinearGradient(colors: [Color(0xFFF99D46), Color(0xFFD64483)]) : null,
+                            gradient: _currentStep == 1
+                                ? const LinearGradient(
+                                    colors: [
+                                      Color(0xFFF99D46),
+                                      Color(0xFFD64483),
+                                    ],
+                                  )
+                                : null,
                             color: _currentStep == 1 ? null : Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Center(child: Text('Step 2', style: TextStyle(fontWeight: FontWeight.bold, color: _currentStep == 1 ? Colors.white : Colors.grey[700]))),
+                          child: Center(
+                            child: Text(
+                              'Step 2',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: _currentStep == 1
+                                    ? Colors.white
+                                    : Colors.grey[700],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -514,25 +655,39 @@ class _StudentSignupState extends State<StudentSignup> {
                         controller: _firstNameController,
                         hintText: 'First Name',
                         icon: Icons.person_outline,
-                        validator: (value) => value == null || value.isEmpty ? 'Please enter first name' : null,
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Please enter first name'
+                            : null,
                       ),
                       _buildStyledTextFormField(
                         controller: _lastNameController,
                         hintText: 'Last Name',
                         icon: Icons.person_outline,
-                        validator: (value) => value == null || value.isEmpty ? 'Please enter last name' : null,
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Please enter last name'
+                            : null,
                       ),
                       _buildStyledTextFormField(
                         controller: _emailController,
                         hintText: 'University Email',
                         icon: Icons.mail_outline,
                         keyboardType: TextInputType.emailAddress,
-                        suffixIcon: _isUniversityEmail ? const Icon(Icons.check_circle, color: Colors.green) : null,
-                        errorText: _isUniversityEmail || _emailController.text.isEmpty ? null : "We will verify if it's a university email",
+                        suffixIcon: _isUniversityEmail
+                            ? const Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                              )
+                            : null,
+                        errorText:
+                            _isUniversityEmail || _emailController.text.isEmpty
+                            ? null
+                            : "We will verify if it's a university email",
                         errorStyle: const TextStyle(color: Colors.grey),
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'Please enter university email';
-                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Invalid email format';
+                          if (value == null || value.isEmpty)
+                            return 'Please enter university email';
+                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value))
+                            return 'Invalid email format';
                           return null;
                         },
                       ),
@@ -542,13 +697,23 @@ class _StudentSignupState extends State<StudentSignup> {
                         icon: Icons.lock_outline,
                         obscureText: _obscurePassword,
                         suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'Please enter password';
-                          if (value.length < 8) return 'Password must be at least 8 characters long';
-                          if (!RegExp(r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{8,}$').hasMatch(value)) {
+                          if (value == null || value.isEmpty)
+                            return 'Please enter password';
+                          if (value.length < 8)
+                            return 'Password must be at least 8 characters long';
+                          if (!RegExp(
+                            r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{8,}$',
+                          ).hasMatch(value)) {
                             return 'Use uppercase, lowercase, number & symbol';
                           }
                           return null;
@@ -559,8 +724,10 @@ class _StudentSignupState extends State<StudentSignup> {
                         hintText: 'Username',
                         icon: Icons.person_pin_outlined,
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'Please enter username';
-                          if (value.contains(' ')) return 'Username cannot contain spaces';
+                          if (value == null || value.isEmpty)
+                            return 'Please enter username';
+                          if (value.contains(' '))
+                            return 'Username cannot contain spaces';
                           return null;
                         },
                       ),
@@ -569,12 +736,17 @@ class _StudentSignupState extends State<StudentSignup> {
                         hintText: 'Phone Number',
                         keyboardType: TextInputType.phone,
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'Please enter phone number';
+                          if (value == null || value.isEmpty)
+                            return 'Please enter phone number';
                           if (!value.startsWith('+966')) {
                             return 'Phone number must start with +966';
                           }
-                          final phoneNumberWithoutPrefix = value.substring(4); // Remove '+966'
-                          if (!RegExp(r'^[0-9]{9}$').hasMatch(phoneNumberWithoutPrefix)) {
+                          final phoneNumberWithoutPrefix = value.substring(
+                            4,
+                          ); // Remove '+966'
+                          if (!RegExp(
+                            r'^[0-9]{9}$',
+                          ).hasMatch(phoneNumberWithoutPrefix)) {
                             return 'Invalid KSA phone number (9 digits after +966)';
                           }
                           return null;
@@ -602,22 +774,42 @@ class _StudentSignupState extends State<StudentSignup> {
                         },
                         icon: Icons.book_outlined,
                       ),
-                      
+
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8.0),
                         child: TextFormField(
                           controller: _locationController,
                           readOnly: true,
                           onTap: _selectLocation,
-                          validator: (value) => value == null || value.isEmpty ? 'Please enter location' : null,
+                          validator: (value) => value == null || value.isEmpty
+                              ? 'Please enter location'
+                              : null,
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: Colors.white,
                             hintText: 'Location',
-                            prefixIcon: const Icon(Icons.location_on_outlined, color: Colors.grey),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red, width: 1.5)),
-                            focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red, width: 2)),
+                            prefixIcon: const Icon(
+                              Icons.location_on_outlined,
+                              color: Colors.grey,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Colors.red,
+                                width: 1.5,
+                              ),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Colors.red,
+                                width: 2,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -626,40 +818,73 @@ class _StudentSignupState extends State<StudentSignup> {
                       _buildGradientButton(
                         text: 'Next Step',
                         onPressed: () {
-                           if (_formKey.currentState!.validate()) {
-                             setState(() => _currentStep = 1);
-                           }
-                         },
+                          if (_formKey.currentState!.validate()) {
+                            setState(() => _currentStep = 1);
+                          }
+                        },
                       ),
                     ],
                   ),
                 ),
-              
+
               if (_currentStep == 1) ...[
-                const Text('You can skip these fields for now!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey), textAlign: TextAlign.center),
+                const Text(
+                  'You can skip these fields for now!',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 15),
-                _buildStyledTextFormField(controller: _levelController, hintText: 'Level (e.g., Junior, Senior)', icon: Icons.trending_up),
-                _buildStyledTextFormField(controller: _graduationController, hintText: 'Expected Graduation Date (e.g., May 2025)', icon: Icons.calendar_today),
-                _buildStyledTextFormField(controller: _gpaController, hintText: 'GPA (e.g., 3.8)', icon: Icons.grade, keyboardType: TextInputType.numberWithOptions(decimal: true)),
+                _buildStyledTextFormField(
+                  controller: _levelController,
+                  hintText: 'Level (e.g., Junior, Senior)',
+                  icon: Icons.trending_up,
+                ),
+                _buildStyledTextFormField(
+                  controller: _graduationController,
+                  hintText: 'Expected Graduation Date (e.g., May 2025)',
+                  icon: Icons.calendar_today,
+                ),
+                _buildStyledTextFormField(
+                  controller: _gpaController,
+                  hintText: 'GPA (e.g., 3.8)',
+                  icon: Icons.grade,
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                ),
 
                 _buildStyledTextFormField(
                   controller: _skillsController,
                   hintText: 'Add a Skill',
                   icon: Icons.lightbulb_outline,
-                  suffixIcon: IconButton(icon: const Icon(Icons.add_circle, color: Colors.blue), onPressed: _addSkill),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.add_circle, color: Colors.blue),
+                    onPressed: _addSkill,
+                  ),
                 ),
                 Wrap(
                   spacing: 8.0,
-                  children: _selectedSkills.map((skill) => Chip(
-                    label: Text(skill),
-                    backgroundColor: const Color(0xFFF99D46).withOpacity(0.8),
-                    labelStyle: const TextStyle(color: Colors.white),
-                    onDeleted: () => _removeSkill(skill),
-                    deleteIconColor: Colors.white,
-                  )).toList(),
+                  children: _selectedSkills
+                      .map(
+                        (skill) => Chip(
+                          label: Text(skill),
+                          backgroundColor: const Color(
+                            0xFFF99D46,
+                          ).withOpacity(0.8),
+                          labelStyle: const TextStyle(color: Colors.white),
+                          onDeleted: () => _removeSkill(skill),
+                          deleteIconColor: Colors.white,
+                        ),
+                      )
+                      .toList(),
                 ),
                 const SizedBox(height: 30),
-                _buildGradientButton(text: 'Sign Up', onPressed: _signUpStudent),
+                _buildGradientButton(
+                  text: 'Sign Up',
+                  onPressed: _signUpStudent,
+                ),
               ],
 
               const SizedBox(height: 20),
@@ -686,7 +911,9 @@ class _StudentSignupState extends State<StudentSignup> {
                   TextButton(
                     onPressed: () {
                       Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const WelcomeScreen(),
+                        ),
                         (Route<dynamic> route) => false,
                       );
                     },

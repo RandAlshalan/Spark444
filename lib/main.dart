@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import '../main_layout.dart'
 
 import 'studentScreens/welcomeScreen.dart';
 import 'studentScreens/login.dart';

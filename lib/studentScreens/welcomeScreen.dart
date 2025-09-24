@@ -10,6 +10,7 @@ class WelcomeScreen extends StatefulWidget {
 class _WelcomeScreenState extends State<WelcomeScreen>
     with SingleTickerProviderStateMixin {
   bool _expanded = false;
+
   late final AnimationController _controller;
   late final Animation<double> _fade;
   late final Animation<Offset> _slide;
@@ -25,11 +26,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 280),
     );
     _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
     _slide = Tween<Offset>(
-      begin: const Offset(0, -0.12),
+      begin: const Offset(0, -0.10),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
   }
@@ -40,7 +41,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     super.dispose();
   }
 
-  void _toggle() {
+  void _toggleBubbles() {
     setState(() => _expanded = !_expanded);
     if (_expanded) {
       _controller.forward();
@@ -51,179 +52,201 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isSmall = size.height < 740;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 16),
-
-                      // Logo + tagline
-                      Column(
-                        children: [
-                          Image.asset(
-                            'assets/spark_logo.png',
-                            height: 96,
-                            errorBuilder: (_, __, ___) =>
-                                const Icon(Icons.image, size: 48),
-                          ),
-                          const SizedBox(height: 10),
-                          const Text(
-                            'SPARK',
-                            style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF422F5D),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Ignite your future',
-                            style: TextStyle(
-                              color: Color(0xFFF99D46),
-                              fontStyle: FontStyle.italic,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // Headline + sub
-                      const Text(
-                        'Unlock Your Future.\nYour Way',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 28,
-                          height: 1.25,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF1E1E1E),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Connect with careers that fit your skills, ambition, and personality',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          height: 1.4,
-                          color: Colors.black54,
-                        ),
-                      ),
-
-                      const Spacer(),
-
-                      // Get Started Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: _grad,
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: ElevatedButton(
-                            onPressed: _toggle,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                            ),
-                            child: const Text(
-                              'Get Started',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Two rectangular bubbles appear below
-                      ClipRect(
-                        child: AnimatedSize(
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeOut,
-                          child: _expanded
-                              ? Padding(
-                                  padding: const EdgeInsets.only(
-                                    top: 14,
-                                    bottom: 6,
-                                  ),
-                                  child: FadeTransition(
-                                    opacity: _fade,
-                                    child: SlideTransition(
-                                      position: _slide,
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          _Bubble(
-                                            icon: Icons.school_outlined,
-                                            label: 'as Student',
-                                            onTap: () {
-                                              _toggle();
-                                              Navigator.pushNamed(
-                                                context,
-                                                '/signup',
-                                              );
-                                            },
-                                          ),
-                                          const SizedBox(width: 22),
-                                          _Bubble(
-                                            icon: Icons.business_center_outlined,
-                                            label: 'as Company',
-                                            onTap: () {
-                                              _toggle();
-                                              Navigator.pushNamed(
-                                                context,
-                                                '/companySignup',
-                                              );
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              : const SizedBox.shrink(),
-                        ),
-                      ),
-
-                      // Log In
-                      TextButton(
-                        onPressed: () => Navigator.pushNamed(context, '/login'),
-                        child: const Text(
-                          'Log In',
-                          style: TextStyle(fontSize: 16, color: Colors.black54),
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-                    ],
+            // خلفية بنفسجية شعاعية أغمق
+            Positioned(
+              top: -size.width * 0.35,
+              left: -size.width * 0.2,
+              child: Container(
+                width: size.width * 1.1,
+                height: size.width * 1.1,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [Color(0x669B5BC9), Color(0x00000000)],
+                    radius: 0.85,
                   ),
                 ),
               ),
             ),
 
-            // Bottom image
-            Image.asset(
-              'assets/students.png',
-              width: double.infinity,
-              height: 200,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.image_not_supported, size: 64),
+            Column(
+              children: [
+                const SizedBox(height: 20),
+
+                // Logo + Tagline
+                Column(
+                  children: const [
+                    _Logo(), // 120px
+                    SizedBox(height: 12),
+                    Text(
+                      'SPARK',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF422F5D),
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Ignite your future',
+                      style: TextStyle(
+                        color: Color(0xFFE65100), // برتقالي غامق
+                        fontStyle: FontStyle.italic,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 50), // ننزّل النص والأزرار شوي
+
+                const Text(
+                  'Unlock Your Future.\nYour Way',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 28,
+                    height: 1.25,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF422F5D),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Text(
+                    'Connect with careers that fit your skills, ambition, and personality',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      height: 1.5,
+                      color: Color(0xFF6B4791),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                // زر Get Started
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: _grad,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: _toggleBubbles,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: const Text(
+                          'Get Started',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // بابلز التسجيل (as Student / as Company)
+                ClipRect(
+                  child: AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOut,
+                    child: _expanded
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 14, bottom: 4),
+                            child: FadeTransition(
+                              opacity: _fade,
+                              child: SlideTransition(
+                                position: _slide,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _Bubble(
+                                      icon: Icons.school_outlined,
+                                      label: 'as Student',
+                                      onTap: () {
+                                        _toggleBubbles();
+                                        Navigator.pushNamed(context, '/signup');
+                                      },
+                                    ),
+                                    const SizedBox(width: 22),
+                                    _Bubble(
+                                      icon: Icons.business_center_outlined,
+                                      label: 'as Company',
+                                      onTap: () {
+                                        _toggleBubbles();
+                                        Navigator.pushNamed(
+                                          context,
+                                          '/companySignup',
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Log In
+                TextButton(
+                  onPressed: () => Navigator.pushNamed(context, '/login'),
+                  child: const Text(
+                    'Log In',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF6B4791),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+
+                const Spacer(),
+
+                // صورة الطلاب أسفل
+                Image.asset(
+                  'assets/students.png',
+                  width: double.infinity,
+                  height: isSmall ? 150 : 180,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.image_not_supported, size: 64),
+                ),
+              ],
             ),
           ],
         ),
@@ -232,13 +255,30 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 }
 
-// Rectangular Bubble with rounded corners
+class _Logo extends StatelessWidget {
+  const _Logo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/spark_logo.png',
+      height: 120,
+      errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 48),
+    );
+  }
+}
+
 class _Bubble extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
 
-  const _Bubble({required this.icon, required this.label, required this.onTap});
+  const _Bubble({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -246,7 +286,7 @@ class _Bubble extends StatelessWidget {
       borderRadius: BorderRadius.circular(30),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFFF99D46), Color(0xFFD64483)],
@@ -254,18 +294,25 @@ class _Bubble extends StatelessWidget {
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.06),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.white, size: 24),
+            Icon(icon, color: Colors.white, size: 22),
             const SizedBox(width: 8),
             Text(
               label,
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 16,
+                fontSize: 15.5,
               ),
             ),
           ],

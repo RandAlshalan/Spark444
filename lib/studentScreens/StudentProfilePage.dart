@@ -33,9 +33,9 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
       if (mounted) {
         setState(() => _loading = false);
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading profile: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
     }
   }
 
@@ -63,7 +63,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
                 backgroundImage: student.profilePictureUrl != null
                     ? NetworkImage(student.profilePictureUrl!)
                     : const AssetImage('assets/default_avatar.png')
-                        as ImageProvider,
+                          as ImageProvider,
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -158,6 +158,4 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
       ),
     );
   }
-}
-
 }
