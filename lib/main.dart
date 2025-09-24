@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import '../studentScreens/login.dart';
-import '../companyScreens/companySignup.dart'; // Make sure this path is correct
+import '../companyScreens/companySignup.dart'; 
 
 
 void main() async {
