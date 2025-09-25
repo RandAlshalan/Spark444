@@ -266,18 +266,26 @@ class _LoginScreenState extends State<LoginScreen>
       final userType = await _authService.login(normalizedId, normalizedPw);
 
       if (!mounted) return;
-
-      if (userType == "student" || userType == "company") {
-        _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => StudentProfilePage()),
-        );
-      } else {
-        _showTopToast("Login failed. Please try again.");
-      }
-    } catch (err) {
+            _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
+      if (userType == 'student') {
+      _showTopToast("Welcome Student!", icon: Icons.check_circle_outline);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const StudentProfilePage()),
+      );
+    } else if (userType == 'company') {
+      _showTopToast("Welcome Company!", icon: Icons.check_circle_outline);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const CompanyHomePage()),
+      );
+    } else {
+      _showTopToast("Login failed. User type not recognized.", icon: Icons.error_outline);
+    }
+    } catch (e) {
       if (!mounted) return;
-      final msg = _mapAuthError(err);
+      print('Login Error Details: $e');
+      final msg = _mapAuthError(e);
 
       // نحدّد مكان الخطأ (أحمر) حسب الرسالة
       if (msg == "Incorrect password") {
