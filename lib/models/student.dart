@@ -16,7 +16,8 @@ class Student {
   String? shortSummary; 
   final String userType; 
   final DateTime? createdAt; 
-  bool isVerified;
+  bool isVerified;   
+  bool isAcademic;  
   String resumeVisibility; 
   String documentsVisibility; 
   List<String> followedCompanies; 
@@ -39,13 +40,14 @@ class Student {
     required this.userType,
     this.createdAt,
     this.isVerified = false,
+    this.isAcademic = false,
     this.resumeVisibility = "private",
     this.documentsVisibility = "private",
     this.followedCompanies = const [],
     this.location, 
   });
 
-  /// Convert Student object to a map for Firestore
+  /// لتحويل Student إلى Map (تخزين في Firestore)
   Map<String, dynamic> toMap() {
     return {
       'email': email,
@@ -66,14 +68,15 @@ class Student {
           ? Timestamp.fromDate(createdAt!)
           : FieldValue.serverTimestamp(),
       'isVerified': isVerified,
+      'isAcademic': isAcademic,
       'resumeVisibility': resumeVisibility,
       'documentsVisibility': documentsVisibility,
       'followedCompanies': followedCompanies,
-      'location': location, // ✅ Added in map
+      'location': location,
     };
   }
 
-  /// Create Student object from Firestore document (map)
+  /// لإنشاء Student من Firestore
   factory Student.fromMap(Map<String, dynamic> map) {
     return Student(
       email: map['email'],
@@ -92,6 +95,7 @@ class Student {
       userType: map['userType'],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       isVerified: map['isVerified'] ?? false,
+      isAcademic: map['isAcademic'] ?? false,
       resumeVisibility: map['resumeVisibility'] ?? "private",
       documentsVisibility: map['documentsVisibility'] ?? "private",
       followedCompanies: List<String>.from(map['followedCompanies'] ?? []),
