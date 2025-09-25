@@ -4,8 +4,12 @@ import 'firebase_options.dart';
 import '../studentScreens/login.dart';
 import '../companyScreens/companySignup.dart'; 
 
+import 'studentScreens/welcomeScreen.dart';
+import 'studentScreens/login.dart';
+import 'studentScreens/studentSignup.dart';
+import 'companyScreens/companySignup.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
@@ -18,14 +22,20 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SPARK',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // The theme has been simplified to focus on your app's design
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6A4EA5)),
         useMaterial3: true,
       ),
-      // This is the key change. The home property now points to your
-      // StudentSignup, making it the first page that loads.
-      home: const LoginScreen(),
+      initialRoute: '/welcome',
+      routes: {
+        '/welcome': (_) => const WelcomeScreen(),
+        '/login': (_) => const LoginScreen(),
+        '/signup': (_) => const StudentSignup(),
+        '/companySignup': (_) => const CompanySignup(),
+      },
+      onUnknownRoute: (_) =>
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
     );
   }
 }
