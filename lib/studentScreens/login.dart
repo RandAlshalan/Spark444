@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/authService.dart';
 import 'studentSignup.dart';
 import '../companyScreens/companySignup.dart';
+import '../companyScreens/companyHomePage.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -45,11 +46,18 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text("Welcome Student!")));
-      } else {
-        ScaffoldMessenger.of(
+        } if (userType == 'company') { 
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Welcome Company!")));
+        Navigator.pushReplacement(
           context,
-        ).showSnackBar(const SnackBar(content: Text("Welcome Company!")));
-      }
+          MaterialPageRoute(builder: (context) => const CompanyHomePage()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Login failed. User type not recognized.")),
+        );
+        }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(

@@ -110,8 +110,18 @@ class AuthService {
   Future<Company?> getCompany(String uid) async {
     final doc = await _db.collection('companies').doc(uid).get();
     if (!doc.exists) return null;
-    return Company.fromMap(doc.data()!);
+    return Company.fromMap(doc.data()!); // Uses your existing fromMap constructor
   }
+
+  // New method: getCurrentCompany, which uses the existing getCompany
+  Future<Company?> getCurrentCompany() async {
+  User? currentUser = _auth.currentUser; 
+  if (currentUser != null) {
+    // If a user is logged in, use their UID to fetch the company profile
+    return await getCompany(currentUser.uid);
+  }
+  return null; // No user logged in
+}
 
   // ------------------------------
   // Update Company

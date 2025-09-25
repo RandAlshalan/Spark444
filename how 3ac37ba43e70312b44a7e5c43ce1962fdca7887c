@@ -1,0 +1,250 @@
+[33mcommit 487c50d1aaaac64095149d5e23c9ecf3e937e8b3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Merge: d2c1e5c 5e82d0e
+Author: Oroubah <444200805@student.ksu.edu.sa>
+Date:   Wed Sep 24 21:40:26 2025 +0300
+
+    Merge branch 'main' of https://github.com/RandAlshalan/Spark444
+
+[33mcommit d2c1e5c43ad02289944cddd210b0b9cd2fb15a0e[m
+Author: Oroubah <444200805@student.ksu.edu.sa>
+Date:   Wed Sep 24 21:31:41 2025 +0300
+
+    Save my local changes
+
+[33mcommit 857e7df70f6250f97c2aed0cc62571199608bd60[m
+Author: Oroubah <444200805@student.ksu.edu.sa>
+Date:   Wed Sep 24 21:28:13 2025 +0300
+
+    company signup is fixed. the home page
+
+[33mcommit 5e82d0e775425a9c582d219e109c44315e1e885a[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: RanaaAlanezi <444201047@student.ksu.edu.sa>
+Date:   Wed Sep 24 19:26:55 2025 +0300
+
+    updateWelcomePage+LoginTestCase
+
+[33mcommit aa68e48877c92710d692ef372cd27e55867ad4a2[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Wed Sep 24 09:39:24 2025 +0300
+
+    c
+
+[33mcommit ba9898122453150b74a30e84cdb65b2967a48514[m
+Author: RandAlshalan <444200940@student.ksu.edu.sa>
+Date:   Wed Sep 24 09:21:39 2025 +0300
+
+    w
+
+[33mcommit 8e6fac06a90c22cea12ef78331a6aa7cbd433b03[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Tue Sep 23 22:48:13 2025 +0300
+
+    Update studentSignup.dart
+
+[33mcommit 894360fe533ceb1060332df604cf6df2567cd755[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Tue Sep 23 22:29:42 2025 +0300
+
+    c
+
+[33mcommit 12ddad7c477317b022e0842f01fa7588309e8ee1[m
+Author: RanaaAlanezi <444201047@student.ksu.edu.sa>
+Date:   Tue Sep 23 22:11:45 2025 +0300
+
+    update login " error massage "
+
+[33mcommit a8c8c389520aa5838e96fec8deb502e8fcf410c4[m
+Author: RanaaAlanezi <444201047@student.ksu.edu.sa>
+Date:   Tue Sep 23 21:14:03 2025 +0300
+
+    update
+
+[33mcommit 4e40f2f72aa12f735c321fbf5af1ec1e2d2e9f73[m
+Merge: 1ff14ce 0db4f91
+Author: RanaaAlanezi <444201047@student.ksu.edu.sa>
+Date:   Tue Sep 23 20:56:22 2025 +0300
+
+    Merge branch 'main' of https://github.com/RandAlshalan/Spark444
+
+[33mcommit 1ff14ce207ba5138192acdf20e10287ec84015af[m
+Author: RanaaAlanezi <444201047@student.ksu.edu.sa>
+Date:   Tue Sep 23 20:54:53 2025 +0300
+
+    updateWelcomePage
+
+[33mcommit 0db4f9127ffcaa08f4f83ee0abc40925ea75a9c2[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Tue Sep 23 20:26:36 2025 +0300
+
+    c
+
+[33mcommit 35ada0e1f77b6904a4ba910d6343844a87e9b1f3[m
+Author: RanaaAlanezi <444201047@student.ksu.edu.sa>
+Date:   Tue Sep 23 19:31:28 2025 +0300
+
+    add welcomePage
+
+[33mcommit 2683af6af114648bc77829d28e07ba563cd87884[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Mon Sep 22 16:34:52 2025 +0300
+
+    c
+
+[33mcommit 17ac571796702c31f8b240d8a3e564905ebfb1b3[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Mon Sep 22 12:51:26 2025 +0300
+
+    c
+
+[33mcommit 84f5f92b1a62acf7e1bd043e45e240cacd1024a8[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Mon Sep 22 11:01:35 2025 +0300
+
+    c
+
+[33mcommit 18dc13e15d3234095c6981babe824e7696c7a4f5[m
+Author: RandAlshalan <444200940@student.ksu.edu.sa>
+Date:   Mon Sep 22 00:31:17 2025 +0300
+
+    ggg
+
+[33mcommit b5591bfc11730f4bbc87aae9e4dff9d777cbb49a[m
+Author: Oroubah <444200805@student.ksu.edu.sa>
+Date:   Sun Sep 21 09:38:38 2025 +0300
+
+    I added the company signup page code
+
+[33mcommit 55c4a5c96958f3b0e0df80dc13bda5a4755b2d34[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Sat Sep 20 21:57:24 2025 +0300
+
+    Update authService.dart
+
+[33mcommit 2ce9f5e73a7e804eee68693f9bedaac197590f66[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Sat Sep 20 05:34:41 2025 +0300
+
+    change the ui
+
+[33mcommit a8620ddb9a4420b15b47408e443ed91369f7b0b1[m
+Author: RanaaAlanezi <444201047@student.ksu.edu.sa>
+Date:   Sat Sep 20 02:36:44 2025 +0300
+
+    update student
+
+[33mcommit 48bb9be79caf2a8a332029a6f50ea4f82b4126dd[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Thu Sep 18 20:05:35 2025 +0300
+
+    Update project.pbxproj
+
+[33mcommit 9982b6efde01b0d4ffcdab06cedc2118ed7a0428[m
+Merge: 55e06bc 6b55d88
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Thu Sep 18 18:45:08 2025 +0300
+
+    Merge branch 'main' of https://github.com/RandAlshalan/Spark444
+
+[33mcommit 55e06bca1785b92bf449017001dd7b7d0804a0b7[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Thu Sep 18 18:45:04 2025 +0300
+
+    ذ
+
+[33mcommit 6b55d88f4ede0038047b8573a78e412ff1d18fad[m
+Author: RandAlshalan <444200940@student.ksu.edu.sa>
+Date:   Wed Sep 17 09:38:12 2025 +0300
+
+    Update problems-report.html
+
+[33mcommit eadc0ee7d009d78b93c64a2d724b000ad6128f35[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Wed Sep 17 08:56:28 2025 +0300
+
+    c
+
+[33mcommit 3c666f343c6236f25b6b13fde3305771e0f10a41[m
+Author: RandAlshalan <444200940@student.ksu.edu.sa>
+Date:   Wed Sep 17 08:46:43 2025 +0300
+
+    c
+
+[33mcommit 51344e01e1564b575253db1fc98268db53d1955a[m
+Merge: aed0744 ec876a3
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Wed Sep 17 08:42:16 2025 +0300
+
+    Merge branch 'main' of https://github.com/RandAlshalan/Spark444
+
+[33mcommit aed0744533e793a6477ad03e17321ce9e1f6abea[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Wed Sep 17 08:42:07 2025 +0300
+
+    c
+
+[33mcommit ec876a30c80986a57b44e3a7c25c2d92f817a05e[m
+Merge: aebc4dd 3ac37ba
+Author: RandAlshalan <444200940@student.ksu.edu.sa>
+Date:   Wed Sep 17 08:21:17 2025 +0300
+
+    Merge branch 'main' of https://github.com/RandAlshalan/Spark444
+
+[33mcommit aebc4ddc4925b8701a8a56da217f2540c3e50e61[m
+Author: RandAlshalan <444200940@student.ksu.edu.sa>
+Date:   Wed Sep 17 08:20:43 2025 +0300
+
+    Create problems-report.html
+
+[33mcommit 3ac37ba43e70312b44a7e5c43ce1962fdca7887c[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Wed Sep 17 02:18:43 2025 +0300
+
+    Update main.dart
+
+[33mcommit 143a80356d0679c0d855256c6582361c84f3b354[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Wed Sep 17 02:07:30 2025 +0300
+
+    Update contents.xcworkspacedata
+
+[33mcommit 318a16f5c289ae9e82c3298ecb05216c2a62b69a[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Wed Sep 17 01:47:59 2025 +0300
+
+    c
+
+[33mcommit e580c4c1685f5d7f37dba293a58a5caed1e6ce07[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Wed Sep 17 01:07:41 2025 +0300
+
+    c
+
+[33mcommit cd7f81d1fed08330762e2710c906839fe761ba83[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Wed Sep 17 01:05:16 2025 +0300
+
+    login
+
+[33mcommit fd0696d7f7ebeeb401a7c21027c88dd99223f54a[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Wed Sep 17 00:23:03 2025 +0300
+
+    student model added
+
+[33mcommit 5ac91ce1ff2dd551dd1f19fad6daecb3eac16e03[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Mon Sep 15 16:38:41 2025 +0300
+
+    Update main.dart
+
+[33mcommit d7a6d8b34ef286762d0e80f327b23dc11f3957c1[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Mon Sep 15 00:24:12 2025 +0300
+
+    Initial commit: Flutter + Firebase setup
+
+[33mcommit f35d9ea61fb93f6fe08af8764e71a61cc2194b94[m
+Author: Ghaida101017 <444201195@student.ksu.edu.sa>
+Date:   Sun Sep 14 23:15:53 2025 +0300
+
+    Initial commit

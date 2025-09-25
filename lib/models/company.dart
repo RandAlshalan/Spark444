@@ -1,139 +1,66 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Company {
   final String? uid;
   final String email;
-  final String name;
-  final String logoUrl;
+  final String companyName;
   final String sector;
-  final String contactInfo;
+  final String contactInfo; // Could be a contact person's name or a general contact email/phone
+  final String? logoUrl;
   final String? description;
-  final String? location;
   final String userType;
   final DateTime? createdAt;
-  final bool isVerified;
+  final bool isVerified; // For business email domain verification
+  final List<String> opportunitiesPosted; // To keep track of posted opportunities IDs
+  final List<String> studentReviews; // To store IDs of reviews left by students
 
   Company({
     this.uid,
     required this.email,
-    required this.name,
-    required this.logoUrl,
+    required this.companyName,
     required this.sector,
     required this.contactInfo,
+    this.logoUrl,
     this.description,
-    this.location,
     required this.userType,
     this.createdAt,
     this.isVerified = false,
+    this.opportunitiesPosted = const [],
+    this.studentReviews = const [],
   });
 
   Map<String, dynamic> toMap() {
     return {
+      'uid': uid,
       'email': email,
-      'name': name,
-      'logoUrl': logoUrl,
+      'companyName': companyName,
       'sector': sector,
       'contactInfo': contactInfo,
+      'logoUrl': logoUrl,
       'description': description,
-      'location': location,
       'userType': userType,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       'isVerified': isVerified,
+      'opportunitiesPosted': opportunitiesPosted,
+      'studentReviews': studentReviews,
     };
   }
 
   factory Company.fromMap(Map<String, dynamic> map) {
     return Company(
+      uid: map['uid'] as String?,
       email: map['email'],
-      name: map['name'],
-      logoUrl: map['logoUrl'],
+      companyName: map['companyName'],
       sector: map['sector'],
       contactInfo: map['contactInfo'],
+      logoUrl: map['logoUrl'],
       description: map['description'],
-      location: map['location'],
       userType: map['userType'],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       isVerified: map['isVerified'] ?? false,
+      opportunitiesPosted: List<String>.from(map['opportunitiesPosted'] ?? []),
+      studentReviews: List<String>.from(map['studentReviews'] ?? []),
     );
   }
 }
-/*import 'package:cloud_firestore/cloud_firestore.dart';
-
-class ContactInfo {
-  final String businessEmail;
-  final String phoneNumber;
-
-  ContactInfo({required this.businessEmail, required this.phoneNumber});
-
-  Map<String, dynamic> toJson() {
-    return {
-      'BusinessEmail': businessEmail,
-      'phoneNumber': phoneNumber,
-    };
-  }
-}
-
-class Company {
-  final String? uid;
-  final String name;
-  final String sector;
-  final String? logoUrl;
-  final ContactInfo contactInfo; // Use the new ContactInfo class
-  final String userType;
-  final DateTime? createdAt;
-  final List<dynamic> followedStudents;
-  final String? description;
-  final String? location;
-  final bool isVerified;
-
-  const Company({
-    this.uid,
-    required this.name,
-    required this.sector,
-    this.logoUrl,
-    required this.contactInfo,
-    required this.userType,
-    this.createdAt,
-    this.followedStudents = const [],
-    this.description,
-    this.location,
-    this.isVerified = false,
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'sector': sector,
-      'logoUrl': logoUrl,
-      'contactInfo': contactInfo.toJson(), // Convert ContactInfo to a map
-      'userType': userType,
-      'createdAt': createdAt,
-      'followedStudents': followedStudents,
-      'description': description,
-      'location': location,
-      'verified': isVerified,
-    };
-  }
-
-  // You will also need to adjust the fromFirestore factory constructor
-  // to parse the nested map correctly.
-  factory Company.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    final contactInfoData = data['contactInfo'] as Map<String, dynamic>;
-    return Company(
-      uid: doc.id,
-      name: data['name'] as String,
-      sector: data['sector'] as String,
-      logoUrl: data['logoUrl'] as String?,
-      contactInfo: ContactInfo(
-        businessEmail: contactInfoData['BusinessEmail'] as String,
-        phoneNumber: contactInfoData['phoneNumber'] as String,
-      ),
-      userType: data['userType'] as String,
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      followedStudents: data['followedStudents'] as List<dynamic>,
-      description: data['description'] as String?,
-      location: data['location'] as String?,
-      isVerified: data['verified'] as bool,
-    );
-  }
-}*/
