@@ -334,6 +334,9 @@ class AuthService {
   return null; // No user logged in
 }
 
+  // ------------------------------
+  // Update Company
+  // ------------------------------
   Future<void> updateCompany(String uid, Company company) async {
     await _db.collection(kCompanyCol).doc(uid).update(company.toMap());
   }
