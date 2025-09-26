@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geocoding/geocoding.dart';
 // --- ADDED: Import for date formatting ---
 import 'package:intl/intl.dart';
+import 'package:my_app/studentScreens/login.dart';
 import 'package:my_app/studentScreens/studentEmailVerification.dart';
 import 'package:my_app/studentScreens/welcomeScreen.dart';
 import '../models/student.dart';
@@ -1133,8 +1134,13 @@ class _StudentSignupState extends State<StudentSignup> {
                     children: [
                       const Text("Already have an account?"),
                       TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Login', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF422F5D))),
+                        onPressed: () {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            (Route<dynamic> route) => false,
+                          );
+                        },
+                        child: const Text('Login Page', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF422F5D))),
                       ),
                     ],
                   ),
@@ -1149,7 +1155,7 @@ class _StudentSignupState extends State<StudentSignup> {
                             (Route<dynamic> route) => false,
                           );
                         },
-                        child: const Text('Welcome Screen', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF422F5D))),
+                        child: const Text('Welcome Page', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF422F5D))),
                       ),
                     ],
                   ),

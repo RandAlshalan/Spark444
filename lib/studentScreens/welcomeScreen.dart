@@ -110,7 +110,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 const SizedBox(height: 50), // ننزّل النص والأزرار شوي
 
                 const Text(
-                  'Unlock Your Future.\nYour Way',
+                  'Your Way to\n Unlock Your Future.\n',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 28,
