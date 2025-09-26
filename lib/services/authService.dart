@@ -27,50 +27,62 @@ class AuthService {
   String _normalizeUsername(String raw) {
     return raw.trim().toLowerCase();
   }
-  // Add this new function inside your AuthService class
-Future<Map<String, List<String>>> getUniversitiesAndMajors() async {
-  try {
-    // Fetch the universities document
-    DocumentSnapshot uniDoc = await _db.collection('lists').doc('universities').get();
-    
-    // Fetch the majors document
-    DocumentSnapshot majorDoc = await _db.collection('lists').doc('majors').get();
 
-    // Extract data from each document, handling null cases
-    final List<String> universities = uniDoc.exists 
-        ? List<String>.from((uniDoc.data() as Map<String, dynamic>)['names'] ?? []) 
-        : [];
-        
-    final List<String> majors = majorDoc.exists 
-        ? List<String>.from((majorDoc.data() as Map<String, dynamic>)['names'] ?? []) 
-        : [];
-    
-    return {
-      'universities': universities,
-      'majors': majors,
-    };
-  } catch (e) {
-    print("Error fetching lists: $e");
-    // In case of an error, return empty lists so the app doesn't crash
-    return {'universities': [], 'majors': []};
-  }
-}
-Future<void> cancelSignUpAndDeleteUser() async {
-  final User? user = _auth.currentUser;
-  if (user != null && !user.emailVerified) {
+  // Add this new function inside your AuthService class
+  Future<Map<String, List<String>>> getUniversitiesAndMajors() async {
     try {
-      // It's good practice to delete the Firestore document first
-      await _db.collection(kStudentCol).doc(user.uid).delete();
-      // Then delete the auth user
-      await user.delete();
+      // Fetch the universities document
+      DocumentSnapshot uniDoc = await _db
+          .collection('lists')
+          .doc('universities')
+          .get();
+
+      // Fetch the majors document
+      DocumentSnapshot majorDoc = await _db
+          .collection('lists')
+          .doc('majors')
+          .get();
+
+      // Extract data from each document, handling null cases
+      final List<String> universities = uniDoc.exists
+          ? List<String>.from(
+              (uniDoc.data() as Map<String, dynamic>)['names'] ?? [],
+            )
+          : [];
+
+      final List<String> majors = majorDoc.exists
+          ? List<String>.from(
+              (majorDoc.data() as Map<String, dynamic>)['names'] ?? [],
+            )
+          : [];
+
+      return {'universities': universities, 'majors': majors};
     } catch (e) {
-      // Handle potential errors, e.g., user needs to re-authenticate to delete
-      // For a new, unverified user, this usually works without issues.
-      print("Error cancelling sign-up: $e");
-      throw Exception("Could not cancel sign-up. Please sign out and sign in again to resolve.");
+      print("Error fetching lists: $e");
+      // In case of an error, return empty lists so the app doesn't crash
+      return {'universities': [], 'majors': []};
     }
   }
-}
+
+  Future<void> cancelSignUpAndDeleteUser() async {
+    final User? user = _auth.currentUser;
+    if (user != null && !user.emailVerified) {
+      try {
+        // It's good practice to delete the Firestore document first
+        await _db.collection(kStudentCol).doc(user.uid).delete();
+        // Then delete the auth user
+        await user.delete();
+      } catch (e) {
+        // Handle potential errors, e.g., user needs to re-authenticate to delete
+        // For a new, unverified user, this usually works without issues.
+        print("Error cancelling sign-up: $e");
+        throw Exception(
+          "Could not cancel sign-up. Please sign out and sign in again to resolve.",
+        );
+      }
+    }
+  }
+
   /// Checks if a username is unique across both students and companies.
   Future<bool> isUsernameUnique(String username) async {
     if (username.trim().isEmpty) return false;
@@ -103,7 +115,9 @@ Future<void> cancelSignUpAndDeleteUser() async {
       // Step 1: Check if username is already taken in Firestore
       final isUnique = await isUsernameUnique(student.username);
       if (!isUnique) {
-        throw Exception("This username is already taken. Please choose another one.");
+        throw Exception(
+          "This username is already taken. Please choose another one.",
+        );
       }
 
       // Step 2: Create user in Firebase Authentication
@@ -117,7 +131,7 @@ Future<void> cancelSignUpAndDeleteUser() async {
       if (user == null) {
         throw Exception("Failed to create an account. Please try again.");
       }
-      
+
       await user.sendEmailVerification();
 
       // Step 3: Create student document in Firestore
@@ -153,7 +167,9 @@ Future<void> cancelSignUpAndDeleteUser() async {
       // Step 1: Check if username is taken
       final isUnique = await isUsernameUnique(company.email);
       if (!isUnique) {
-        throw Exception("This username is already taken. Please choose another one.");
+        throw Exception(
+          "This username is already taken. Please choose another one.",
+        );
       }
 
       // Step 2: Create user in Firebase Auth
@@ -199,7 +215,9 @@ Future<void> cancelSignUpAndDeleteUser() async {
 
     if (raw.contains('@')) {
       final email = _normalizeEmail(raw);
-      if (!_emailRegex.hasMatch(email)) throw Exception("Invalid email format.");
+      if (!_emailRegex.hasMatch(email)) {
+        throw Exception("Invalid email format.");
+      }
       return email;
     }
 
@@ -214,7 +232,9 @@ Future<void> cancelSignUpAndDeleteUser() async {
     if (studentSnap.docs.isNotEmpty) {
       final data = studentSnap.docs.first.data();
       final email = _normalizeEmail((data['email'] as String?) ?? '');
-      if (email.isEmpty || !_emailRegex.hasMatch(email)) throw Exception("User record is missing a valid email.");
+      if (email.isEmpty || !_emailRegex.hasMatch(email)) {
+        throw Exception("User record is missing a valid email.");
+      }
       return email;
     }
 
@@ -227,7 +247,9 @@ Future<void> cancelSignUpAndDeleteUser() async {
     if (companySnap.docs.isNotEmpty) {
       final data = companySnap.docs.first.data();
       final email = _normalizeEmail((data['email'] as String?) ?? '');
-      if (email.isEmpty || !_emailRegex.hasMatch(email)) throw Exception("Company record is missing a valid email.");
+      if (email.isEmpty || !_emailRegex.hasMatch(email)) {
+        throw Exception("Company record is missing a valid email.");
+      }
       return email;
     }
 
@@ -264,14 +286,18 @@ Future<void> cancelSignUpAndDeleteUser() async {
       final companyDoc = await _db.collection(kCompanyCol).doc(user.uid).get();
       if (companyDoc.exists) {
         if (companyDoc.data()?['isVerified'] != true) {
-          await _db.collection(kCompanyCol).doc(user.uid).update({'isVerified': true});
+          await _db.collection(kCompanyCol).doc(user.uid).update({
+            'isVerified': true,
+          });
         }
         return 'company';
       }
 
       throw Exception("User type not found in the system.");
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+      if (e.code == 'user-not-found' ||
+          e.code == 'wrong-password' ||
+          e.code == 'invalid-credential') {
         throw Exception('Incorrect email or password.');
       }
       throw Exception(e.message ?? "Login failed.");
@@ -287,16 +313,18 @@ Future<void> cancelSignUpAndDeleteUser() async {
     try {
       final email = await _resolveEmailFromIdentifier(identifier);
       await _auth.sendPasswordResetEmail(email: email);
-    } catch(e) {
+    } catch (e) {
       // Rethrow with a user-friendly message
-      throw Exception("Failed to send reset link. Please ensure the email or username is correct.");
+      throw Exception(
+        "Failed to send reset link. Please ensure the email or username is correct.",
+      );
     }
   }
-  
+
   // ------------------------------
   // Verification Status Helpers
   // ------------------------------
-  
+
   Future<bool> isUserEmailVerified() async {
     User? user = _auth.currentUser;
     if (user != null) {
@@ -307,7 +335,9 @@ Future<void> cancelSignUpAndDeleteUser() async {
   }
 
   Future<void> updateVerificationStatus(String uid, bool isVerified) async {
-    await _db.collection(kStudentCol).doc(uid).update({'isVerified': isVerified});
+    await _db.collection(kStudentCol).doc(uid).update({
+      'isVerified': isVerified,
+    });
   }
 
   // ------------------------------
@@ -320,7 +350,49 @@ Future<void> cancelSignUpAndDeleteUser() async {
   }
 
   Future<void> updateStudent(String uid, Student student) async {
-    await _db.collection(kStudentCol).doc(uid).update(student.toMap());
+    final data = student.toMap(includeMetadata: false);
+    data['username_lower'] = _normalizeUsername(student.username);
+    await _db.collection(kStudentCol).doc(uid).update(data);
+  }
+
+  Future<void> updateStudentPassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      throw Exception('No authenticated user found.');
+    }
+
+    final credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: currentPassword.trim(),
+    );
+
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPassword.trim());
+  }
+
+  Future<void> updateStudentEmail({
+    required String password,
+    required String newEmail,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      throw Exception('No authenticated user found.');
+    }
+
+    final normalizedEmail = _normalizeEmail(newEmail);
+    final credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: password.trim(),
+    );
+
+    await user.reauthenticateWithCredential(credential);
+    await user.verifyBeforeUpdateEmail(normalizedEmail);
+    await _db.collection(kStudentCol).doc(user.uid).update({
+      'email': normalizedEmail,
+    });
   }
 
   Future<Company?> getCompany(String uid) async {
