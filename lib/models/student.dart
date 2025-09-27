@@ -1,26 +1,26 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Student {
-  final String email; 
-  String username; 
+  final String email;
+  String username;
   String firstName;
   String lastName;
   String university;
-  String major; 
-  String phoneNumber; 
-  String? level; 
+  String major;
+  String phoneNumber;
+  String? level;
   String? expectedGraduationDate;
-  double? gpa; 
-  List<String> skills; 
-  String? profilePictureUrl; 
-  String? shortSummary; 
-  final String userType; 
-  final DateTime? createdAt; 
+  double? gpa;
+  List<String> skills;
+  String? profilePictureUrl;
+  String? shortSummary;
+  final String userType;
+  final DateTime? createdAt;
   bool isVerified;
-  String resumeVisibility; 
-  String documentsVisibility; 
-  List<String> followedCompanies; 
-  String? location; 
+  String resumeVisibility;
+  String documentsVisibility;
+  List<String> followedCompanies;
+  String? location;
 
   Student({
     required this.email,
@@ -42,7 +42,7 @@ class Student {
     this.resumeVisibility = "private",
     this.documentsVisibility = "private",
     this.followedCompanies = const [],
-    this.location, 
+    this.location,
   });
 
   /// Convert Student object to a map for Firestore
@@ -95,7 +95,7 @@ class Student {
       resumeVisibility: map['resumeVisibility'] ?? "private",
       documentsVisibility: map['documentsVisibility'] ?? "private",
       followedCompanies: List<String>.from(map['followedCompanies'] ?? []),
-      location: map['location'], 
+      location: map['location'],
     );
   }
 }

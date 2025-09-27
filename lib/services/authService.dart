@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart'; 
+import 'package:firebase_core/firebase_core.dart';
 import '../models/student.dart';
 import '../models/company.dart';
 
@@ -8,8 +8,7 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
- 
-  static const String kStudentCol = 'student'; 
+  static const String kStudentCol = 'student';
   static const String kCompanyCol = 'companies';
 
   // ------------------------------
@@ -48,9 +47,7 @@ class AuthService {
 
       final studentMap = student.toMap();
 
-
       studentMap['email'] = emailNorm;
-
 
       final usernameRaw = (studentMap['username'] as String?) ?? '';
       studentMap['username_lower'] =
@@ -63,7 +60,6 @@ class AuthService {
       studentMap['createdAt'] = FieldValue.serverTimestamp();
 
       await _db.collection(kStudentCol).doc(user.uid).set(studentMap);
-
 
       final written = await _db.collection(kStudentCol).doc(user.uid).get();
       if (!written.exists) {
@@ -129,7 +125,7 @@ class AuthService {
     final raw = identifier.trim();
     if (raw.isEmpty) throw Exception("Please enter username/email");
 
-    // 
+    //
     if (raw.contains('@')) {
       final email = _normalizeEmail(raw);
       if (!_emailRegex.hasMatch(email)) {
@@ -141,7 +137,7 @@ class AuthService {
     // Username
     final uname = _normalizeUsername(raw);
 
-    // DEBUG: 
+    // DEBUG:
     try {
       print('[LOGIN] projectId = ${Firebase.app().options.projectId}');
     } catch (_) {
@@ -152,7 +148,7 @@ class AuthService {
     );
 
     try {
-      // 
+      //
       final studentSnap = await _db
           .collection(kStudentCol)
           .where('username_lower', isEqualTo: uname)
@@ -217,7 +213,7 @@ class AuthService {
         return email;
       }
 
-      // 
+      //
       final altCompanySnap = await _db
           .collection(kCompanyCol)
           .where('username', isEqualTo: raw)
@@ -321,18 +317,24 @@ class AuthService {
   Future<Company?> getCompany(String uid) async {
     final doc = await _db.collection(kCompanyCol).doc(uid).get();
     if (!doc.exists) return null;
-    return Company.fromMap(doc.data()!); // Uses your existing fromMap constructor
+    return Company.fromMap(
+      doc.data()!,
+    ); // Uses your existing fromMap constructor
   }
 
   // New method: getCurrentCompany, which uses the existing getCompany
   Future<Company?> getCurrentCompany() async {
-  User? currentUser = _auth.currentUser; 
-  if (currentUser != null) {
-    // If a user is logged in, use their UID to fetch the company profile
-    return await getCompany(currentUser.uid);
+    User? currentUser = _auth.currentUser;
+    if (currentUser != null) {
+      // If a user is logged in, use their UID to fetch the company profile
+      print(
+        'DEBUG(AuthService): Current logged-in user UID: ${currentUser.uid}',
+      ); // ADD THIS
+      return await getCompany(currentUser.uid);
+    }
+    print('DEBUG(AuthService): No user logged in.');
+    return null; // No user logged in
   }
-  return null; // No user logged in
-}
 
   // ------------------------------
   // Update Company
