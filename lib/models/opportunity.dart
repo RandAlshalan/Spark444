@@ -6,7 +6,8 @@ class Opportunity {
   final String name;
   final String role;
   final bool isPaid;
-
+  final String location;
+  final int applicants;
 
   Opportunity({
     required this.id,
@@ -14,6 +15,9 @@ class Opportunity {
     required this.name,
     required this.role,
     required this.isPaid,
+    // Initialize the new fields DUMMY DATA
+    this.location = 'New York, NY',
+    this.applicants = 57,
   });
 
   // Factory constructor to create an Opportunity from a Firestore DocumentSnapshot
@@ -26,6 +30,8 @@ class Opportunity {
       role: data['role'] ?? 'No Role',
       isPaid: data['isPaid'] ?? false,
       // Map other fields similarly
+      location: data['location'] ?? 'Location Not Specified', // Retrieve if available
+      applicants: data['applicants'] ?? 0, // Retrieve if available
     );
   }
 
@@ -38,6 +44,8 @@ class Opportunity {
       'isPaid': isPaid,
       // Add other fields
       'timestamp': FieldValue.serverTimestamp(), // Useful for ordering
+      'location': location,
+      'applicants': applicants,
     };
   }
 }

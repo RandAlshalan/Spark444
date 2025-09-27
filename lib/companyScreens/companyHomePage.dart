@@ -56,7 +56,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFFF7F4F0),
+      backgroundColor: const Color(0xFFEFE8E2), // Updated background color
       drawer: _buildDrawer(),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -74,7 +74,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
   Widget _buildSliverAppBar() {
     return SliverAppBar(
-      backgroundColor: const Color(0xFFF7F4F0),
+      backgroundColor: const Color(0xFFEFE8E2),
       expandedHeight: 250.0,
       pinned: true,
       floating: false,
@@ -253,21 +253,60 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              opportunity.name,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF422F5D),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      opportunity.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF422F5D),
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      opportunity.role,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFFD64483),
+                      ),
+                    ),
+                  ],
+                ),
+                TextButton(
+                  onPressed: () {}, // Dummy onPressed
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.people_alt_outlined, color: Colors.grey, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                       '${opportunity.applicants} Applicants',
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 5),
-            Text(
-              opportunity.role,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Color(0xFFD64483),
-              ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(Icons.location_on_outlined, size: 16, color: Colors.grey),
+                const SizedBox(width: 5),
+                Text(
+                  opportunity.location,
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             Row(
