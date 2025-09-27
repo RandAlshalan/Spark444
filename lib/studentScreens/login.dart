@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // مهم لمسك FirebaseAuthException
 import '../services/authService.dart';
-import 'studentProfilePage.dart';
+import 'StudentProfilePage.dart';
 import 'welcomeScreen.dart';
+import 'forgotPasswordScreen.dart';
 import '../companyScreens/companyHomePage.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -43,7 +44,6 @@ class _LoginScreenState extends State<LoginScreen>
     _hideTopToast();
     if (!mounted) return;
     final overlay = Overlay.of(context);
-    if (overlay == null) return;
 
     _toastEntry = OverlayEntry(
       builder: (overlayContext) {
@@ -277,6 +277,7 @@ class _LoginScreenState extends State<LoginScreen>
       final userType = await _authService.login(normalizedId, normalizedPw);
 
       if (!mounted) return;
+      _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
       _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
       if (userType == 'student') {
         _showTopToast("Welcome Student!", icon: Icons.check_circle_outline);
@@ -512,16 +513,30 @@ class _LoginScreenState extends State<LoginScreen>
               const SizedBox(height: 16),
 
               // Forgot Password
-              GestureDetector(
-                onTap: () {
-                  /* hook reset flow here */
-                },
-                child: const Text(
-                  "Forgot Password?",
-                  style: TextStyle(
-                    color: Color(0xFF6B4791),
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    print('Forgot password tapped!'); // Simple debug
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const ForgotPasswordScreen(),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 20,
+                    ),
+                    child: const Text(
+                      "Forgot Password?",
+                      style: TextStyle(
+                        color: Color(0xFF6B4791),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
                   ),
                 ),
               ),

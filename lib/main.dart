@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
-import '../studentScreens/login.dart';
-import '../companyScreens/companySignup.dart'; 
 
-import 'studentScreens/welcomeScreen.dart';
+import 'firebase_options.dart';
+import 'companyScreens/companySignup.dart';
 import 'studentScreens/login.dart';
 import 'studentScreens/studentSignup.dart';
-import 'companyScreens/companySignup.dart';
+import 'studentScreens/StudentProfilePage.dart';
+import 'studentScreens/welcomeScreen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +32,7 @@ class MyApp extends StatelessWidget {
         '/login': (_) => const LoginScreen(),
         '/signup': (_) => const StudentSignup(),
         '/companySignup': (_) => const CompanySignup(),
+        '/profile': (_) => const StudentProfilePage(),
       },
       onUnknownRoute: (_) =>
           MaterialPageRoute(builder: (_) => const WelcomeScreen()),

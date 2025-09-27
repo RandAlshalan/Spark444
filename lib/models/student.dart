@@ -3,9 +3,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Student {
   final String email;
   String username;
+  final String email;
+  String username;
   String firstName;
   String lastName;
   String university;
+  String major;
+  String phoneNumber;
+  String? level;
   String major;
   String phoneNumber;
   String? level;
@@ -16,7 +21,14 @@ class Student {
   String? shortSummary;
   final String userType;
   final DateTime? createdAt;
+  double? gpa;
+  List<String> skills;
+  String? profilePictureUrl;
+  String? shortSummary;
+  final String userType;
+  final DateTime? createdAt;
   bool isVerified;
+  bool isAcademic;
   String resumeVisibility;
   String documentsVisibility;
   List<String> followedCompanies;
@@ -39,15 +51,64 @@ class Student {
     required this.userType,
     this.createdAt,
     this.isVerified = false,
+    this.isAcademic = false,
     this.resumeVisibility = "private",
     this.documentsVisibility = "private",
     this.followedCompanies = const [],
     this.location,
   });
 
-  /// Convert Student object to a map for Firestore
-  Map<String, dynamic> toMap() {
-    return {
+  Student copyWith({
+    String? email,
+    String? username,
+    String? firstName,
+    String? lastName,
+    String? university,
+    String? major,
+    String? phoneNumber,
+    String? level,
+    String? expectedGraduationDate,
+    double? gpa,
+    List<String>? skills,
+    String? profilePictureUrl,
+    String? shortSummary,
+    bool? isVerified,
+    bool? isAcademic,
+    String? resumeVisibility,
+    String? documentsVisibility,
+    List<String>? followedCompanies,
+    String? location,
+  }) {
+    return Student(
+      email: email ?? this.email,
+      username: username ?? this.username,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      university: university ?? this.university,
+      major: major ?? this.major,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      level: level ?? this.level,
+      expectedGraduationDate:
+          expectedGraduationDate ?? this.expectedGraduationDate,
+      gpa: gpa ?? this.gpa,
+      skills: skills ?? List<String>.from(this.skills),
+      profilePictureUrl: profilePictureUrl ?? this.profilePictureUrl,
+      shortSummary: shortSummary ?? this.shortSummary,
+      userType: userType,
+      createdAt: createdAt,
+      isVerified: isVerified ?? this.isVerified,
+      isAcademic: isAcademic ?? this.isAcademic,
+      resumeVisibility: resumeVisibility ?? this.resumeVisibility,
+      documentsVisibility: documentsVisibility ?? this.documentsVisibility,
+      followedCompanies:
+          followedCompanies ?? List<String>.from(this.followedCompanies),
+      location: location ?? this.location,
+    );
+  }
+
+  /// لتحويل Student إلى Map (تخزين في Firestore)
+  Map<String, dynamic> toMap({bool includeMetadata = true}) {
+    final map = <String, dynamic>{
       'email': email,
       'username': username,
       'firstName': firstName,
@@ -62,18 +123,23 @@ class Student {
       'profilePictureUrl': profilePictureUrl,
       'shortSummary': shortSummary,
       'userType': userType,
-      'createdAt': createdAt != null
-          ? Timestamp.fromDate(createdAt!)
-          : FieldValue.serverTimestamp(),
       'isVerified': isVerified,
+      'isAcademic': isAcademic,
       'resumeVisibility': resumeVisibility,
       'documentsVisibility': documentsVisibility,
       'followedCompanies': followedCompanies,
-      'location': location, // ✅ Added in map
+      'location': location,
     };
+
+    if (includeMetadata) {
+      map['createdAt'] = createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp();
+    }
+
+    return map;
   }
 
-  /// Create Student object from Firestore document (map)
   factory Student.fromMap(Map<String, dynamic> map) {
     return Student(
       email: map['email'],
@@ -92,6 +158,7 @@ class Student {
       userType: map['userType'],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       isVerified: map['isVerified'] ?? false,
+      isAcademic: map['isAcademic'] ?? false,
       resumeVisibility: map['resumeVisibility'] ?? "private",
       documentsVisibility: map['documentsVisibility'] ?? "private",
       followedCompanies: List<String>.from(map['followedCompanies'] ?? []),
