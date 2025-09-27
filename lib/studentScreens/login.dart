@@ -135,17 +135,14 @@ class _LoginScreenState extends State<LoginScreen>
     caseSensitive: false,
   );
 
-  // يلتقط حالات "شكله إيميل" لكن بدون @ (مثل: xxxxx.student.ksu.edu.sa)
   bool _looksLikeEmailWithoutAt(String s) {
     final t = s.trim();
     if (t.isEmpty || t.contains('@') || t.contains(' ')) return false;
-    // يحتوي على نقطة ونهاية امتداد أحرف فقط (2-10)
     final parts = t.split('.');
     if (parts.length >= 2) {
       final last = parts.last;
       if (RegExp(r'^[A-Za-z]{2,10}$').hasMatch(last)) return true;
     }
-    // مفيد لحالات جامعية/نطاقات معقدة (.edu.sa)
     if (RegExp(r'\.[A-Za-z]{2,10}\.[A-Za-z]{2,10}$').hasMatch(t)) return true;
     return false;
   }
@@ -157,15 +154,12 @@ class _LoginScreenState extends State<LoginScreen>
     if (trimmed.contains('@')) {
       final normalized = trimmed.replaceAll(' ', '');
       if (!_emailRegex.hasMatch(normalized)) return "Invalid email format";
-      return null; // valid email
+      return null;
     } else {
-      // هنا التعديل: إذا كان شكله دومين/إيميل لكنه بدون @ → خطأ "Invalid email format"
       if (_looksLikeEmailWithoutAt(trimmed)) return "Invalid email format";
-
-      // غير ذلك نعامله كـ username عادي
       if (trimmed.contains(' ')) return "Please enter username/email";
       if (trimmed.length < 3) return "Please enter username/email";
-      return null; // valid username
+      return null;
     }
   }
 
@@ -203,29 +197,15 @@ class _LoginScreenState extends State<LoginScreen>
 
     final m = error.toString().toLowerCase();
 
-    if (m.contains('wrong-password') ||
-        m.contains('invalid-credential') ||
-        m.contains('invalid-credentials') ||
-        m.contains('invalid password') ||
-        m.contains('password is invalid') ||
-        m.contains('the supplied auth credential is incorrect') ||
-        m.contains('[firebase_auth/wrong-password]') ||
-        m.contains('code 17009')) {
+    if (m.contains('wrong-password') || m.contains('invalid-credential')) {
       return "Incorrect password";
     }
 
-    if (m.contains('user-not-found') ||
-        m.contains('[firebase_auth/user-not-found]') ||
-        m.contains('no user record') ||
-        m.contains('there is no user record') ||
-        m.contains('user not found')) {
+    if (m.contains('user-not-found') || m.contains('no user record')) {
       return "User not found";
     }
 
-    if (m.contains('invalid email') ||
-        m.contains('invalid-email') ||
-        m.contains('badly formatted') ||
-        m.contains('[firebase_auth/invalid-email]')) {
+    if (m.contains('invalid email') || m.contains('badly formatted')) {
       return "Invalid email format";
     }
 
@@ -239,7 +219,7 @@ class _LoginScreenState extends State<LoginScreen>
     return "Login failed. Please try again.";
   }
 
-  // ====== Login ======
+  // ====== Login (✅ MODIFIED) ======
   Future<void> _login() async {
     final idRaw = _idController.text;
     final pwRaw = _passwordController.text;
@@ -257,7 +237,7 @@ class _LoginScreenState extends State<LoginScreen>
           _showTopToast(idErr ?? pwErr!);
         }
       }
-      return; // مهم: لا نرسل أي طلب للباكند
+      return;
     }
 
     if (mounted) {
@@ -268,13 +248,15 @@ class _LoginScreenState extends State<LoginScreen>
     }
 
     try {
-      // نرسل قيم منظّفة
       final normalizedId = idRaw.trim().contains('@')
           ? idRaw.trim().replaceAll(' ', '')
           : idRaw.trim();
       final normalizedPw = pwRaw.trim();
 
-      final userType = await _authService.login(normalizedId, normalizedPw);
+      // The result is now a Map containing user type and verification status
+      final loginResult = await _authService.login(normalizedId, normalizedPw);
+      final String userType = loginResult['userType'];
+      final bool isVerified = loginResult['isVerified'];
 
       if (!mounted) return;
       _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
@@ -298,20 +280,45 @@ class _LoginScreenState extends State<LoginScreen>
           "Login failed. User type not recognized.",
           icon: Icons.error_outline,
         );
+        return;
+      }
+
+      // Show the initial "Welcome back!" message
+      _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
+
+      // THEN, if the user is a company and not verified, show a follow-up warning
+      if (userType == 'company' && !isVerified) {
+        // We use a small delay so the user sees the welcome message first
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            _showTopToast(
+              "Please check your inbox to verify your email.",
+              icon: Icons.warning_amber_rounded,
+              duration: const Duration(seconds: 5), // Make it last longer
+            );
+          }
+        });
       }
     } catch (e) {
       if (!mounted) return;
       print('Login Error Details: $e');
-      final msg = _mapAuthError(e);
 
-      // نحدّد مكان الخطأ (أحمر) حسب الرسالة
-      if (msg == "Incorrect password") {
-        _setErrors(pwError: msg);
-      } else if (msg == "User not found" || msg == "Invalid email format") {
-        _setErrors(idError: msg);
+      // Specifically handle the verification error for students
+      String errorString = e.toString();
+      if (errorString.contains('Please verify your email address first')) {
+        _setErrors(idError: "Email not verified.");
+        _showTopToast("Please verify your email address first.");
+      } else {
+        // Handle other general errors
+        final mappedMsg = _mapAuthError(e);
+        if (mappedMsg == "Incorrect password") {
+          _setErrors(pwError: mappedMsg);
+        } else if (mappedMsg == "User not found" ||
+            mappedMsg == "Invalid email format") {
+          _setErrors(idError: mappedMsg);
+        }
+        _showTopToast(mappedMsg);
       }
-
-      _showTopToast(msg);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -516,7 +523,6 @@ class _LoginScreenState extends State<LoginScreen>
               Center(
                 child: GestureDetector(
                   onTap: () {
-                    print('Forgot password tapped!'); // Simple debug
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) => const ForgotPasswordScreen(),

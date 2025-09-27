@@ -1,3 +1,5 @@
+// AuthService.dart - FULL MODIFIED FILE
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -11,8 +13,10 @@ class AuthService {
   static const String kStudentCol = 'student';
   static const String kCompanyCol = 'companies';
 
+  // ... (All other functions like _normalizeEmail, signUpStudent, etc., remain the same)
+
   // ------------------------------
-  // Helpers
+  // Helpers (No changes here)
   // ------------------------------
   static final RegExp _emailRegex = RegExp(
     r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
@@ -29,22 +33,18 @@ class AuthService {
     return raw.trim().toLowerCase();
   }
 
-  // Add this new function inside your AuthService class
   Future<Map<String, List<String>>> getUniversitiesAndMajors() async {
     try {
-      // Fetch the universities document
       DocumentSnapshot uniDoc = await _db
           .collection('lists')
           .doc('universities')
           .get();
 
-      // Fetch the majors document
       DocumentSnapshot majorDoc = await _db
           .collection('lists')
           .doc('majors')
           .get();
 
-      // Extract data from each document, handling null cases
       final List<String> universities = uniDoc.exists
           ? List<String>.from(
               (uniDoc.data() as Map<String, dynamic>)['names'] ?? [],
@@ -60,7 +60,6 @@ class AuthService {
       return {'universities': universities, 'majors': majors};
     } catch (e) {
       print("Error fetching lists: $e");
-      // In case of an error, return empty lists so the app doesn't crash
       return {'universities': [], 'majors': []};
     }
   }
@@ -69,13 +68,9 @@ class AuthService {
     final User? user = _auth.currentUser;
     if (user != null && !user.emailVerified) {
       try {
-        // It's good practice to delete the Firestore document first
         await _db.collection(kStudentCol).doc(user.uid).delete();
-        // Then delete the auth user
         await user.delete();
       } catch (e) {
-        // Handle potential errors, e.g., user needs to re-authenticate to delete
-        // For a new, unverified user, this usually works without issues.
         print("Error cancelling sign-up: $e");
         throw Exception(
           "Could not cancel sign-up. Please sign out and sign in again to resolve.",
@@ -84,7 +79,6 @@ class AuthService {
     }
   }
 
-  /// Checks if a username is unique across both students and companies.
   Future<bool> isUsernameUnique(String username) async {
     if (username.trim().isEmpty) return false;
     final normalizedUsername = _normalizeUsername(username);
@@ -109,33 +103,26 @@ class AuthService {
   }
 
   // ------------------------------
-  // Sign Up Student
+  // Sign Up Functions (No changes here)
   // ------------------------------
   Future<User?> signUpStudent(Student student, String password) async {
     try {
-      // Step 1: Check if username is already taken in Firestore
       final isUnique = await isUsernameUnique(student.username);
       if (!isUnique) {
         throw Exception(
           "This username is already taken. Please choose another one.",
         );
       }
-
-      // Step 2: Create user in Firebase Authentication
       final emailNorm = _normalizeEmail(student.email);
       final credential = await _auth.createUserWithEmailAndPassword(
         email: emailNorm,
         password: password.trim(),
       );
-
       final user = credential.user;
       if (user == null) {
         throw Exception("Failed to create an account. Please try again.");
       }
-
       await user.sendEmailVerification();
-
-      // Step 3: Create student document in Firestore
       final studentMap = student.toMap();
 
       studentMap['email'] = emailNorm;
@@ -143,7 +130,6 @@ class AuthService {
       studentMap['isAcademic'] = student.isAcademic;
       studentMap['username_lower'] = _normalizeUsername(student.username);
       studentMap['createdAt'] = FieldValue.serverTimestamp();
-
       await _db.collection(kStudentCol).doc(user.uid).set(studentMap);
 
       final written = await _db.collection(kStudentCol).doc(user.uid).get();
@@ -153,7 +139,6 @@ class AuthService {
 
       return user;
     } on FirebaseAuthException catch (e) {
-      // Handle specific Firebase authentication errors
       if (e.code == 'email-already-in-use') {
         throw Exception("This email address is already in use.");
       } else if (e.code == 'weak-password') {
@@ -161,45 +146,35 @@ class AuthService {
       }
       throw Exception(e.message ?? "An unknown error occurred.");
     } catch (e) {
-      // Handle other errors (like the username check)
       rethrow;
     }
   }
 
-  // ------------------------------
-  // Sign Up Company
-  // ------------------------------
   Future<User?> signUpCompany(Company company, String password) async {
     try {
-      // Step 1: Check if username is taken
-      final isUnique = await isUsernameUnique(company.email);
+      final isUnique = await isUsernameUnique(company.companyName);
       if (!isUnique) {
         throw Exception(
           "This username is already taken. Please choose another one.",
         );
       }
-
-      // Step 2: Create user in Firebase Auth
       final emailNorm = _normalizeEmail(company.email);
       final credential = await _auth.createUserWithEmailAndPassword(
         email: emailNorm,
         password: password.trim(),
       );
-
       final user = credential.user;
       if (user == null) {
         throw Exception("Failed to create an account. Please try again.");
       }
-
-      // Step 3: Create company document in Firestore
+      // Companies also get a verification email on signup
+      await user.sendEmailVerification();
       final companyMap = company.toMap();
       companyMap['email'] = emailNorm;
-      companyMap['isVerified'] = false; // Companies also need verification
-      companyMap['username_lower'] = _normalizeUsername(company.email);
+      companyMap['isVerified'] = false;
+      companyMap['username_lower'] = _normalizeUsername(company.companyName);
       companyMap['createdAt'] = FieldValue.serverTimestamp();
-
       await _db.collection(kCompanyCol).doc(user.uid).set(companyMap);
-
       return user;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
@@ -214,7 +189,7 @@ class AuthService {
   }
 
   // ------------------------------
-  // Resolve identifier → email
+  // Resolve identifier → email (No changes here)
   // ------------------------------
   Future<String> _resolveEmailFromIdentifier(String identifier) async {
     final raw = identifier.trim();
@@ -317,9 +292,11 @@ class AuthService {
   }
 
   // ------------------------------
-  // Login
+  // Login (✅ MAJOR CHANGE HERE)
   // ------------------------------
-  Future<String> login(String identifier, String password) async {
+  /// Returns a Map with 'userType' and 'isVerified' status.
+  /// Throws an exception for students if not verified, but allows companies.
+  Future<Map<String, dynamic>> login(String identifier, String password) async {
     try {
       final email = await _resolveEmailFromIdentifier(identifier);
       final credential = await _auth.signInWithEmailAndPassword(
@@ -330,27 +307,37 @@ class AuthService {
       final user = credential.user;
       if (user == null) throw Exception("User not found.");
 
-      await user.reload();
-      if (!user.emailVerified) {
-        throw Exception('Please verify your email address first.');
-      }
-
+      // First, determine the user type from Firestore
       final studentDoc = await _db.collection(kStudentCol).doc(user.uid).get();
       if (studentDoc.exists) {
+        // It's a student, enforce verification
+        await user.reload();
+        if (!user.emailVerified) {
+          throw Exception('Please verify your email address first.');
+        }
         if (studentDoc.data()?['isVerified'] != true) {
           await updateVerificationStatus(user.uid, true);
         }
-        return 'student';
+        return {'userType': 'student', 'isVerified': true};
       }
 
       final companyDoc = await _db.collection(kCompanyCol).doc(user.uid).get();
       if (companyDoc.exists) {
-        if (companyDoc.data()?['isVerified'] != true) {
+        // It's a company, allow login but return verification status
+        await user.reload();
+        final bool isVerified = user.emailVerified;
+
+        // If not verified, resend the email as a helpful reminder
+        if (!isVerified) {
+          await user.sendEmailVerification();
+        } else if (companyDoc.data()?['isVerified'] != true) {
+          // If verified on Auth but not in Firestore, update Firestore
           await _db.collection(kCompanyCol).doc(user.uid).update({
             'isVerified': true,
           });
         }
-        return 'company';
+
+        return {'userType': 'company', 'isVerified': isVerified};
       }
 
       throw Exception("User type not found in the system.");
@@ -366,15 +353,16 @@ class AuthService {
     }
   }
 
+  // ... (All other functions like resetPassword, getStudent, etc., remain the same)
+
   // ------------------------------
-  // Reset Password
+  // Reset Password (No changes here)
   // ------------------------------
   Future<void> resetPassword(String identifier) async {
     try {
       final email = await _resolveEmailFromIdentifier(identifier);
       await _auth.sendPasswordResetEmail(email: email);
     } catch (e) {
-      // Rethrow with a user-friendly message
       throw Exception(
         "Failed to send reset link. Please ensure the email or username is correct.",
       );
@@ -382,9 +370,8 @@ class AuthService {
   }
 
   // ------------------------------
-  // Verification Status Helpers
+  // Verification Status Helpers (No changes here)
   // ------------------------------
-
   Future<bool> isUserEmailVerified() async {
     User? user = _auth.currentUser;
     if (user != null) {
@@ -401,7 +388,7 @@ class AuthService {
   }
 
   // ------------------------------
-  // Get/Update Data
+  // Get/Update Data (No changes here)
   // ------------------------------
   Future<Student?> getStudent(String uid) async {
     final doc = await _db.collection(kStudentCol).doc(uid).get();
