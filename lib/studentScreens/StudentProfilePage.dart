@@ -2742,7 +2742,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     _passwordController.dispose();
     super.dispose();
   }
-
+//
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _submitting = true);

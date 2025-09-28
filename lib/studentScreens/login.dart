@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // مهم لمسك FirebaseAuthException
 import '../services/authService.dart';
 import 'StudentProfilePage.dart';
+import 'studentViewProfile.dart';
 import 'welcomeScreen.dart';
 import 'forgotPasswordScreen.dart';
 import '../companyScreens/companyHomePage.dart';
@@ -252,7 +253,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (userType == 'student') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const StudentProfilePage()),
+          MaterialPageRoute(builder: (context) => StudentViewProfile()),
         );
       } else if (userType == 'company') {
         Navigator.pushReplacement(
