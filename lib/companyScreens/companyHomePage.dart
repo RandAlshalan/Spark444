@@ -386,10 +386,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                         size: 16,
                       ),
                       const SizedBox(width: 4),
-                      Text(
+                      /*Text( Ghaida!1
                         '${opportunity.applicants} Applicants',
                         style: const TextStyle(color: Colors.grey),
-                      ),
+                      ),*/
                     ],
                   ),
                 ),
@@ -405,7 +405,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  opportunity.location,
+                  opportunity.location ?? 'Remote',
                   style: const TextStyle(color: Colors.grey),
                 ),
               ],
