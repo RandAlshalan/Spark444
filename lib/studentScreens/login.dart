@@ -43,11 +43,13 @@ class _LoginScreenState extends State<LoginScreen>
     Duration duration = const Duration(seconds: 2),
   }) async {
     _hideTopToast();
+    if (!mounted) return;
     final overlay = Overlay.of(context);
 
     _toastEntry = OverlayEntry(
-      builder: (_) {
-        final topSafe = MediaQuery.of(context).padding.top;
+      builder: (overlayContext) {
+        // final topSafe = MediaQuery.of(context).padding.top;
+        final topSafe = MediaQuery.of(overlayContext).padding.top;
         return Positioned(
           top: 0,
           left: 12,
@@ -105,7 +107,10 @@ class _LoginScreenState extends State<LoginScreen>
     overlay.insert(_toastEntry!);
     await _toastController.forward();
     Future.delayed(duration, () async {
-      if (!mounted) return;
+      if (!mounted) {
+        _hideTopToast();
+        return;
+      }
       await _toastController.reverse();
       _hideTopToast();
     });
@@ -117,10 +122,12 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _setErrors({String? idError, String? pwError}) {
-    setState(() {
-      _idError = idError;
-      _pwError = pwError;
-    });
+    if (mounted) {
+      setState(() {
+        _idError = idError;
+        _pwError = pwError;
+      });
+    }
   }
 
   // ====== Validators ======
@@ -223,18 +230,23 @@ class _LoginScreenState extends State<LoginScreen>
 
     if (idErr != null || pwErr != null) {
       _setErrors(idError: idErr, pwError: pwErr);
-      if (idErr != null && pwErr != null) {
-        _showTopToast("Please enter username/email and password");
-      } else {
-        _showTopToast(idErr ?? pwErr!);
+      // نفس سلوك التوست كما بالصورة (يطلع بالرسالة نفسها)
+      if (mounted) {
+        if (idErr != null && pwErr != null) {
+          _showTopToast("Please enter username/email and password");
+        } else {
+          _showTopToast(idErr ?? pwErr!);
+        }
       }
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _setErrors(idError: null, pwError: null);
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _setErrors(idError: null, pwError: null);
+      });
+    }
 
     try {
       final normalizedId = idRaw.trim().contains('@')
@@ -248,14 +260,18 @@ class _LoginScreenState extends State<LoginScreen>
       final bool isVerified = loginResult['isVerified'];
 
       if (!mounted) return;
-
-      // Navigate to the correct home page first
+      _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
+      _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
       if (userType == 'student') {
+        _showTopToast("Welcome Student!", icon: Icons.check_circle_outline);
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => StudentViewProfile()),
         );
       } else if (userType == 'company') {
+        _showTopToast("Welcome Company!", icon: Icons.check_circle_outline);
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const CompanyHomePage()),
@@ -325,6 +341,7 @@ class _LoginScreenState extends State<LoginScreen>
     _idController.dispose();
     _passwordController.dispose();
     _toastController.dispose();
+    _hideTopToast();
     super.dispose();
   }
 
@@ -534,6 +551,7 @@ class _LoginScreenState extends State<LoginScreen>
 
               TextButton(
                 onPressed: () {
+                  if (!mounted) return;
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
                       builder: (context) => const WelcomeScreen(),

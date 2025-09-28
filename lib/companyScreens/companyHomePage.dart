@@ -4,6 +4,7 @@ import '../models/opportunity.dart';
 import '../services/authService.dart';
 import '../services/opportunityService.dart';
 import 'editCompanyProfilePage.dart';
+import 'PostOpportunityPage.dart';
 
 class CompanyHomePage extends StatefulWidget {
   const CompanyHomePage({super.key});
@@ -26,22 +27,24 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     _fetchCompanyData();
   }
 
-  Future<void> _fetchCompanyData() async {
+  /*Future<void> _fetchCompanyData() async {
     setState(() {
       _isLoading = true;
     });
     try {
       final company = await _authService.getCurrentCompany();
-      final opportunities = await _opportunityService.getCompanyOpportunities(company?.uid ?? '');
+      final opportunities = await _opportunityService.getCompanyOpportunities(
+        company?.uid ?? '',
+      );
       setState(() {
         _company = company;
         _opportunities = opportunities;
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching data: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error fetching data: $e')));
       }
     } finally {
       if (mounted) {
@@ -50,13 +53,98 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         });
       }
     }
+  }*/
+
+  // In lib/companyScreens/companyHomePage.dart
+
+  // In lib/companyScreens/companyHomePage.dart
+
+  Future<void> _fetchCompanyData() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final company = await _authService.getCurrentCompany();
+
+      print('DEBUG(CompanyHomePage): _fetchCompanyData started.');
+      print(
+        'DEBUG(CompanyHomePage): Fetched Company: ${company?.companyName ?? "N/A"}',
+      );
+      // NOW WE ARE RELYING ON THE EMAIL FROM THE COMPANY OBJECT
+      print(
+        'DEBUG(CompanyHomePage): Company Email (from authService): ${company?.email ?? "N/A - Company Email is null"}',
+      );
+      // For debugging purposes, you can still print UID to see it's there as a field, but not used as identifier
+      print(
+        'DEBUG(CompanyHomePage): Company Firebase Auth UID (from company object as field): ${company?.uid ?? "N/A - Company UID field is null"}',
+      );
+
+      // ************** CRITICAL CHANGE HERE **************
+      // Use company?.email to fetch opportunities, as per your preference
+      final opportunities = await _opportunityService.getCompanyOpportunities(
+        company?.email ??
+            '', // <--- CHANGED FROM company?.uid to company?.email
+      );
+      // **************************************************
+
+      print(
+        'DEBUG(CompanyHomePage): Number of opportunities received from service: ${opportunities.length}',
+      );
+      if (opportunities.isNotEmpty) {
+        print(
+          'DEBUG(CompanyHomePage): First opportunity name: ${opportunities.first.name}',
+        );
+        print(
+          'DEBUG(CompanyHomePage): First opportunity companyId (should be email): ${opportunities.first.companyId}',
+        );
+        print(
+          'DEBUG(CompanyHomePage): First opportunity ID: ${opportunities.first.id}',
+        );
+        print(
+          'DEBUG(CompanyHomePage): First opportunity postedDate: ${opportunities.first.postedDate}',
+        );
+      } else {
+        print('DEBUG(CompanyHomePage): No opportunities found.');
+      }
+
+      setState(() {
+        _company = company;
+        _opportunities = opportunities;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error fetching data: $e')));
+      }
+      print('DEBUG(CompanyHomePage): Error in _fetchCompanyData: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      print(
+        'DEBUG(CompanyHomePage): _fetchCompanyData finished. _isLoading: $_isLoading',
+      );
+    }
+  }
+
+  void _navigateToPostOpportunityPage() async {
+    print('DEBUG: Post New button pressed!');
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const PostOpportunityPage()),
+    );
+    // After returning from PostOpportunityPage, refresh the list of opportunities
+    _fetchCompanyData();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFFF7F4F0),
+      backgroundColor: const Color(0xFFEFE8E2), // Updated background color
       drawer: _buildDrawer(),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -74,7 +162,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
   Widget _buildSliverAppBar() {
     return SliverAppBar(
-      backgroundColor: const Color(0xFFF7F4F0),
+      backgroundColor: const Color(0xFFEFE8E2),
       expandedHeight: 250.0,
       pinned: true,
       floating: false,
@@ -113,7 +201,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 backgroundColor: Colors.white,
                 backgroundImage: _company?.logoUrl != null
                     ? NetworkImage(_company!.logoUrl!)
-                    : const AssetImage('assets/spark_logo.png') as ImageProvider,
+                    : const AssetImage('assets/spark_logo.png')
+                          as ImageProvider,
               ),
               const SizedBox(width: 20),
               Expanded(
@@ -153,11 +242,14 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           const SizedBox(height: 10),
           ElevatedButton.icon(
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => EditCompanyProfilePage(company: _company!),
-                ),
-              ).then((_) => _fetchCompanyData());
+              Navigator.of(context)
+                  .push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          EditCompanyProfilePage(company: _company!),
+                    ),
+                  )
+                  .then((_) => _fetchCompanyData());
             },
             icon: const Icon(Icons.edit, size: 18),
             label: const Text('Edit Profile'),
@@ -199,20 +291,19 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
   Widget _buildOpportunitySection() {
     return SliverList(
-      delegate: SliverChildListDelegate(
-        [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'My Opportunities',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF422F5D),
-                ),
+      delegate: SliverChildListDelegate([
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'My Opportunities',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF422F5D),
               ),
-              _buildGradientButton(
+            ),
+            /*_buildGradientButton(
                 text: 'Post New',
                 onPressed: () {
                   // Dummy navigation for now
@@ -221,23 +312,28 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   );
                 },
                 icon: Icons.add,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          if (_opportunities.isEmpty)
-            const Center(
-              child: Text(
-                'You have not posted any opportunities yet.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
+              ),*/
+            _buildGradientButton(
+              text: 'Post New',
+              icon: Icons.add,
+              onPressed:
+                  _navigateToPostOpportunityPage, // <--- DIRECT NAVIGATION HERE
             ),
-          ..._opportunities.map((opportunity) {
-            return _buildOpportunityCard(opportunity);
-          }).toList(),
-        ],
-      ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        if (_opportunities.isEmpty)
+          const Center(
+            child: Text(
+              'You have not posted any opportunities yet.',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ..._opportunities.map((opportunity) {
+          return _buildOpportunityCard(opportunity);
+        }).toList(),
+      ]),
     );
   }
 
@@ -245,35 +341,82 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              opportunity.name,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF422F5D),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      opportunity.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF422F5D),
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      opportunity.role,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFFD64483),
+                      ),
+                    ),
+                  ],
+                ),
+                TextButton(
+                  onPressed: () {}, // Dummy onPressed
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.people_alt_outlined,
+                        color: Colors.grey,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${opportunity.applicants} Applicants',
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 5),
-            Text(
-              opportunity.role,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Color(0xFFD64483),
-              ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 16,
+                  color: Colors.grey,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  opportunity.location,
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             Row(
               children: [
                 Icon(
-                  opportunity.isPaid ? Icons.paid_outlined : Icons.money_off_outlined,
+                  opportunity.isPaid
+                      ? Icons.paid_outlined
+                      : Icons.money_off_outlined,
                   size: 16,
                   color: opportunity.isPaid ? Colors.green : Colors.red,
                 ),
@@ -294,10 +437,17 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   onPressed: () {
                     // Dummy navigation
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Navigating to applicants for ${opportunity.name}')),
+                      SnackBar(
+                        content: Text(
+                          'Navigating to applicants for ${opportunity.name}',
+                        ),
+                      ),
                     );
                   },
-                  child: const Text('View Applicants', style: TextStyle(color: Color(0xFF6B4791))),
+                  child: const Text(
+                    'View Applicants',
+                    style: TextStyle(color: Color(0xFF6B4791)),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 IconButton(
@@ -349,16 +499,24 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                     backgroundColor: Colors.white,
                     backgroundImage: _company?.logoUrl != null
                         ? NetworkImage(_company!.logoUrl!)
-                        : const AssetImage('assets/spark_logo.png') as ImageProvider,
+                        : const AssetImage('assets/spark_logo.png')
+                              as ImageProvider,
                   ),
                   const SizedBox(height: 10),
                   Text(
                     _company?.companyName ?? 'Company Name',
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(
                     _company?.email ?? 'Email Not Found',
-                    style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 14,
+                    ),
                   ),
                 ],
               ),
@@ -366,27 +524,40 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             _buildDrawerItem(Icons.group_outlined, 'My Followers', () {
               // Dummy navigation
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Navigating to Followers Page...')),
+                const SnackBar(
+                  content: Text('Navigating to Followers Page...'),
+                ),
               );
               Navigator.of(context).pop();
             }),
-            _buildDrawerItem(Icons.post_add_outlined, 'Post a New Opportunity', () {
-              // Dummy navigation
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Navigating to Create Opportunity Page...')),
-              );
-              Navigator.of(context).pop();
-            }),
+            _buildDrawerItem(
+              Icons.post_add_outlined,
+              'Post a New Opportunity',
+              () {
+                Navigator.of(context).pop(); // Close drawer first
+                _navigateToPostOpportunityPage(); // <--- DIRECT NAVIGATION HERE
+              },
+            ),
+
             _buildDrawerItem(Icons.edit_outlined, 'Edit Profile', () {
               Navigator.of(context).pop();
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => EditCompanyProfilePage(company: _company!))).then((_) => _fetchCompanyData());
+              Navigator.of(context)
+                  .push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          EditCompanyProfilePage(company: _company!),
+                    ),
+                  )
+                  .then((_) => _fetchCompanyData());
             }),
             const Divider(color: Colors.white54),
             _buildDrawerItem(Icons.logout, 'Log Out', () async {
               // Dummy logout action
               await _authService.signOut();
               if (mounted) {
-                Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil('/', (route) => false);
               }
             }),
           ],

@@ -20,11 +20,14 @@ class OpportunityService {
       QuerySnapshot querySnapshot = await _firestore
           .collection('opportunities') // Your opportunities collection name
           .where('companyId', isEqualTo: companyId) // Filter by company ID
-          .orderBy('timestamp', descending: true) // Optional: order by creation date
+          // .orderBy('timestamp', descending: true) // Optional: order by creation date
+          .orderBy('postedDate', descending: true)
           .get();
 
       // Convert the documents to a list of Opportunity objects
-      return querySnapshot.docs.map((doc) => Opportunity.fromFirestore(doc)).toList();
+      return querySnapshot.docs
+          .map((doc) => Opportunity.fromFirestore(doc))
+          .toList();
     } catch (e) {
       print('Error fetching opportunities: $e');
       // Re-throw the exception so the UI can catch and display an error
@@ -37,14 +40,17 @@ class OpportunityService {
   // Example: Add a new opportunity
   Future<void> addOpportunity(Opportunity opportunity) async {
     try {
-      await _firestore.collection('opportunities').add({
+      /*await _firestore.collection('opportunities').add({
         'companyId': opportunity.companyId,
         'name': opportunity.name,
         'role': opportunity.role,
         'isPaid': opportunity.isPaid,
         'timestamp': FieldValue.serverTimestamp(), // Add a timestamp for ordering
         // Add other fields from your Opportunity model
-      });
+      });*/
+      await _firestore
+          .collection('opportunities')
+          .add(opportunity.toFirestore());
     } catch (e) {
       print('Error adding opportunity: $e');
       rethrow;
@@ -54,12 +60,16 @@ class OpportunityService {
   // Example: Update an existing opportunity
   Future<void> updateOpportunity(Opportunity opportunity) async {
     try {
-      await _firestore.collection('opportunities').doc(opportunity.id).update({
+      /* await _firestore.collection('opportunities').doc(opportunity.id).update({
         'name': opportunity.name,
         'role': opportunity.role,
         'isPaid': opportunity.isPaid,
         // Update other fields
-      });
+      });*/
+      await _firestore
+          .collection('opportunities')
+          .doc(opportunity.id)
+          .update(opportunity.toFirestore());
     } catch (e) {
       print('Error updating opportunity: $e');
       rethrow;

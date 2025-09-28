@@ -2,6 +2,7 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import '../models/student.dart';
 import '../models/company.dart';
 
@@ -13,7 +14,7 @@ class AuthService {
   static const String kCompanyCol = 'companies';
 
   // ... (All other functions like _normalizeEmail, signUpStudent, etc., remain the same)
-  
+
   // ------------------------------
   // Helpers (No changes here)
   // ------------------------------
@@ -34,11 +35,15 @@ class AuthService {
 
   Future<Map<String, List<String>>> getUniversitiesAndMajors() async {
     try {
-      DocumentSnapshot uniDoc =
-          await _db.collection('lists').doc('universities').get();
+      DocumentSnapshot uniDoc = await _db
+          .collection('lists')
+          .doc('universities')
+          .get();
 
-      DocumentSnapshot majorDoc =
-          await _db.collection('lists').doc('majors').get();
+      DocumentSnapshot majorDoc = await _db
+          .collection('lists')
+          .doc('majors')
+          .get();
 
       final List<String> universities = uniDoc.exists
           ? List<String>.from(
@@ -96,7 +101,7 @@ class AuthService {
 
     return true;
   }
-  
+
   // ------------------------------
   // Sign Up Functions (No changes here)
   // ------------------------------
@@ -119,12 +124,19 @@ class AuthService {
       }
       await user.sendEmailVerification();
       final studentMap = student.toMap();
+
       studentMap['email'] = emailNorm;
       studentMap['isVerified'] = false;
       studentMap['isAcademic'] = student.isAcademic;
       studentMap['username_lower'] = _normalizeUsername(student.username);
       studentMap['createdAt'] = FieldValue.serverTimestamp();
       await _db.collection(kStudentCol).doc(user.uid).set(studentMap);
+
+      final written = await _db.collection(kStudentCol).doc(user.uid).get();
+      if (!written.exists) {
+        throw Exception("Student Firestore doc was not created.");
+      }
+
       return user;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
@@ -183,6 +195,7 @@ class AuthService {
     final raw = identifier.trim();
     if (raw.isEmpty) throw Exception("Please enter a username or email.");
 
+    //
     if (raw.contains('@')) {
       final email = _normalizeEmail(raw);
       if (!_emailRegex.hasMatch(email)) {
@@ -193,35 +206,89 @@ class AuthService {
 
     final uname = _normalizeUsername(raw);
 
-    final studentSnap = await _db
-        .collection(kStudentCol)
-        .where('username_lower', isEqualTo: uname)
-        .limit(1)
-        .get();
-    if (studentSnap.docs.isNotEmpty) {
-      final data = studentSnap.docs.first.data();
-      final email = _normalizeEmail((data['email'] as String?) ?? '');
-      if (email.isEmpty || !_emailRegex.hasMatch(email)) {
-        throw Exception("User record is missing a valid email.");
+    // DEBUG:
+    try {
+      print('[LOGIN] projectId = ${Firebase.app().options.projectId}');
+    } catch (_) {
+      print('[LOGIN] projectId = (Firebase not initialized in this scope)');
+    }
+    print(
+      '[LOGIN] resolving username -> email for "$raw" -> normalized "$uname"',
+    );
+
+    try {
+      //
+      final studentSnap = await _db
+          .collection(kStudentCol)
+          .where('username_lower', isEqualTo: uname)
+          .limit(1)
+          .get();
+
+      print(
+        '[LOGIN] student (username_lower) hits: ${studentSnap.docs.length}',
+      );
+      if (studentSnap.docs.isNotEmpty) {
+        final data = studentSnap.docs.first.data();
+        final email = _normalizeEmail((data['email'] as String?) ?? '');
+        print(
+          '[LOGIN] student doc id: ${studentSnap.docs.first.id} | email: $email',
+        );
+        if (email.isEmpty || !_emailRegex.hasMatch(email)) {
+          throw Exception("User record is missing an email");
+        }
+        return email;
       }
-      return email;
+
+      // Check company collection
+      final companySnap = await _db
+          .collection(kCompanyCol)
+          .where('username_lower', isEqualTo: uname)
+          .limit(1)
+          .get();
+      if (companySnap.docs.isNotEmpty) {
+        final data = companySnap.docs.first.data();
+        final email = _normalizeEmail((data['email'] as String?) ?? '');
+        if (email.isEmpty || !_emailRegex.hasMatch(email)) {
+          throw Exception("Company record is missing a valid email.");
+        }
+        return email;
+      }
+
+      //
+      final altCompanySnap = await _db
+          .collection(kCompanyCol)
+          .where('username', isEqualTo: raw)
+          .limit(1)
+          .get();
+      print(
+        '[LOGIN] companies (username exact) hits: ${altCompanySnap.docs.length}',
+      );
+      if (altCompanySnap.docs.isNotEmpty) {
+        final data = altCompanySnap.docs.first.data();
+        final email = _normalizeEmail((data['email'] as String?) ?? '');
+        print(
+          '[LOGIN] company (alt) doc id: ${altCompanySnap.docs.first.id} | email: $email',
+        );
+        if (email.isEmpty || !_emailRegex.hasMatch(email)) {
+          throw Exception("User record is missing an email");
+        }
+        return email;
+      }
+    } on FirebaseException catch (e) {
+      print('[LOGIN][ERROR] Firestore query failed: ${e.code} - ${e.message}');
+      if (e.code == 'permission-denied') {
+        //
+        throw Exception(
+          'Login failed: permission denied while searching username',
+        );
+      }
+      rethrow;
     }
 
-    final companySnap = await _db
-        .collection(kCompanyCol)
-        .where('username_lower', isEqualTo: uname)
-        .limit(1)
-        .get();
-    if (companySnap.docs.isNotEmpty) {
-      final data = companySnap.docs.first.data();
-      final email = _normalizeEmail((data['email'] as String?) ?? '');
-      if (email.isEmpty || !_emailRegex.hasMatch(email)) {
-        throw Exception("Company record is missing a valid email.");
-      }
-      return email;
-    }
-
-    throw Exception("User not found.");
+    print(
+      '[LOGIN] no user found for username="$raw"/lower="$uname" in "$kStudentCol"/"$kCompanyCol"',
+    );
+    throw Exception("User not found");
   }
 
   // ------------------------------
@@ -259,15 +326,17 @@ class AuthService {
         // It's a company, allow login but return verification status
         await user.reload();
         final bool isVerified = user.emailVerified;
-        
+
         // If not verified, resend the email as a helpful reminder
         if (!isVerified) {
-            await user.sendEmailVerification();
+          await user.sendEmailVerification();
         } else if (companyDoc.data()?['isVerified'] != true) {
-            // If verified on Auth but not in Firestore, update Firestore
-            await _db.collection(kCompanyCol).doc(user.uid).update({'isVerified': true});
+          // If verified on Auth but not in Firestore, update Firestore
+          await _db.collection(kCompanyCol).doc(user.uid).update({
+            'isVerified': true,
+          });
         }
-        
+
         return {'userType': 'company', 'isVerified': isVerified};
       }
 
@@ -285,7 +354,7 @@ class AuthService {
   }
 
   // ... (All other functions like resetPassword, getStudent, etc., remain the same)
-  
+
   // ------------------------------
   // Reset Password (No changes here)
   // ------------------------------
@@ -376,9 +445,28 @@ class AuthService {
   Future<Company?> getCompany(String uid) async {
     final doc = await _db.collection(kCompanyCol).doc(uid).get();
     if (!doc.exists) return null;
-    return Company.fromMap(doc.data()!);
+    return Company.fromMap(
+      doc.data()!,
+    ); // Uses your existing fromMap constructor
   }
 
+  // New method: getCurrentCompany, which uses the existing getCompany
+  Future<Company?> getCurrentCompany() async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser != null) {
+      // If a user is logged in, use their UID to fetch the company profile
+      print(
+        'DEBUG(AuthService): Current logged-in user UID: ${currentUser.uid}',
+      ); // ADD THIS
+      return await getCompany(currentUser.uid);
+    }
+    print('DEBUG(AuthService): No user logged in.');
+    return null; // No user logged in
+  }
+
+  // ------------------------------
+  // Update Company
+  // ------------------------------
   Future<void> updateCompany(String uid, Company company) async {
     await _db.collection(kCompanyCol).doc(uid).update(company.toMap());
   }
