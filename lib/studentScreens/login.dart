@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // مهم لمسك FirebaseAuthException
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/authService.dart';
 import 'StudentProfilePage.dart';
 import 'studentViewProfile.dart';
@@ -16,6 +16,9 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
+  // =======================
+  // Controllers & Service
+  // =======================
   final _idController = TextEditingController();
   final _passwordController = TextEditingController();
   final AuthService _authService = AuthService();
@@ -23,10 +26,12 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-  String? _idError; // رسالة خطأ تحت حقل المعرّف
-  String? _pwError; // رسالة خطأ تحت حقل الباسوورد
+  String? _idError;
+  String? _pwError;
 
-  // ====== Toast (أعلى الشاشة) ======
+  // =======================
+  // Toast Setup
+  // =======================
   OverlayEntry? _toastEntry;
   late final AnimationController _toastController = AnimationController(
     vsync: this,
@@ -48,7 +53,6 @@ class _LoginScreenState extends State<LoginScreen>
 
     _toastEntry = OverlayEntry(
       builder: (overlayContext) {
-        // final topSafe = MediaQuery.of(context).padding.top;
         final topSafe = MediaQuery.of(overlayContext).padding.top;
         return Positioned(
           top: 0,
@@ -62,10 +66,8 @@ class _LoginScreenState extends State<LoginScreen>
                 color: Colors.transparent,
                 child: Container(
                   margin: EdgeInsets.only(top: topSafe > 0 ? 0 : 12),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFFF99D46), Color(0xFFD64483)],
@@ -82,9 +84,7 @@ class _LoginScreenState extends State<LoginScreen>
                         child: Text(
                           message,
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
+                              color: Colors.white, fontWeight: FontWeight.w600),
                         ),
                       ),
                       GestureDetector(
@@ -107,10 +107,7 @@ class _LoginScreenState extends State<LoginScreen>
     overlay.insert(_toastEntry!);
     await _toastController.forward();
     Future.delayed(duration, () async {
-      if (!mounted) {
-        _hideTopToast();
-        return;
-      }
+      if (!mounted) return;
       await _toastController.reverse();
       _hideTopToast();
     });
@@ -130,7 +127,9 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  // ====== Validators ======
+  // =======================
+  // Validators
+  // =======================
   final RegExp _emailRegex = RegExp(
     r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
     caseSensitive: false,
@@ -171,7 +170,9 @@ class _LoginScreenState extends State<LoginScreen>
     return null;
   }
 
-  // ====== مطابقة أخطاء Firebase/الخدمة إلى رسائل الـ UI ======
+  // =======================
+  // Map Auth Errors
+  // =======================
   String _mapAuthError(dynamic error) {
     if (error is FirebaseAuthException) {
       final code = error.code.toLowerCase();
@@ -184,16 +185,14 @@ class _LoginScreenState extends State<LoginScreen>
       if (code == 'user-not-found' || code == 'user-disabled') {
         return "User not found";
       }
-      if (code == 'invalid-email') {
-        return "Invalid email format";
-      }
+      if (code == 'invalid-email') return "Invalid email format";
       if (code == 'too-many-requests') {
         return "Too many attempts. Please try again later.";
       }
       if (code == 'network-request-failed') {
         return "Network error. Check your connection.";
       }
-      return "Login failed. Please try again.";
+      return error.message ?? "";
     }
 
     final m = error.toString().toLowerCase();
@@ -217,10 +216,12 @@ class _LoginScreenState extends State<LoginScreen>
       return "Network error. Check your connection.";
     }
 
-    return "Login failed. Please try again.";
+    return "";
   }
 
-  // ====== Login (✅ MODIFIED) ======
+  // =======================
+  // Login
+  // =======================
   Future<void> _login() async {
     final idRaw = _idController.text;
     final pwRaw = _passwordController.text;
@@ -230,13 +231,8 @@ class _LoginScreenState extends State<LoginScreen>
 
     if (idErr != null || pwErr != null) {
       _setErrors(idError: idErr, pwError: pwErr);
-      // نفس سلوك التوست كما بالصورة (يطلع بالرسالة نفسها)
       if (mounted) {
-        if (idErr != null && pwErr != null) {
-          _showTopToast("Please enter username/email and password");
-        } else {
-          _showTopToast(idErr ?? pwErr!);
-        }
+        _showTopToast(idErr ?? pwErr!);
       }
       return;
     }
@@ -254,48 +250,37 @@ class _LoginScreenState extends State<LoginScreen>
           : idRaw.trim();
       final normalizedPw = pwRaw.trim();
 
-      // The result is now a Map containing user type and verification status
       final loginResult = await _authService.login(normalizedId, normalizedPw);
       final String userType = loginResult['userType'];
       final bool isVerified = loginResult['isVerified'];
 
       if (!mounted) return;
+
+      // توست ترحيبي
       _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
-      _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
+
       if (userType == 'student') {
-        _showTopToast("Welcome Student!", icon: Icons.check_circle_outline);
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => StudentViewProfile()),
         );
       } else if (userType == 'company') {
-        _showTopToast("Welcome Company!", icon: Icons.check_circle_outline);
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const CompanyHomePage()),
         );
-      } else {
-        _showTopToast(
-          "Login failed. User type not recognized.",
-          icon: Icons.error_outline,
-        );
-        return;
       }
 
-      // Show the initial "Welcome back!" message
-      _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
-
-      // THEN, if the user is a company and not verified, show a follow-up warning
+      // حالة الشركات غير verified
       if (userType == 'company' && !isVerified) {
-        // We use a small delay so the user sees the welcome message first
         Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted) {
             _showTopToast(
               "Please check your inbox to verify your email.",
               icon: Icons.warning_amber_rounded,
-              duration: const Duration(seconds: 5), // Make it last longer
+              duration: const Duration(seconds: 5),
             );
           }
         });
@@ -304,13 +289,11 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
       print('Login Error Details: $e');
 
-      // Specifically handle the verification error for students
       String errorString = e.toString();
       if (errorString.contains('Please verify your email address first')) {
         _setErrors(idError: "Email not verified.");
         _showTopToast("Please verify your email address first.");
       } else {
-        // Handle other general errors
         final mappedMsg = _mapAuthError(e);
         if (mappedMsg == "Incorrect password") {
           _setErrors(pwError: mappedMsg);
@@ -318,21 +301,21 @@ class _LoginScreenState extends State<LoginScreen>
             mappedMsg == "Invalid email format") {
           _setErrors(idError: mappedMsg);
         }
-        _showTopToast(mappedMsg);
+        if (mappedMsg.isNotEmpty) _showTopToast(mappedMsg);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // ====== Borders ======
+  // =======================
+  // Borders
+  // =======================
   InputBorder _fieldBorder(bool hasError) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(
-        color: hasError ? Colors.red.shade400 : Colors.transparent,
-        width: hasError ? 1.2 : 0,
-      ),
+      borderSide:
+          BorderSide(color: hasError ? Colors.red.shade400 : Colors.transparent, width: hasError ? 1.2 : 0),
     );
   }
 
@@ -345,7 +328,9 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  // ====== UI ======
+  // =======================
+  // UI
+  // =======================
   @override
   Widget build(BuildContext context) {
     final idHasError = _idError != null && _idError!.isNotEmpty;
@@ -383,16 +368,11 @@ class _LoginScreenState extends State<LoginScreen>
                 controller: _idController,
                 decoration: InputDecoration(
                   hintText: "Username or Email",
-                  prefixIcon: const Icon(
-                    Icons.person_outline,
-                    color: Colors.grey,
-                  ),
+                  prefixIcon: const Icon(Icons.person_outline, color: Colors.grey),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 15,
-                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                   border: _fieldBorder(idHasError),
                   enabledBorder: _fieldBorder(idHasError),
                   focusedBorder: _fieldBorder(idHasError),
@@ -422,26 +402,20 @@ class _LoginScreenState extends State<LoginScreen>
                 obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   hintText: "Password",
-                  prefixIcon: const Icon(
-                    Icons.lock_outline,
-                    color: Colors.grey,
-                  ),
+                  prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 15,
-                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                   border: _fieldBorder(pwHasError),
                   enabledBorder: _fieldBorder(pwHasError),
                   focusedBorder: _fieldBorder(pwHasError),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      color: Colors.grey,
-                    ),
+                        _obscurePassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: Colors.grey),
                     onPressed: () =>
                         setState(() => _obscurePassword = !_obscurePassword),
                   ),
@@ -465,7 +439,7 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               const SizedBox(height: 22),
 
-              // === Log In button with gradient ===
+              // Login Button
               SizedBox(
                 width: double.infinity,
                 child: AnimatedOpacity(
@@ -490,7 +464,7 @@ class _LoginScreenState extends State<LoginScreen>
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent, // مهم للتدرّج
+                        backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
                         padding: const EdgeInsets.symmetric(vertical: 18),
                         shape: RoundedRectangleBorder(
@@ -565,7 +539,7 @@ class _LoginScreenState extends State<LoginScreen>
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF6B4791),
                   ),
-                ),
+                ), 
               ),
             ],
           ),
