@@ -1,4 +1,4 @@
-// AuthService.dart - FULL MODIFIED WITH DETAILED ERRORS (No generic "Login failed")
+// AuthService.dart - MODIFIED FOR COMPANY EMAIL-ONLY LOGIN
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -182,16 +182,18 @@ class AuthService {
     final raw = identifier.trim();
     if (raw.isEmpty) throw Exception("Please enter a username or email.");
 
+    // If the identifier contains '@', it's an email. This works for both students and companies.
     if (raw.contains('@')) {
       final email = _normalizeEmail(raw);
       if (!_emailRegex.hasMatch(email)) throw Exception("Invalid email format.");
       return email;
     }
 
+    // If it does NOT contain '@', assume it's a student's username.
     final uname = _normalizeUsername(raw);
 
     try {
-      // Check student collection
+      // Check student collection for the username
       final studentSnap = await _db.collection(kStudentCol)
           .where('username_lower', isEqualTo: uname)
           .limit(1)
@@ -202,30 +204,8 @@ class AuthService {
         if (email.isEmpty || !_emailRegex.hasMatch(email)) throw Exception("User record is missing an email");
         return email;
       }
-
-      // Check company collection
-      final companySnap = await _db.collection(kCompanyCol)
-          .where('username_lower', isEqualTo: uname)
-          .limit(1)
-          .get();
-
-      if (companySnap.docs.isNotEmpty) {
-        final email = _normalizeEmail((companySnap.docs.first.data()['email'] as String?) ?? '');
-        if (email.isEmpty || !_emailRegex.hasMatch(email)) throw Exception("Company record is missing a valid email");
-        return email;
-      }
-
-      // Fallback exact username match for companies
-      final altCompanySnap = await _db.collection(kCompanyCol)
-          .where('username', isEqualTo: raw)
-          .limit(1)
-          .get();
-
-      if (altCompanySnap.docs.isNotEmpty) {
-        final email = _normalizeEmail((altCompanySnap.docs.first.data()['email'] as String?) ?? '');
-        if (email.isEmpty || !_emailRegex.hasMatch(email)) throw Exception("Company record is missing a valid email");
-        return email;
-      }
+      
+      // ✅ MODIFICATION: The logic to check for a company name has been completely removed.
 
     } on FirebaseException catch (e) {
       if (e.code == 'permission-denied') {
@@ -233,8 +213,10 @@ class AuthService {
       }
       rethrow;
     }
-
-    throw Exception("User not found");
+    
+    // If it's not a valid email and not a student username, throw an error.
+    // This will be caught by the login screen and show the generic "Wrong email/username or password" message.
+    throw FirebaseAuthException(code: 'invalid-credential');
   }
 
   // ------------------------------
@@ -254,7 +236,7 @@ class AuthService {
     final studentDoc = await _db.collection(kStudentCol).doc(user.uid).get();
     if (studentDoc.exists) {
       await user.reload();
-      if (!user.emailVerified) throw Exception('Please verify your email address first.');
+      if (!user.emailVerified) throw FirebaseAuthException(code: 'email-not-verified');
       if (studentDoc.data()?['isVerified'] != true) {
         await updateVerificationStatus(user.uid, true);
       }
@@ -302,7 +284,7 @@ class AuthService {
   }
 
   // ------------------------------
-  // Ghaida!1Get/Update Students & Companies
+  // Get/Update Students & Companies 
   // ------------------------------
   Future<Student?> getStudent(String uid) async {
     final doc = await _db.collection(kStudentCol).doc(uid).get();

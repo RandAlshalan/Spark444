@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geocoding/geocoding.dart';
 // --- ADDED: Import for date formatting ---
 import 'package:intl/intl.dart';
 import 'package:my_app/studentScreens/login.dart';
@@ -40,6 +38,21 @@ class PhoneNumberFormatter extends TextInputFormatter {
   }
 }
 
+final List<String> locations = [
+  'Riyadh, Saudi Arabia',
+  'Jeddah, Saudi Arabia',
+  'Dammam, Saudi Arabia',
+  'Mecca, Saudi Arabia',
+  'Medina, Saudi Arabia',
+  'Abha, Saudi Arabia',
+  'Al-Khobar, Saudi Arabia',
+];
+
+// افترض أن هذه المتغيرات معرفة في الكود عندك
+final TextEditingController _locationController = TextEditingController();
+const Color primaryColor = Colors.blue;
+const Color secondaryColor = Colors.grey;
+const Color backgroundColor = Colors.white;
 
 class StudentSignup extends StatefulWidget {
   const StudentSignup({super.key});
@@ -202,76 +215,57 @@ class _StudentSignupState extends State<StudentSignup> {
   }
 
   Future<void> _selectLocation() async {
-    const LatLng initialLocation = LatLng(24.7136, 46.6753); // Riyadh
-    String? finalSelectedLocationName;
 
     await showDialog(
       context: context,
-      builder: (BuildContext context) {
-        final Set<Marker> markers = {};
-        final Completer<GoogleMapController> _controller = Completer();
-        return AlertDialog(
-          backgroundColor: backgroundColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Select Location', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
-          content: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return SizedBox(
-                width: MediaQuery.of(context).size.width * 0.9,
-                height: MediaQuery.of(context).size.height * 0.6,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(15),
-                  child: GoogleMap(
-                    initialCameraPosition: const CameraPosition(target: initialLocation, zoom: 10),
-                    markers: markers,
-                    onTap: (latLng) async {
-                      setState(() {
-                        markers.clear();
-                        markers.add(Marker(markerId: const MarkerId('selected-location'), position: latLng));
-                      });
-                      try {
-                        List<Placemark> placemarks = await placemarkFromCoordinates(
-                          latLng.latitude, latLng.longitude,
-                          localeIdentifier: "en_US",
-                        );
-                        if (placemarks.isNotEmpty) {
-                          final p = placemarks.first;
-                          final city = p.locality ?? p.subAdministrativeArea;
-                          final country = p.country;
-                          finalSelectedLocationName = '${city ?? ''}, ${country ?? ''}'.trim().replaceAll(RegExp(r'^, |,$'), '');
-                        } else {
-                          finalSelectedLocationName = "Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}";
-                        }
-                      } catch (e) {
-                        finalSelectedLocationName = "Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}";
-                      }
-                    },
-                    onMapCreated: (GoogleMapController controller) {
-                      _controller.complete(controller);
-                    },
-                  ),
-                ),
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              child: const Text('Cancel', style: TextStyle(color: secondaryColor, fontWeight: FontWeight.bold)),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
-              onPressed: () {
-                if (finalSelectedLocationName != null) {
-                  _locationController.text = finalSelectedLocationName!;
-                }
-                Navigator.of(context).pop();
-              },
-              child: const Text('Confirm', style: TextStyle(color: Colors.white)),
-            ),
-          ],
+builder: (BuildContext context) {
+  // متغير لتخزين الاختيار داخل مربع الحوار فقط 
+  String? selectedLocationInDialog;
+
+  return AlertDialog(
+    backgroundColor: backgroundColor,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    title: const Text('Select Location', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+    content: StatefulBuilder(
+      builder: (BuildContext context, StateSetter setState) {
+        // تم استبدال الخريطة بقائمة منسدلة
+        return DropdownButton<String>(
+          hint: const Text('Choose a city'),
+          value: selectedLocationInDialog,
+          isExpanded: true,
+          items: locations.map((String location) {
+            return DropdownMenuItem<String>(
+              value: location,
+              child: Text(location),
+            );
+          }).toList(),
+          onChanged: (String? newValue) {
+            setState(() {
+              selectedLocationInDialog = newValue;
+            });
+          },
         );
       },
+    ),
+    actions: [
+      TextButton(
+        child: const Text('Cancel', style: TextStyle(color: secondaryColor, fontWeight: FontWeight.bold)),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      ElevatedButton(
+        style: ElevatedButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+        onPressed: () {
+          // عند الضغط على تأكيد، يتم تحديث المتحكم بالقيمة المختارة
+          if (selectedLocationInDialog != null) {
+            _locationController.text = selectedLocationInDialog!;
+          }
+          Navigator.of(context).pop();
+        },
+        child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+      ),
+    ],
+  );
+},
     );
   }
 
