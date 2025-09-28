@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/authService.dart';
-import 'StudentProfilePage.dart';
-import 'studentViewProfile.dart';
-import 'welcomeScreen.dart';
-import 'forgotPasswordScreen.dart';
+import '../studentScreens/studentViewProfile.dart';
 import '../companyScreens/companyHomePage.dart';
+import 'forgotPasswordScreen.dart';
+import 'welcomeScreen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,9 +15,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
-  // =======================
-  // Controllers & Service
-  // =======================
   final _idController = TextEditingController();
   final _passwordController = TextEditingController();
   final AuthService _authService = AuthService();
@@ -29,9 +25,6 @@ class _LoginScreenState extends State<LoginScreen>
   String? _idError;
   String? _pwError;
 
-  // =======================
-  // Toast Setup
-  // =======================
   OverlayEntry? _toastEntry;
   late final AnimationController _toastController = AnimationController(
     vsync: this,
@@ -50,7 +43,6 @@ class _LoginScreenState extends State<LoginScreen>
     _hideTopToast();
     if (!mounted) return;
     final overlay = Overlay.of(context);
-
     _toastEntry = OverlayEntry(
       builder: (overlayContext) {
         final topSafe = MediaQuery.of(overlayContext).padding.top;
@@ -103,7 +95,6 @@ class _LoginScreenState extends State<LoginScreen>
         );
       },
     );
-
     overlay.insert(_toastEntry!);
     await _toastController.forward();
     Future.delayed(duration, () async {
@@ -119,109 +110,54 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _setErrors({String? idError, String? pwError}) {
-    if (mounted) {
-      setState(() {
-        _idError = idError;
-        _pwError = pwError;
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _idError = idError;
+      _pwError = pwError;
+    });
   }
 
-  // =======================
-  // Validators
-  // =======================
-  final RegExp _emailRegex = RegExp(
-    r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
-    caseSensitive: false,
-  );
-
-  bool _looksLikeEmailWithoutAt(String s) {
-    final t = s.trim();
-    if (t.isEmpty || t.contains('@') || t.contains(' ')) return false;
-    final parts = t.split('.');
-    if (parts.length >= 2) {
-      final last = parts.last;
-      if (RegExp(r'^[A-Za-z]{2,10}$').hasMatch(last)) return true;
-    }
-    if (RegExp(r'\.[A-Za-z]{2,10}\.[A-Za-z]{2,10}$').hasMatch(t)) return true;
-    return false;
-  }
+  final RegExp _emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
 
   String? _validateIdentifier(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return "Please enter username/email";
-
-    if (trimmed.contains('@')) {
-      final normalized = trimmed.replaceAll(' ', '');
-      if (!_emailRegex.hasMatch(normalized)) return "Invalid email format";
-      return null;
-    } else {
-      if (_looksLikeEmailWithoutAt(trimmed)) return "Invalid email format";
-      if (trimmed.contains(' ')) return "Please enter username/email";
-      if (trimmed.length < 3) return "Please enter username/email";
-      return null;
+    if (trimmed.contains('@') && !_emailRegex.hasMatch(trimmed)) {
+      return "Invalid email format";
     }
+    // The "Username too short" validation has been removed.
+    return null;
   }
 
   String? _validatePassword(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return "Please enter password";
-    if (trimmed.length < 6) return "Please enter password";
+    // The "Password too short" validation has been removed.
     return null;
   }
 
-  // =======================
-  // Map Auth Errors
-  // =======================
   String _mapAuthError(dynamic error) {
     if (error is FirebaseAuthException) {
-      final code = error.code.toLowerCase();
-      if (code == 'wrong-password' ||
-          code == 'invalid-credential' ||
-          code == 'invalid-credentials' ||
-          code == 'invalid-password') {
-        return "Incorrect password";
+      switch (error.code.toLowerCase()) {
+        // ✅ MODIFIED: Handles new generic Firebase error
+        case 'invalid-credential':
+          return "Wrong email/username or password";
+        
+        case 'invalid-email':
+          return "Invalid email format";
+        case 'email-not-verified':
+          return "Email not verified";
+        case 'too-many-requests':
+          return "Too many attempts. Try later";
+        case 'network-request-failed':
+          return "Network error. Check connection";
+        default:
+          return error.message ?? "Login failed";
       }
-      if (code == 'user-not-found' || code == 'user-disabled') {
-        return "User not found";
-      }
-      if (code == 'invalid-email') return "Invalid email format";
-      if (code == 'too-many-requests') {
-        return "Too many attempts. Please try again later.";
-      }
-      if (code == 'network-request-failed') {
-        return "Network error. Check your connection.";
-      }
-      return error.message ?? "";
     }
-
-    final m = error.toString().toLowerCase();
-
-    if (m.contains('wrong-password') || m.contains('invalid-credential')) {
-      return "Incorrect password";
-    }
-
-    if (m.contains('user-not-found') || m.contains('no user record')) {
-      return "User not found";
-    }
-
-    if (m.contains('invalid email') || m.contains('badly formatted')) {
-      return "Invalid email format";
-    }
-
-    if (m.contains('too-many-requests')) {
-      return "Too many attempts. Please try again later.";
-    }
-    if (m.contains('network')) {
-      return "Network error. Check your connection.";
-    }
-
-    return "";
+    return error.toString();
   }
 
-  // =======================
-  // Login
-  // =======================
   Future<void> _login() async {
     final idRaw = _idController.text;
     final pwRaw = _passwordController.text;
@@ -231,91 +167,62 @@ class _LoginScreenState extends State<LoginScreen>
 
     if (idErr != null || pwErr != null) {
       _setErrors(idError: idErr, pwError: pwErr);
-      if (mounted) {
-        _showTopToast(idErr ?? pwErr!);
-      }
+      _showTopToast(idErr ?? pwErr!);
       return;
     }
 
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-        _setErrors(idError: null, pwError: null);
-      });
-    }
+    setState(() {
+      _isLoading = true;
+      _setErrors(idError: null, pwError: null);
+    });
 
     try {
-      final normalizedId = idRaw.trim().contains('@')
-          ? idRaw.trim().replaceAll(' ', '')
-          : idRaw.trim();
-      final normalizedPw = pwRaw.trim();
+      final loginResult =
+          await _authService.login(idRaw.trim(), pwRaw.trim());
 
-      final loginResult = await _authService.login(normalizedId, normalizedPw);
       final String userType = loginResult['userType'];
       final bool isVerified = loginResult['isVerified'];
 
-      if (!mounted) return;
-
-      // توست ترحيبي
       _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
 
       if (userType == 'student') {
-        if (!mounted) return;
         Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => StudentViewProfile()),
-        );
+            context,
+            MaterialPageRoute(
+                builder: (context) => const StudentViewProfile()));
       } else if (userType == 'company') {
-        if (!mounted) return;
         Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const CompanyHomePage()),
-        );
-      }
-
-      // حالة الشركات غير verified
-      if (userType == 'company' && !isVerified) {
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) {
+            context,
+            MaterialPageRoute(
+                builder: (context) => const CompanyHomePage()));
+        if (!isVerified) {
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (!mounted) return;
             _showTopToast(
-              "Please check your inbox to verify your email.",
+              "Please verify your email",
               icon: Icons.warning_amber_rounded,
-              duration: const Duration(seconds: 5),
+              duration: const Duration(seconds: 4),
             );
-          }
-        });
+          });
+        }
       }
     } catch (e) {
-      if (!mounted) return;
-      print('Login Error Details: $e');
-
-      String errorString = e.toString();
-      if (errorString.contains('Please verify your email address first')) {
-        _setErrors(idError: "Email not verified.");
-        _showTopToast("Please verify your email address first.");
-      } else {
-        final mappedMsg = _mapAuthError(e);
-        if (mappedMsg == "Incorrect password") {
-          _setErrors(pwError: mappedMsg);
-        } else if (mappedMsg == "User not found" ||
-            mappedMsg == "Invalid email format") {
-          _setErrors(idError: mappedMsg);
-        }
-        if (mappedMsg.isNotEmpty) _showTopToast(mappedMsg);
-      }
+      final mappedMsg = _mapAuthError(e);
+      // Since the error message is now generic, we can't be sure which field is wrong.
+      // So, we'll just show the toast without highlighting a specific field.
+      // You could optionally highlight both fields if you prefer.
+      _setErrors(pwError: " ", idError: " "); // Add a space to trigger the red border without text
+      _showTopToast(mappedMsg);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // =======================
-  // Borders
-  // =======================
   InputBorder _fieldBorder(bool hasError) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide:
-          BorderSide(color: hasError ? Colors.red.shade400 : Colors.transparent, width: hasError ? 1.2 : 0),
+          BorderSide(color: hasError ? Colors.red : Colors.transparent),
     );
   }
 
@@ -328,13 +235,10 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  // =======================
-  // UI
-  // =======================
   @override
   Widget build(BuildContext context) {
-    final idHasError = _idError != null && _idError!.isNotEmpty;
-    final pwHasError = _pwError != null && _pwError!.isNotEmpty;
+    final idHasError = _idError != null;
+    final pwHasError = _pwError != null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F4F0),
@@ -348,21 +252,18 @@ class _LoginScreenState extends State<LoginScreen>
               const Text(
                 "SPARK",
                 style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF422F5D),
-                ),
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF422F5D)),
               ),
               const Text(
                 "Ignite your future",
                 style: TextStyle(
-                  color: Color(0xFFF99D46),
-                  fontStyle: FontStyle.italic,
-                  fontSize: 14,
-                ),
+                    color: Color(0xFFF99D46),
+                    fontStyle: FontStyle.italic,
+                    fontSize: 14),
               ),
               const SizedBox(height: 30),
-
               // Identifier
               TextField(
                 controller: _idController,
@@ -379,23 +280,21 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
                 onChanged: (_) => _setErrors(idError: null),
               ),
-              if (idHasError)
+              if (idHasError && _idError!.isNotEmpty && _idError != " ")
                 Padding(
                   padding: const EdgeInsets.only(top: 6, left: 8),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       _idError!,
-                      style: TextStyle(
-                        color: Colors.red.shade600,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: const TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500),
                     ),
                   ),
                 ),
               const SizedBox(height: 12),
-
               // Password
               TextField(
                 controller: _passwordController,
@@ -412,135 +311,83 @@ class _LoginScreenState extends State<LoginScreen>
                   focusedBorder: _fieldBorder(pwHasError),
                   suffixIcon: IconButton(
                     icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                        color: Colors.grey),
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: Colors.grey,
+                    ),
                     onPressed: () =>
                         setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
                 onChanged: (_) => _setErrors(pwError: null),
               ),
-              if (pwHasError)
+              if (pwHasError && _pwError!.isNotEmpty && _pwError != " ")
                 Padding(
                   padding: const EdgeInsets.only(top: 6, left: 8),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       _pwError!,
-                      style: TextStyle(
-                        color: Colors.red.shade600,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: const TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500),
                     ),
                   ),
                 ),
               const SizedBox(height: 22),
-
-              // Login Button
+              // Log In Button
               SizedBox(
                 width: double.infinity,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 150),
-                  opacity: _isLoading ? 0.85 : 1.0,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFF99D46), Color(0xFFD64483)],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.12),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _login,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Log In',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                    ),
-                  ),
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _login,
+                  style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30)),
+                      backgroundColor: const Color(0xFFD64483)),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ))
+                      : const Text('Log In',
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white)),
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Forgot Password
-              Center(
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const ForgotPasswordScreen(),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 20,
-                    ),
-                    child: const Text(
-                      "Forgot Password?",
-                      style: TextStyle(
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (context) => const ForgotPasswordScreen()));
+                },
+                child: const Text("Forgot Password?",
+                    style: TextStyle(
                         color: Color(0xFF6B4791),
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                ),
+                        decoration: TextDecoration.underline)),
               ),
               const SizedBox(height: 22),
-
               TextButton(
-                onPressed: () {
-                  if (!mounted) return;
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (context) => const WelcomeScreen(),
-                    ),
-                    (route) => false,
-                  );
-                },
-                child: const Text(
-                  "Back to Welcome Page",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF6B4791),
-                  ),
-                ), 
-              ),
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                            builder: (context) => const WelcomeScreen()),
+                        (route) => false);
+                  },
+                  child: const Text(
+                    "Back to Welcome Page",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Color(0xFF6B4791)),
+                  )),
             ],
           ),
         ),
