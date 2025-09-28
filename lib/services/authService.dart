@@ -35,6 +35,7 @@ class AuthService {
     try {
       DocumentSnapshot uniDoc = await _db.collection('lists').doc('universities').get();
       DocumentSnapshot majorDoc = await _db.collection('lists').doc('majors').get();
+      DocumentSnapshot cityDoc = await _db.collection('lists').doc('city').get();
 
       final List<String> universities = uniDoc.exists
           ? List<String>.from((uniDoc.data() as Map<String, dynamic>)['names'] ?? [])
@@ -43,11 +44,14 @@ class AuthService {
       final List<String> majors = majorDoc.exists
           ? List<String>.from((majorDoc.data() as Map<String, dynamic>)['names'] ?? [])
           : [];
+      final List<String> city = cityDoc.exists
+          ? List<String>.from((cityDoc.data() as Map<String, dynamic>)['names'] ?? [])
+          : [];
 
-      return {'universities': universities, 'majors': majors};
+      return {'universities': universities, 'majors': majors, 'cities': city};
     } catch (e) {
       print("Error fetching lists: $e");
-      return {'universities': [], 'majors': []};
+      return {'universities': [], 'majors': [], 'cities': []};
     }
   }
 

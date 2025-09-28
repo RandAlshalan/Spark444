@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// --- ADDED: Import for date formatting ---
 import 'package:intl/intl.dart';
 import 'package:my_app/studentScreens/login.dart';
 import 'package:my_app/studentScreens/studentEmailVerification.dart';
@@ -9,7 +8,7 @@ import 'package:my_app/studentScreens/welcomeScreen.dart';
 import '../models/student.dart';
 import '../services/authService.dart';
 
-// --- MODIFICATION 3: Custom formatter for phone number spacing ---
+// --- Custom formatter for phone number spacing ---
 class PhoneNumberFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
@@ -38,22 +37,6 @@ class PhoneNumberFormatter extends TextInputFormatter {
   }
 }
 
-final List<String> locations = [
-  'Riyadh, Saudi Arabia',
-  'Jeddah, Saudi Arabia',
-  'Dammam, Saudi Arabia',
-  'Mecca, Saudi Arabia',
-  'Medina, Saudi Arabia',
-  'Abha, Saudi Arabia',
-  'Al-Khobar, Saudi Arabia',
-];
-
-// افترض أن هذه المتغيرات معرفة في الكود عندك
-final TextEditingController _locationController = TextEditingController();
-const Color primaryColor = Colors.blue;
-const Color secondaryColor = Colors.grey;
-const Color backgroundColor = Colors.white;
-
 class StudentSignup extends StatefulWidget {
   const StudentSignup({super.key});
 
@@ -65,9 +48,10 @@ class _StudentSignupState extends State<StudentSignup> {
   final _formKey = GlobalKey<FormState>();
   final AuthService _authService = AuthService();
 
-  // --- ADDED: Variables to hold lists from Firestore ---
+  // --- Lists from Firestore ---
   List<String> _universitiesList = [];
   List<String> _majorsList = [];
+  List<String> _locationsList = []; 
   late Future<void> _loadListsFuture;
 
   // Controllers
@@ -81,16 +65,17 @@ class _StudentSignupState extends State<StudentSignup> {
   final TextEditingController _graduationController = TextEditingController();
   final TextEditingController _gpaController = TextEditingController();
   final TextEditingController _skillsController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
-  // --- ADDED: Controllers for the "Other" fields ---
   final TextEditingController _otherUniversityController = TextEditingController();
   final TextEditingController _otherMajorController = TextEditingController();
+  final TextEditingController _otherLocationController = TextEditingController();
 
   // State
   String? _selectedUniversity;
   String? _selectedMajor;
   String? _gpaScale;
   String? _selectedLevel;
+  String? _selectedLocation;
+
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -108,7 +93,7 @@ class _StudentSignupState extends State<StudentSignup> {
   bool _is8CharsLong = false;
   bool get _isPasswordValid => _is8CharsLong && _hasUppercase && _hasLowercase && _hasNumber && _hasSymbol;
 
-  // --- ADDED: State for async username validation ---
+  // Async username validation State
   bool _isCheckingUsername = false;
 
   final List<String> _universityDomains = [
@@ -124,6 +109,7 @@ class _StudentSignupState extends State<StudentSignup> {
   Timer? _debounce;
   final FocusNode _passwordFocusNode = FocusNode();
   
+  // --- Centralized color constants ---
   static const Color primaryColor = Color(0xFF422F5D);
   static const Color secondaryColor = Color(0xFFF99D46);
   static const Color backgroundColor = Color(0xFFF7F4F0);
@@ -131,7 +117,6 @@ class _StudentSignupState extends State<StudentSignup> {
   @override
   void initState() {
     super.initState();
-    // --- ADDED: Start fetching lists when the screen loads ---
     _loadListsFuture = _loadLists();
 
     _emailController.addListener(_validateEmailDomain);
@@ -143,13 +128,13 @@ class _StudentSignupState extends State<StudentSignup> {
     });
   }
 
-  // --- ADDED: New function to load lists from AuthService and add "Other" option ---
   Future<void> _loadLists() async {
     final lists = await _authService.getUniversitiesAndMajors();
     if (mounted) {
       setState(() {
         _universitiesList = ["Other", ...lists['universities'] ?? []];
         _majorsList = ["Other", ...lists['majors'] ?? []];
+        _locationsList = ["Other", ...lists['cities'] ?? []]; 
       });
     }
   }
@@ -169,10 +154,9 @@ class _StudentSignupState extends State<StudentSignup> {
     _graduationController.dispose();
     _gpaController.dispose();
     _skillsController.dispose();
-    _locationController.dispose();
-    // --- ADDED: Dispose new controllers ---
     _otherUniversityController.dispose();
     _otherMajorController.dispose();
+    _otherLocationController.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -213,62 +197,7 @@ class _StudentSignupState extends State<StudentSignup> {
       _selectedSkills.remove(skill);
     });
   }
-
-  Future<void> _selectLocation() async {
-
-    await showDialog(
-      context: context,
-builder: (BuildContext context) {
-  // متغير لتخزين الاختيار داخل مربع الحوار فقط 
-  String? selectedLocationInDialog;
-
-  return AlertDialog(
-    backgroundColor: backgroundColor,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    title: const Text('Select Location', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
-    content: StatefulBuilder(
-      builder: (BuildContext context, StateSetter setState) {
-        // تم استبدال الخريطة بقائمة منسدلة
-        return DropdownButton<String>(
-          hint: const Text('Choose a city'),
-          value: selectedLocationInDialog,
-          isExpanded: true,
-          items: locations.map((String location) {
-            return DropdownMenuItem<String>(
-              value: location,
-              child: Text(location),
-            );
-          }).toList(),
-          onChanged: (String? newValue) {
-            setState(() {
-              selectedLocationInDialog = newValue;
-            });
-          },
-        );
-      },
-    ),
-    actions: [
-      TextButton(
-        child: const Text('Cancel', style: TextStyle(color: secondaryColor, fontWeight: FontWeight.bold)),
-        onPressed: () => Navigator.of(context).pop(),
-      ),
-      ElevatedButton(
-        style: ElevatedButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
-        onPressed: () {
-          // عند الضغط على تأكيد، يتم تحديث المتحكم بالقيمة المختارة
-          if (selectedLocationInDialog != null) {
-            _locationController.text = selectedLocationInDialog!;
-          }
-          Navigator.of(context).pop();
-        },
-        child: const Text('Confirm', style: TextStyle(color: Colors.white)),
-      ),
-    ],
-  );
-},
-    );
-  }
-
+  
   Future<bool> _showManualReviewDialog() async {
     bool proceed = false;
     await showDialog(
@@ -294,7 +223,6 @@ builder: (BuildContext context) {
     return proceed;
   }
   
-  // --- IMPROVEMENT 1: Added a function for the Graduation Date Picker ---
   Future<void> _selectGraduationDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -302,18 +230,17 @@ builder: (BuildContext context) {
       firstDate: DateTime(DateTime.now().year),
       lastDate: DateTime(DateTime.now().year + 10),
       initialDatePickerMode: DatePickerMode.year,
-       // --- STYLING: You can add builder to style the date picker to match your theme ---
-      builder: (context, child) {
+       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: primaryColor, // header background color
-              onPrimary: Colors.white, // header text color
-              onSurface: Colors.black, // body text color
+              primary: primaryColor,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
-                foregroundColor: secondaryColor, // button text color
+                foregroundColor: secondaryColor,
               ),
             ),
           ),
@@ -323,7 +250,6 @@ builder: (BuildContext context) {
     );
     if (picked != null) {
       setState(() {
-        // Format date to "Month YYYY" e.g., "September 2025"
         _graduationController.text = DateFormat('MMMM yyyy').format(picked);
       });
     }
@@ -357,13 +283,15 @@ builder: (BuildContext context) {
     setState(() => _isLoading = true);
 
     try {
-      // --- MODIFIED: Handle "Other" values before creating the Student object ---
       final String finalUniversity = _selectedUniversity == 'Other'
           ? _otherUniversityController.text.trim()
           : _selectedUniversity!;
       final String finalMajor = _selectedMajor == 'Other'
           ? _otherMajorController.text.trim()
           : _selectedMajor!;
+      final String finalLocation = _selectedLocation == 'Other'
+          ? _otherLocationController.text.trim()
+          : _selectedLocation!;
 
       final student = Student(
         email: _emailController.text.trim(),
@@ -372,14 +300,13 @@ builder: (BuildContext context) {
         lastName: _lastNameController.text.trim(),
         university: finalUniversity,
         major: finalMajor,
-        // --- MODIFICATION 3: Also remove spaces here before saving ---
         phoneNumber: "+966${_phoneController.text.trim().replaceAll(' ', '')}",
         userType: 'student',
         level: _selectedLevel,
         expectedGraduationDate: _graduationController.text.isNotEmpty ? _graduationController.text.trim() : null,
         gpa: _gpaController.text.isNotEmpty ? double.tryParse(_gpaController.text.trim()) : null,
         skills: _selectedSkills,
-        location: _locationController.text.trim(),
+        location: finalLocation,
       );
 
       await _authService.signUpStudent(student, _passwordController.text.trim());
@@ -396,9 +323,10 @@ builder: (BuildContext context) {
     }
   }
 
+  // MODIFIED WIDGET: Replaced hintText with labelText
   Widget _buildStyledTextFormField({
     required TextEditingController controller,
-    required String hintText,
+    required String labelText, // Changed from hintText
     IconData? icon,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
@@ -406,7 +334,6 @@ builder: (BuildContext context) {
     Widget? suffixIcon,
     String? errorText,
     ValueChanged<String>? onChanged,
-    // --- IMPROVEMENT 2: Added onFieldSubmitted for skills input ---
     ValueChanged<String>? onFieldSubmitted,
     String? helperText,
     TextStyle? helperStyle,
@@ -432,7 +359,7 @@ builder: (BuildContext context) {
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
-          hintText: hintText,
+          labelText: labelText, // Changed from hintText
           prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -449,66 +376,41 @@ builder: (BuildContext context) {
     );
   }
   
+  // MODIFIED WIDGET: Added labelText
   Widget _buildPhoneFormField() {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: const Text(
               '+966',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black54,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54),
             ),
           ),
-          Container(
-            height: 30,
-            width: 1,
-            color: Colors.grey.shade300,
-          ),
+          Container(height: 30, width: 1, color: Colors.grey.shade300),
           Expanded(
             child: TextFormField(
               controller: _phoneController,
               keyboardType: TextInputType.phone,
-              // --- MODIFICATION 3: Apply the custom formatter ---
               inputFormatters: [
-                LengthLimitingTextInputFormatter(11), // 9 digits + 2 spaces
+                LengthLimitingTextInputFormatter(11),
                 PhoneNumberFormatter(),
               ],
-              // --- MODIFICATION 3: Update validator to handle spaces ---
               validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter phone number';
-                }
+                if (value == null || value.isEmpty) return 'Please enter phone number';
                 final digitsOnly = value.replaceAll(' ', '');
-                if (digitsOnly.length != 9) {
-                  return 'Must be 9 digits';
-                }
-                if (!digitsOnly.startsWith('5')) {
-                  return 'Must start with 5';
-                }
+                if (digitsOnly.length != 9) return 'Must be 9 digits';
+                if (!digitsOnly.startsWith('5')) return 'Must start with 5';
                 return null;
               },
               autovalidateMode: AutovalidateMode.onUserInteraction,
               decoration: const InputDecoration(
-                // --- MODIFICATION 3: Update hintText ---
-                hintText: '5X XXX XXXX',
+                labelText: 'Phone Number', // Added labelText
+                hintText: '5X XXX XXXX',   // Kept hintText for format example
+                filled: true,
+                fillColor: Colors.white,
                 border: InputBorder.none,
                 focusedBorder: InputBorder.none,
                 enabledBorder: InputBorder.none,
@@ -539,7 +441,6 @@ builder: (BuildContext context) {
   void _checkUsernameUniqueness(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () async {
-      // --- IMPROVEMENT 4: Show loading spinner ---
       if (mounted) setState(() { _isCheckingUsername = true; });
       if (_usernameError != null) {
         setState(() { _usernameError = null; });
@@ -552,14 +453,13 @@ builder: (BuildContext context) {
           });
         }
       }
-      // --- IMPROVEMENT 4: Hide loading spinner ---
       if (mounted) setState(() { _isCheckingUsername = false; });
     });
   }
 
-  // --- ADDED: A reusable widget for the searchable fields ---
+  // MODIFIED WIDGET: Replaced hintText with labelText
   Widget _buildSearchableDropdown({
-    required String hintText,
+    required String labelText, // Changed from hintText
     required String? selectedValue,
     required IconData icon,
     required VoidCallback onTap,
@@ -575,16 +475,17 @@ builder: (BuildContext context) {
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
-          hintText: hintText,
+          labelText: labelText, // Changed from hintText
           prefixIcon: Icon(icon, color: Colors.grey),
           suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF422F5D)),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF422F5D))),
         ),
       ),
     );
   }
 
-  // --- ADDED: The search dialog logic ---
   Future<void> _showSearchDialog({
     required BuildContext context,
     required List<String> items,
@@ -661,9 +562,9 @@ builder: (BuildContext context) {
   );
   }
 
-  // --- KEPT: This is needed for Step 2 ---
+  // MODIFIED WIDGET: Replaced hintText with labelText
   Widget _buildDropdownFormField({
-    required String hintText,
+    required String labelText, // Changed from hintText
     required List<String> items,
     required String? selectedValue,
     required void Function(String?) onChanged,
@@ -682,7 +583,7 @@ builder: (BuildContext context) {
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
-          hintText: hintText,
+          labelText: labelText, // Changed from hintText
           prefixIcon: Icon(icon, color: Colors.grey),
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -722,7 +623,6 @@ builder: (BuildContext context) {
     );
   }
 
-  // --- IMPROVEMENT 3: Logic and Widgets for Password Strength ---
   Widget _buildPasswordCriteriaRow(String text, bool met) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4.0),
@@ -761,8 +661,6 @@ builder: (BuildContext context) {
     return Colors.green;
   }
 
-  // --- IMPROVEMENT 5: Refactored UI into smaller builder functions ---
-
   // Builder for Step 1 Form
   Widget _buildStep1Form() {
     final passwordStrength = _calculatePasswordStrength();
@@ -770,19 +668,19 @@ builder: (BuildContext context) {
       children: [
         _buildStyledTextFormField(
           controller: _firstNameController,
-          hintText: 'First Name',
+          labelText: 'First Name',
           icon: Icons.person_outline,
           validator: (value) => value == null || value.isEmpty ? 'Please enter first name' : null,
         ),
         _buildStyledTextFormField(
           controller: _lastNameController,
-          hintText: 'Last Name',
+          labelText: 'Last Name',
           icon: Icons.person_outline,
           validator: (value) => value == null || value.isEmpty ? 'Please enter last name' : null,
         ),
         _buildStyledTextFormField(
           controller: _emailController,
-          hintText: 'University Email',
+          labelText: 'University Email',
           icon: Icons.mail_outline,
           helperText: "We will verify if it's a university email",
           helperStyle: const TextStyle(color: Colors.grey),
@@ -798,7 +696,7 @@ builder: (BuildContext context) {
         ),
         _buildStyledTextFormField(
           controller: _passwordController,
-          hintText: 'Password',
+          labelText: 'Password',
           icon: Icons.lock_outline,
           obscureText: _obscurePassword,
           focusNode: _passwordFocusNode,
@@ -812,7 +710,6 @@ builder: (BuildContext context) {
             return null;
           },
         ),
-        // --- MODIFICATION 2: Hide password criteria when valid ---
         if ((_isPasswordFocused || _passwordController.text.isNotEmpty) && !_isPasswordValid)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
@@ -825,7 +722,6 @@ builder: (BuildContext context) {
                 _buildPasswordCriteriaRow('Contains a number', _hasNumber),
                 _buildPasswordCriteriaRow('Contains a symbol (!@#\$&*~)', _hasSymbol),
                 const SizedBox(height: 8),
-                 // --- IMPROVEMENT 3: Password Strength Indicator ---
                 if(!_isPasswordValid)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
@@ -841,7 +737,7 @@ builder: (BuildContext context) {
           ),
         _buildStyledTextFormField(
           controller: _confirmPasswordController,
-          hintText: 'Confirm Password',
+          labelText: 'Confirm Password',
           icon: Icons.lock_outline,
           obscureText: _obscureConfirmPassword,
           suffixIcon: IconButton(
@@ -856,19 +752,18 @@ builder: (BuildContext context) {
         ),
         _buildStyledTextFormField(
           controller: _usernameController,
-          hintText: 'Username',
+          labelText: 'Username',
           icon: Icons.person_pin_outlined,
           validator: _usernameManualValidator,
           onChanged: _checkUsernameUniqueness,
           errorText: _usernameError,
-          // --- IMPROVEMENT 4: Added visual feedback for username checking ---
           suffixIcon: _isCheckingUsername 
             ? const Padding(padding: EdgeInsets.all(12.0), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.0)))
             : null,
         ),
         _buildPhoneFormField(),
         _buildSearchableDropdown(
-          hintText: 'University',
+          labelText: 'University',
           selectedValue: _selectedUniversity,
           icon: Icons.school_outlined,
           validator: (value) {
@@ -886,18 +781,17 @@ builder: (BuildContext context) {
                 if (value != 'Other') _otherUniversityController.clear();
               }),
             );
-            // --- MODIFICATION 1: Removed validation call to prevent flicker ---
           },
         ),
         if (_selectedUniversity == 'Other')
           _buildStyledTextFormField(
             controller: _otherUniversityController,
-            hintText: 'Please specify your university',
+            labelText: 'Please specify your university',
             icon: Icons.edit,
             validator: (value) => value == null || value.trim().isEmpty ? 'This field is required' : null,
           ),
         _buildSearchableDropdown(
-          hintText: 'Major',
+          labelText: 'Major',
           selectedValue: _selectedMajor,
           icon: Icons.book_outlined,
            validator: (value) {
@@ -915,24 +809,45 @@ builder: (BuildContext context) {
                 if (value != 'Other') _otherMajorController.clear();
               }),
             );
-            // --- MODIFICATION 1: Removed validation call to prevent flicker ---
           },
         ),
         if (_selectedMajor == 'Other')
            _buildStyledTextFormField(
             controller: _otherMajorController,
-            hintText: 'Please specify your major',
+            labelText: 'Please specify your major',
             icon: Icons.edit,
             validator: (value) => value == null || value.trim().isEmpty ? 'This field is required' : null,
           ),
-        _buildStyledTextFormField(
-          controller: _locationController,
-          hintText: 'Location',
+        _buildSearchableDropdown(
+          labelText: 'Location',
+          selectedValue: _selectedLocation,
           icon: Icons.location_on_outlined,
-          readOnly: true,
-          onTap: _selectLocation,
-          validator: (value) => value == null || value.isEmpty ? 'Please enter location' : null,
+          validator: (value) {
+            if (value == null || value.isEmpty) return 'Please select a location';
+            if (value == 'Other' && _otherLocationController.text.trim().isEmpty) return 'Please specify your location';
+            return null;
+          },
+          onTap: () async {
+            await _showSearchDialog(
+              context: context,
+              items: _locationsList,
+              title: 'Location',
+              onItemSelected: (value) => setState(() {
+                _selectedLocation = value;
+                if (value != 'Other') _otherLocationController.clear();
+              }),
+            );
+          },
         ),
+        if (_selectedLocation == 'Other')
+          _buildStyledTextFormField(
+            controller: _otherLocationController,
+            labelText: 'Please specify your location',
+            icon: Icons.edit,
+            validator: (value) => value == null || value.trim().isEmpty 
+              ? 'This field is required' 
+              : null,
+          ),
         const SizedBox(height: 20),
         _buildGradientButton(text: 'Next Step', onPressed: _goToNextStep),
       ],
@@ -950,23 +865,22 @@ builder: (BuildContext context) {
         ),
         const SizedBox(height: 15),
         _buildDropdownFormField(
-          hintText: 'Academic Level',
+          labelText: 'Academic Level',
           items: _academicLevels,
           selectedValue: _selectedLevel,
           onChanged: (String? newValue) => setState(() => _selectedLevel = newValue),
           icon: Icons.trending_up,
           validator: null, // Optional
         ),
-        // --- IMPROVEMENT 1: Replaced with a Date Picker Field ---
         _buildStyledTextFormField(
           controller: _graduationController,
-          hintText: 'Expected Graduation Date',
+          labelText: 'Expected Graduation Date',
           icon: Icons.calendar_today,
           readOnly: true,
           onTap: () => _selectGraduationDate(context),
         ),
         _buildDropdownFormField(
-          hintText: 'GPA Scale',
+          labelText: 'GPA Scale',
           items: const ['4.0', '5.0'],
           selectedValue: _gpaScale,
           onChanged: (String? newValue) {
@@ -981,7 +895,7 @@ builder: (BuildContext context) {
         if (_gpaScale != null)
           _buildStyledTextFormField(
             controller: _gpaController,
-            hintText: 'GPA (e.g., 3.8)',
+            labelText: 'GPA (e.g., 3.8)',
             icon: Icons.grade,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             validator: (value) {
@@ -993,10 +907,9 @@ builder: (BuildContext context) {
               return null;
             },
           ),
-        // --- IMPROVEMENT 2: Added onFieldSubmitted to add skill on Enter ---
         _buildStyledTextFormField(
           controller: _skillsController,
-          hintText: 'Add a Skill and press Enter',
+          labelText: 'Add a Skill and press Enter',
           icon: Icons.lightbulb_outline,
           onFieldSubmitted: (value) => _addSkill(),
           suffixIcon: IconButton(
@@ -1093,11 +1006,9 @@ builder: (BuildContext context) {
                         Expanded(
                           child: GestureDetector(
                             onTap: () {
-                              // Use the form key to validate before allowing step change
                               if (_formKey.currentState?.validate() ?? false) {
                                 setState(() => _currentStep = 1);
                               } else {
-                                // Scroll to the first error if needed or just show a message
                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please complete Step 1 correctly.')));
                               }
                             },
@@ -1119,7 +1030,6 @@ builder: (BuildContext context) {
                   const SizedBox(height: 30),
                   Form(
                     key: _formKey,
-                     // --- IMPROVEMENT 5: Using the refactored widgets ---
                     child: _currentStep == 0 ? _buildStep1Form() : _buildStep2Form(),
                   ),
                   const SizedBox(height: 20),
@@ -1161,4 +1071,4 @@ builder: (BuildContext context) {
       ),
     );
   }
-}// Ghaida!1 444201195@student.ksu.edu.sa
+}
