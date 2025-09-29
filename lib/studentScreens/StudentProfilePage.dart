@@ -1332,37 +1332,17 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   }
 
   Future<String?> _uploadProfilePicture(String uid, XFile file) async {
-    final firebase_storage.Reference ref =
-        firebase_storage.FirebaseStorage.instance.ref().child(
+    final firebase_storage.Reference
+    ref = firebase_storage.FirebaseStorage.instance.ref().child(
       'students/$uid/profile/profile_${DateTime.now().millisecondsSinceEpoch}_${file.name}',
     );
 
-    String _resolveContentType() {
-      final lower = file.name.toLowerCase();
-      if (lower.endsWith('.png')) return 'image/png';
-      if (lower.endsWith('.webp')) return 'image/webp';
-      if (lower.endsWith('.gif')) return 'image/gif';
-      if (lower.endsWith('.heic') || lower.endsWith('.heif')) return 'image/heic';
-      return 'image/jpeg';
-    }
-
     final bytes = await file.readAsBytes();
-    final metadata = firebase_storage.SettableMetadata(
-      contentType: _resolveContentType(),
+    await ref.putData(
+      bytes,
+      firebase_storage.SettableMetadata(contentType: 'image/jpeg'),
     );
-
-    final firebase_storage.TaskSnapshot snapshot =
-        await ref.putData(bytes, metadata);
-
-    try {
-      return await snapshot.ref.getDownloadURL();
-    } on firebase_storage.FirebaseException catch (e) {
-      if (e.code == 'object-not-found') {
-        await Future.delayed(const Duration(milliseconds: 250));
-        return snapshot.ref.getDownloadURL();
-      }
-      rethrow;
-    }
+    return ref.getDownloadURL();
   }
 
   Future<void> _save() async {
