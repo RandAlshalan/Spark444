@@ -24,7 +24,8 @@ class PersonalInformationScreen extends StatefulWidget {
   final Student student;
 
   @override
-  State<PersonalInformationScreen> createState() => _PersonalInformationScreenState();
+  State<PersonalInformationScreen> createState() =>
+      _PersonalInformationScreenState();
 }
 
 class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
@@ -43,6 +44,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   Uint8List? _previewBytes;
   bool _saving = false;
   bool _removedPicture = false;
+  int _summaryWordCount = 0;
 
   @override
   void initState() {
@@ -53,7 +55,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     _usernameController = TextEditingController(text: student.username);
     _phoneController = TextEditingController(text: student.phoneNumber);
     _locationController = TextEditingController(text: student.location ?? '');
-    _summaryController = TextEditingController(text: student.shortSummary ?? '');
+    _summaryController = TextEditingController(
+      text: student.shortSummary ?? '',
+    );
+    _summaryWordCount = _countWords(_summaryController.text);
   }
 
   @override
@@ -67,8 +72,17 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     super.dispose();
   }
 
+  int _countWords(String input) {
+    final trimmed = input.trim();
+    if (trimmed.isEmpty) return 0;
+    return trimmed.split(RegExp(r'\s+')).length;
+  }
+
   Future<void> _pickImage() async {
-    final picked = await _imagePicker.pickImage(source: ImageSource.gallery, maxWidth: 512);
+    final picked = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+    );
     if (picked != null) {
       final bytes = await picked.readAsBytes();
       setState(() {
@@ -100,8 +114,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   }
 
   Future<String?> _uploadProfilePicture(String uid, XFile file) async {
-    final firebase_storage.Reference ref =
-        firebase_storage.FirebaseStorage.instance.ref().child(
+    final firebase_storage.Reference
+    ref = firebase_storage.FirebaseStorage.instance.ref().child(
       'students/$uid/profile/profile_${DateTime.now().millisecondsSinceEpoch}_${file.name}',
     );
 
@@ -110,7 +124,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       if (lower.endsWith('.png')) return 'image/png';
       if (lower.endsWith('.webp')) return 'image/webp';
       if (lower.endsWith('.gif')) return 'image/gif';
-      if (lower.endsWith('.heic') || lower.endsWith('.heif')) return 'image/heic';
+      if (lower.endsWith('.heic') || lower.endsWith('.heif'))
+        return 'image/heic';
       return 'image/jpeg';
     }
 
@@ -119,8 +134,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       contentType: _resolveContentType(),
     );
 
-    final firebase_storage.TaskSnapshot snapshot =
-        await ref.putData(bytes, metadata);
+    final firebase_storage.TaskSnapshot snapshot = await ref.putData(
+      bytes,
+      metadata,
+    );
 
     try {
       return await snapshot.ref.getDownloadURL();
@@ -139,7 +156,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('No authenticated user found.');
-      
+
       final trimmedUsername = _usernameController.text.trim();
       if (trimmedUsername.isEmpty) throw Exception('Username cannot be empty.');
 
@@ -152,13 +169,15 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
 
       if (_pickedImage != null) {
         // Only delete old picture if we have a valid URL and we're uploading a new one
-        if (widget.student.profilePictureUrl != null && widget.student.profilePictureUrl!.isNotEmpty) {
+        if (widget.student.profilePictureUrl != null &&
+            widget.student.profilePictureUrl!.isNotEmpty) {
           await _deleteOldProfilePicture(widget.student.profilePictureUrl);
         }
         profileUrl = await _uploadProfilePicture(user.uid, _pickedImage!);
       } else if (_removedPicture) {
         // Only delete if there's actually a picture to delete
-        if (widget.student.profilePictureUrl != null && widget.student.profilePictureUrl!.isNotEmpty) {
+        if (widget.student.profilePictureUrl != null &&
+            widget.student.profilePictureUrl!.isNotEmpty) {
           await _deleteOldProfilePicture(widget.student.profilePictureUrl);
         }
         profileUrl = null;
@@ -169,8 +188,12 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         lastName: _lastNameController.text.trim(),
         username: trimmedUsername,
         phoneNumber: _phoneController.text.trim(),
-        location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
-        shortSummary: _summaryController.text.trim().isEmpty ? null : _summaryController.text.trim(),
+        location: _locationController.text.trim().isEmpty
+            ? null
+            : _locationController.text.trim(),
+        shortSummary: _summaryController.text.trim().isEmpty
+            ? null
+            : _summaryController.text.trim(),
         profilePictureUrl: profileUrl,
       );
 
@@ -180,7 +203,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -211,7 +236,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       radius: 48,
                       backgroundImage: backgroundImage,
                       backgroundColor: Colors.grey[200],
-                      child: backgroundImage == null ? const Icon(Icons.person, size: 40) : null,
+                      child: backgroundImage == null
+                          ? const Icon(Icons.person, size: 40)
+                          : null,
                     ),
                     Row(
                       mainAxisSize: MainAxisSize.min,
@@ -228,7 +255,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                         const SizedBox(width: 8),
                         IconButton(
                           onPressed: _pickImage,
-                          icon: const Icon(Icons.camera_alt, color: Colors.white),
+                          icon: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                          ),
                           style: IconButton.styleFrom(
                             backgroundColor: _profilePrimaryColor,
                             fixedSize: const Size(36, 36),
@@ -245,8 +275,13 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _firstNameController,
-                      decoration: const InputDecoration(labelText: 'First Name'),
-                      validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
+                      decoration: const InputDecoration(
+                        labelText: 'First Name',
+                      ),
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                          ? 'Required'
+                          : null,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -254,7 +289,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                     child: TextFormField(
                       controller: _lastNameController,
                       decoration: const InputDecoration(labelText: 'Last Name'),
-                      validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                          ? 'Required'
+                          : null,
                     ),
                   ),
                 ],
@@ -263,7 +301,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
               TextFormField(
                 controller: _usernameController,
                 decoration: const InputDecoration(labelText: 'Username'),
-                validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
+                validator: (value) =>
+                    value == null || value.trim().isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -281,12 +320,41 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                 controller: _summaryController,
                 decoration: const InputDecoration(labelText: 'Short Summary'),
                 maxLines: 4,
+                onChanged: (value) {
+                  if (!mounted) return;
+                  setState(() => _summaryWordCount = _countWords(value));
+                },
+                validator: (value) {
+                  final count = _countWords(value ?? '');
+                  if (count > 500) {
+                    return 'Short summary must be 500 words or fewer.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '$_summaryWordCount / 500 words',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _summaryWordCount > 500
+                        ? Colors.red.shade600
+                        : Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Save Changes'),
               ),
             ],
@@ -296,7 +364,6 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     );
   }
 }
-
 
 // --- 2. Academic Info Screen ---
 
@@ -363,7 +430,11 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
     return InputDecoration(
       labelText: label,
       suffixIcon: _loadingLists
-          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
           : null,
     );
   }
@@ -378,9 +449,15 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
       final updated = widget.student.copyWith(
         university: _universityController.text.trim(),
         major: _majorController.text.trim(),
-        level: _levelController.text.trim().isEmpty ? null : _levelController.text.trim(),
-        expectedGraduationDate: _graduationController.text.trim().isEmpty ? null : _graduationController.text.trim(),
-        gpa: _gpaController.text.trim().isEmpty ? null : double.tryParse(_gpaController.text.trim()),
+        level: _levelController.text.trim().isEmpty
+            ? null
+            : _levelController.text.trim(),
+        expectedGraduationDate: _graduationController.text.trim().isEmpty
+            ? null
+            : _graduationController.text.trim(),
+        gpa: _gpaController.text.trim().isEmpty
+            ? null
+            : double.tryParse(_gpaController.text.trim()),
       );
 
       await _authService.updateStudent(user.uid, updated);
@@ -389,7 +466,9 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -420,9 +499,11 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                             selected: _universityController.text.trim(),
                           ),
                         );
-                        if (selection != null) _universityController.text = selection;
+                        if (selection != null)
+                          _universityController.text = selection;
                       },
-                validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
+                validator: (value) =>
+                    value == null || value.trim().isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -440,9 +521,11 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                             selected: _majorController.text.trim(),
                           ),
                         );
-                        if (selection != null) _majorController.text = selection;
+                        if (selection != null)
+                          _majorController.text = selection;
                       },
-                validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
+                validator: (value) =>
+                    value == null || value.trim().isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -453,24 +536,33 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
               TextFormField(
                 controller: _gpaController,
                 decoration: const InputDecoration(labelText: 'GPA'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) return null;
                   final gpa = double.tryParse(value.trim());
-                  if (gpa == null || gpa < 0 || gpa > 4.0) return 'Enter a GPA between 0.0 and 4.0';
+                  if (gpa == null || gpa < 0 || gpa > 4.0)
+                    return 'Enter a GPA between 0.0 and 4.0';
                   return null;
                 },
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _graduationController,
-                decoration: const InputDecoration(labelText: 'Expected Graduation (e.g., May 2026)'),
+                decoration: const InputDecoration(
+                  labelText: 'Expected Graduation (e.g., May 2026)',
+                ),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Save Changes'),
               ),
             ],
@@ -508,15 +600,21 @@ class _SkillsScreenState extends State<SkillsScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('No authenticated user found.');
 
-      final updated = widget.student.copyWith(skills: List<String>.from(_skills));
+      final updated = widget.student.copyWith(
+        skills: List<String>.from(_skills),
+      );
       await _authService.updateStudent(user.uid, updated);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Skills updated successfully.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Skills updated successfully.')),
+      );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -526,10 +624,19 @@ class _SkillsScreenState extends State<SkillsScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Add Skill'),
-        content: TextField(controller: controller, decoration: const InputDecoration(labelText: 'Skill name')),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Skill name'),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(controller.text.trim()), child: const Text('Add')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('Add'),
+          ),
         ],
       ),
     );
@@ -544,10 +651,19 @@ class _SkillsScreenState extends State<SkillsScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Edit Skill'),
-        content: TextField(controller: controller, decoration: const InputDecoration(labelText: 'Skill name')),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Skill name'),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(controller.text.trim()), child: const Text('Save')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
@@ -563,8 +679,14 @@ class _SkillsScreenState extends State<SkillsScreen> {
         title: const Text('Remove Skill'),
         content: Text('Are you sure you want to remove "${_skills[index]}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Remove')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+          ),
         ],
       ),
     );
@@ -583,12 +705,19 @@ class _SkillsScreenState extends State<SkillsScreen> {
           TextButton(
             onPressed: _saving ? null : _persist,
             child: _saving
-                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Save'),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(onPressed: _addSkill, child: const Icon(Icons.add)),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addSkill,
+        child: const Icon(Icons.add),
+      ),
       body: _skills.isEmpty
           ? const Center(child: Text('No skills added yet.'))
           : ListView.builder(
@@ -601,8 +730,10 @@ class _SkillsScreenState extends State<SkillsScreen> {
                     title: Text(skill),
                     trailing: PopupMenuButton<String>(
                       onSelected: (value) {
-                        if (value == 'edit') _editSkill(index);
-                        else if (value == 'remove') _removeSkill(index);
+                        if (value == 'edit')
+                          _editSkill(index);
+                        else if (value == 'remove')
+                          _removeSkill(index);
                       },
                       itemBuilder: (_) => const [
                         PopupMenuItem(value: 'edit', child: Text('Edit')),
@@ -624,7 +755,8 @@ class FollowedCompaniesScreen extends StatefulWidget {
   final Student student;
 
   @override
-  State<FollowedCompaniesScreen> createState() => _FollowedCompaniesScreenState();
+  State<FollowedCompaniesScreen> createState() =>
+      _FollowedCompaniesScreenState();
 }
 
 class _FollowedCompaniesScreenState extends State<FollowedCompaniesScreen> {
@@ -643,14 +775,18 @@ class _FollowedCompaniesScreenState extends State<FollowedCompaniesScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('No authenticated user found.');
-      final updated = widget.student.copyWith(followedCompanies: List<String>.from(_companies));
+      final updated = widget.student.copyWith(
+        followedCompanies: List<String>.from(_companies),
+      );
       await _authService.updateStudent(user.uid, updated);
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -661,8 +797,14 @@ class _FollowedCompaniesScreenState extends State<FollowedCompaniesScreen> {
         title: const Text('Unfollow Company'),
         content: Text('Stop following "${_companies[index]}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Unfollow')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Unfollow'),
+          ),
         ],
       ),
     );
@@ -681,22 +823,34 @@ class _FollowedCompaniesScreenState extends State<FollowedCompaniesScreen> {
           TextButton(
             onPressed: _saving ? null : _persist,
             child: _saving
-                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Save'),
           ),
         ],
       ),
       body: _companies.isEmpty
-          ? const Center(child: Text('You are not following any companies yet.'))
+          ? const Center(
+              child: Text('You are not following any companies yet.'),
+            )
           : ListView.separated(
               padding: const EdgeInsets.all(20),
               itemCount: _companies.length,
               itemBuilder: (context, index) {
                 final company = _companies[index];
                 return ListTile(
-                  leading: CircleAvatar(backgroundColor: Colors.blueGrey.shade100, child: Text(company[0].toUpperCase())),
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.blueGrey.shade100,
+                    child: Text(company[0].toUpperCase()),
+                  ),
                   title: Text(company),
-                  trailing: IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => _removeCompany(index)),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.remove_circle_outline),
+                    onPressed: () => _removeCompany(index),
+                  ),
                 );
               },
               separatorBuilder: (_, __) => const Divider(),
@@ -739,7 +893,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading documents: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading documents: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -749,7 +905,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      messenger.showSnackBar(const SnackBar(content: Text('You must be signed in.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('You must be signed in.')),
+      );
       return;
     }
     final result = await FilePicker.platform.pickFiles(withData: true);
@@ -758,11 +916,17 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
     setState(() => _loading = true);
     try {
-      await _storageService.uploadFile(uid: user.uid, collection: 'documents', file: file);
+      await _storageService.uploadFile(
+        uid: user.uid,
+        collection: 'documents',
+        file: file,
+      );
       _changed = true;
       await _loadDocuments(); // Refresh list
       if (!mounted) return;
-      messenger.showSnackBar(const SnackBar(content: Text('Document uploaded successfully.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Document uploaded successfully.')),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -781,19 +945,31 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         title: const Text('Delete Document'),
         content: Text('Are you sure you want to delete "${file.name}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
     if (confirm != true) return;
     setState(() => _loading = true);
     try {
-      await _storageService.deleteFile(uid: user.uid, collection: 'documents', file: file);
+      await _storageService.deleteFile(
+        uid: user.uid,
+        collection: 'documents',
+        file: file,
+      );
       _changed = true;
       await _loadDocuments();
       if (!mounted) return;
-      messenger.showSnackBar(const SnackBar(content: Text('Document deleted.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Document deleted.')),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -811,43 +987,62 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(title: const Text('Documents')),
-        floatingActionButton: FloatingActionButton(onPressed: _uploadDocument, child: const Icon(Icons.upload_file)),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _uploadDocument,
+          child: const Icon(Icons.upload_file),
+        ),
         body: RefreshIndicator(
           onRefresh: _loadDocuments,
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _documents.isEmpty
-                  ? const Center(child: Text('No documents uploaded yet.'))
-                  : GridView.builder(
-                      padding: const EdgeInsets.all(20),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.1,
+              ? const Center(child: Text('No documents uploaded yet.'))
+              : GridView.builder(
+                  padding: const EdgeInsets.all(20),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.1,
+                  ),
+                  itemCount: _documents.length,
+                  itemBuilder: (context, index) {
+                    final document = _documents[index];
+                    return Card(
+                      elevation: 3,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      itemCount: _documents.length,
-                      itemBuilder: (context, index) {
-                        final document = _documents[index];
-                        return Card(
-                          elevation: 3,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.insert_drive_file, size: 40, color: Colors.grey),
-                                const SizedBox(height: 12),
-                                Text(document.name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13), maxLines: 3, overflow: TextOverflow.ellipsis),
-                                const SizedBox(height: 16),
-                                TextButton.icon(onPressed: () => _deleteDocument(document), icon: const Icon(Icons.delete_outline), label: const Text('Remove')),
-                              ],
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.insert_drive_file,
+                              size: 40,
+                              color: Colors.grey,
                             ),
-                          ),
-                        );
-                      },
-                    ),
+                            const SizedBox(height: 12),
+                            Text(
+                              document.name,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 13),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 16),
+                            TextButton.icon(
+                              onPressed: () => _deleteDocument(document),
+                              icon: const Icon(Icons.delete_outline),
+                              label: const Text('Remove'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
         ),
       ),
     );
@@ -888,7 +1083,9 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading resumes: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading resumes: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -898,7 +1095,9 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      messenger.showSnackBar(const SnackBar(content: Text('You must be signed in.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('You must be signed in.')),
+      );
       return;
     }
     final result = await FilePicker.platform.pickFiles(withData: true);
@@ -907,7 +1106,11 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
 
     setState(() => _loading = true);
     try {
-      await _storageService.uploadFile(uid: user.uid, collection: 'resumes', file: file);
+      await _storageService.uploadFile(
+        uid: user.uid,
+        collection: 'resumes',
+        file: file,
+      );
       _changed = true;
       await _loadResumes(); // Refresh list
       if (!mounted) return;
@@ -930,15 +1133,25 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
         title: const Text('Delete Resume'),
         content: Text('Are you sure you want to delete "${file.name}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
     if (confirm != true) return;
     setState(() => _loading = true);
     try {
-      await _storageService.deleteFile(uid: user.uid, collection: 'resumes', file: file);
+      await _storageService.deleteFile(
+        uid: user.uid,
+        collection: 'resumes',
+        file: file,
+      );
       _changed = true;
       await _loadResumes();
       if (!mounted) return;
@@ -949,10 +1162,12 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
       messenger.showSnackBar(SnackBar(content: Text('Deletion failed: $e')));
     }
   }
-  
+
   void _openLink(String url) {
     // In a real app, you would use the url_launcher package.
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Open $url in browser.')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Open $url in browser.')));
   }
 
   @override
@@ -965,31 +1180,41 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(title: const Text('Generated Resumes')),
-        floatingActionButton: FloatingActionButton(onPressed: _uploadResume, child: const Icon(Icons.upload)),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _uploadResume,
+          child: const Icon(Icons.upload),
+        ),
         body: RefreshIndicator(
           onRefresh: _loadResumes,
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _resumes.isEmpty
-                  ? const Center(child: Text('No resumes uploaded yet.'))
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: _resumes.length,
-                      itemBuilder: (context, index) {
-                        final resume = _resumes[index];
-                        return ListTile(
-                          leading: const CircleAvatar(
-                            backgroundColor: Color(0xFFF1F3F4),
-                            child: Icon(Icons.description, color: Colors.black87),
-                          ),
-                          title: Text(resume.name),
-                          subtitle: Text(resume.uploadedAt != null ? 'Uploaded ${resume.uploadedAt!.toLocal()}' : 'Awaiting timestamp'),
-                          trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => _deleteResume(resume)),
-                          onTap: () => _openLink(resume.url),
-                        );
-                      },
-                      separatorBuilder: (_, __) => const Divider(),
-                    ),
+              ? const Center(child: Text('No resumes uploaded yet.'))
+              : ListView.separated(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: _resumes.length,
+                  itemBuilder: (context, index) {
+                    final resume = _resumes[index];
+                    return ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFF1F3F4),
+                        child: Icon(Icons.description, color: Colors.black87),
+                      ),
+                      title: Text(resume.name),
+                      subtitle: Text(
+                        resume.uploadedAt != null
+                            ? 'Uploaded ${resume.uploadedAt!.toLocal()}'
+                            : 'Awaiting timestamp',
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () => _deleteResume(resume),
+                      ),
+                      onTap: () => _openLink(resume.url),
+                    );
+                  },
+                  separatorBuilder: (_, __) => const Divider(),
+                ),
         ),
       ),
     );
@@ -1003,7 +1228,8 @@ class SettingsPreferencesScreen extends StatefulWidget {
   final Student student;
 
   @override
-  State<SettingsPreferencesScreen> createState() => _SettingsPreferencesScreenState();
+  State<SettingsPreferencesScreen> createState() =>
+      _SettingsPreferencesScreenState();
 }
 
 class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
@@ -1036,7 +1262,9 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -1051,7 +1279,9 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           SwitchListTile(
             value: _resumePublic,
             title: const Text('Public Resumes'),
-            subtitle: const Text('Allow companies to view your generated resumes.'),
+            subtitle: const Text(
+              'Allow companies to view your generated resumes.',
+            ),
             onChanged: (value) => setState(() => _resumePublic = value),
           ),
           SwitchListTile(
@@ -1064,7 +1294,11 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ElevatedButton(
             onPressed: _saving ? null : _save,
             child: _saving
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Save Changes'),
           ),
         ],
@@ -1085,9 +1319,11 @@ class ChangePasswordScreen extends StatefulWidget {
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final AuthService _authService = AuthService();
-  final TextEditingController _currentPasswordController = TextEditingController();
+  final TextEditingController _currentPasswordController =
+      TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   bool _submitting = false;
   bool _sendingReset = false;
 
@@ -1103,14 +1339,21 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _submitting = true);
     try {
-      await _authService.updateStudentPassword(_currentPasswordController.text, _newPasswordController.text);
+      await _authService.updateStudentPassword(
+        _currentPasswordController.text,
+        _newPasswordController.text,
+      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated successfully.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password updated successfully.')),
+      );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -1120,7 +1363,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final email = user?.email;
     if (email == null || email.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No email is associated with this account.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No email is associated with this account.'),
+        ),
+      );
       return;
     }
 
@@ -1128,10 +1375,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     try {
       await _authService.resetPassword(email);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Reset link sent to $email.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Reset link sent to $email.')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) setState(() => _sendingReset = false);
     }
@@ -1151,37 +1402,59 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               TextFormField(
                 controller: _currentPasswordController,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Current Password'),
-                validator: (value) => (value == null || value.isEmpty) ? 'Enter your current password' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Current Password',
+                ),
+                validator: (value) => (value == null || value.isEmpty)
+                    ? 'Enter your current password'
+                    : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _newPasswordController,
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'New Password'),
-                validator: (value) => (value == null || value.length < 6) ? 'Minimum 6 characters' : null,
+                validator: (value) => (value == null || value.length < 6)
+                    ? 'Minimum 6 characters'
+                    : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _confirmPasswordController,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Confirm New Password'),
-                validator: (value) => (value != _newPasswordController.text) ? 'Passwords do not match' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Confirm New Password',
+                ),
+                validator: (value) => (value != _newPasswordController.text)
+                    ? 'Passwords do not match'
+                    : null,
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Update Password'),
               ),
               const SizedBox(height: 16),
               TextButton.icon(
                 onPressed: _sendingReset ? null : _sendResetEmail,
                 icon: _sendingReset
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.email_outlined),
-                label: Text(_sendingReset ? 'Sending reset email...' : 'Email me a reset link'),
+                label: Text(
+                  _sendingReset
+                      ? 'Sending reset email...'
+                      : 'Email me a reset link',
+                ),
               ),
             ],
           ),
@@ -1230,12 +1503,18 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
         newEmail: _emailController.text,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email updated. Please verify the new address.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Email updated. Please verify the new address.'),
+        ),
+      );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -1253,20 +1532,28 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(labelText: 'New Email'),
-                validator: (value) => (value == null || !value.contains('@')) ? 'Enter a valid email' : null,
+                validator: (value) => (value == null || !value.contains('@'))
+                    ? 'Enter a valid email'
+                    : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Password'),
-                validator: (value) => (value == null || value.isEmpty) ? 'Enter your password' : null,
+                validator: (value) => (value == null || value.isEmpty)
+                    ? 'Enter your password'
+                    : null,
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Update Email'),
               ),
             ],

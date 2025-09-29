@@ -1291,6 +1291,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   XFile? _pickedImage;
   Uint8List? _previewBytes;
   bool _saving = false;
+  int _summaryWordCount = 0;
 
   @override
   void initState() {
@@ -1304,6 +1305,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     _summaryController = TextEditingController(
       text: student.shortSummary ?? '',
     );
+    _summaryWordCount = _countWords(_summaryController.text);
   }
 
   @override
@@ -1315,6 +1317,12 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     _locationController.dispose();
     _summaryController.dispose();
     super.dispose();
+  }
+
+  int _countWords(String input) {
+    final trimmed = input.trim();
+    if (trimmed.isEmpty) return 0;
+    return trimmed.split(RegExp(r'\s+')).length;
   }
 
   Future<void> _pickImage() async {
@@ -1332,8 +1340,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   }
 
   Future<String?> _uploadProfilePicture(String uid, XFile file) async {
-    final firebase_storage.Reference ref =
-        firebase_storage.FirebaseStorage.instance.ref().child(
+    final firebase_storage.Reference
+    ref = firebase_storage.FirebaseStorage.instance.ref().child(
       'students/$uid/profile/profile_${DateTime.now().millisecondsSinceEpoch}_${file.name}',
     );
 
@@ -1342,7 +1350,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       if (lower.endsWith('.png')) return 'image/png';
       if (lower.endsWith('.webp')) return 'image/webp';
       if (lower.endsWith('.gif')) return 'image/gif';
-      if (lower.endsWith('.heic') || lower.endsWith('.heif')) return 'image/heic';
+      if (lower.endsWith('.heic') || lower.endsWith('.heif'))
+        return 'image/heic';
       return 'image/jpeg';
     }
 
@@ -1351,8 +1360,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       contentType: _resolveContentType(),
     );
 
-    final firebase_storage.TaskSnapshot snapshot =
-        await ref.putData(bytes, metadata);
+    final firebase_storage.TaskSnapshot snapshot = await ref.putData(
+      bytes,
+      metadata,
+    );
 
     try {
       return await snapshot.ref.getDownloadURL();
@@ -1510,6 +1521,31 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                 controller: _summaryController,
                 decoration: const InputDecoration(labelText: 'Short Summary'),
                 maxLines: 4,
+                onChanged: (value) {
+                  if (!mounted) return;
+                  setState(() => _summaryWordCount = _countWords(value));
+                },
+                validator: (value) {
+                  final count = _countWords(value ?? '');
+                  if (count > 500) {
+                    return 'Short summary must be 500 words or fewer.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '$_summaryWordCount / 500 words',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _summaryWordCount > 500
+                        ? Colors.red.shade600
+                        : Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
@@ -2763,7 +2799,8 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     _passwordController.dispose();
     super.dispose();
   }
-//
+
+  //
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _submitting = true);
