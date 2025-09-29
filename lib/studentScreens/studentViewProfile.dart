@@ -189,7 +189,8 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
 
     final profile = _ProfileUiModel.fromStudent(student);
     final mediaQuery = MediaQuery.of(context);
-    final double headerContentTopPadding = mediaQuery.padding.top + (kToolbarHeight / 2) + 12;
+    final double headerContentTopPadding =
+        mediaQuery.padding.top + (kToolbarHeight / 2.5) + 24;
     
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -267,17 +268,31 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Spacer(),
-                Text(greeting, style: GoogleFonts.lato(color: Colors.white.withOpacity(0.95), fontSize: 20, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 28),
+                Text(
+                  greeting,
+                  style: GoogleFonts.lato(
+                    color: Colors.white.withOpacity(0.95),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 6),
-                Text(progressPrompt, style: GoogleFonts.lato(color: Colors.white.withOpacity(0.8), fontSize: 14)),
+                Text(
+                  progressPrompt,
+                  style: GoogleFonts.lato(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 14,
+                  ),
+                ),
+                const Spacer(),
               ],
             ),
           ),
           Positioned(
             left: 20,
             right: 20,
-            bottom: -70,
+            bottom: -36,
             child: _buildProfileSummaryCard(profile, student, completion, completionPercent),
           ),
         ],

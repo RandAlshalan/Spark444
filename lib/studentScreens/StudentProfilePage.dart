@@ -177,7 +177,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
 
     final mediaQuery = MediaQuery.of(context);
     final double headerContentTopPadding =
-        mediaQuery.padding.top + (kToolbarHeight / 2) + 12;
+        mediaQuery.padding.top + (kToolbarHeight / 2.5) + 24;
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: _profileBackgroundColor,
@@ -262,7 +262,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 4),
+                const SizedBox(height: 28),
                 Text(
                   greeting,
                   style: TextStyle(
@@ -286,7 +286,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
           Positioned(
             left: 20,
             right: 20,
-            bottom: -70,
+            bottom: -36,
             child: _buildProfileSummaryCard(
               profile,
               student,
