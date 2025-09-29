@@ -42,6 +42,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   XFile? _pickedImage;
   Uint8List? _previewBytes;
   bool _saving = false;
+  bool _removedPicture = false;
 
   @override
   void initState() {
@@ -73,18 +74,63 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       setState(() {
         _pickedImage = picked;
         _previewBytes = bytes;
+        _removedPicture = false;
       });
     }
   }
 
+  void _removePicture() {
+    setState(() {
+      _pickedImage = null;
+      _previewBytes = null;
+      _removedPicture = true;
+    });
+  }
+
+  Future<void> _deleteOldProfilePicture(String? oldUrl) async {
+    if (oldUrl == null || oldUrl.isEmpty) return;
+
+    try {
+      final ref = firebase_storage.FirebaseStorage.instance.refFromURL(oldUrl);
+      await ref.delete();
+    } catch (e) {
+      // Ignore errors when deleting old picture (it might not exist)
+      print('Could not delete old profile picture: $e');
+    }
+  }
+
   Future<String?> _uploadProfilePicture(String uid, XFile file) async {
-    final firebase_storage.Reference ref = firebase_storage.FirebaseStorage.instance.ref().child(
+    final firebase_storage.Reference ref =
+        firebase_storage.FirebaseStorage.instance.ref().child(
       'students/$uid/profile/profile_${DateTime.now().millisecondsSinceEpoch}_${file.name}',
     );
 
+    String _resolveContentType() {
+      final lower = file.name.toLowerCase();
+      if (lower.endsWith('.png')) return 'image/png';
+      if (lower.endsWith('.webp')) return 'image/webp';
+      if (lower.endsWith('.gif')) return 'image/gif';
+      if (lower.endsWith('.heic') || lower.endsWith('.heif')) return 'image/heic';
+      return 'image/jpeg';
+    }
+
     final bytes = await file.readAsBytes();
-    await ref.putData(bytes, firebase_storage.SettableMetadata(contentType: 'image/jpeg'));
-    return ref.getDownloadURL();
+    final metadata = firebase_storage.SettableMetadata(
+      contentType: _resolveContentType(),
+    );
+
+    final firebase_storage.TaskSnapshot snapshot =
+        await ref.putData(bytes, metadata);
+
+    try {
+      return await snapshot.ref.getDownloadURL();
+    } on firebase_storage.FirebaseException catch (e) {
+      if (e.code == 'object-not-found') {
+        await Future.delayed(const Duration(milliseconds: 250));
+        return snapshot.ref.getDownloadURL();
+      }
+      rethrow;
+    }
   }
 
   Future<void> _save() async {
@@ -103,8 +149,19 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       }
 
       String? profileUrl = widget.student.profilePictureUrl;
+
       if (_pickedImage != null) {
+        // Only delete old picture if we have a valid URL and we're uploading a new one
+        if (widget.student.profilePictureUrl != null && widget.student.profilePictureUrl!.isNotEmpty) {
+          await _deleteOldProfilePicture(widget.student.profilePictureUrl);
+        }
         profileUrl = await _uploadProfilePicture(user.uid, _pickedImage!);
+      } else if (_removedPicture) {
+        // Only delete if there's actually a picture to delete
+        if (widget.student.profilePictureUrl != null && widget.student.profilePictureUrl!.isNotEmpty) {
+          await _deleteOldProfilePicture(widget.student.profilePictureUrl);
+        }
+        profileUrl = null;
       }
 
       final updated = widget.student.copyWith(
@@ -132,7 +189,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     ImageProvider? backgroundImage;
     if (_previewBytes != null) {
       backgroundImage = MemoryImage(_previewBytes!);
-    } else if (widget.student.profilePictureUrl != null) {
+    } else if (widget.student.profilePictureUrl != null && !_removedPicture) {
       backgroundImage = NetworkImage(widget.student.profilePictureUrl!);
     }
 
@@ -156,13 +213,28 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       backgroundColor: Colors.grey[200],
                       child: backgroundImage == null ? const Icon(Icons.person, size: 40) : null,
                     ),
-                    IconButton(
-                      onPressed: _pickImage,
-                      icon: const Icon(Icons.camera_alt, color: Colors.white),
-                      style: IconButton.styleFrom(
-                        backgroundColor: _profilePrimaryColor,
-                        fixedSize: const Size(36, 36),
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (backgroundImage != null)
+                          IconButton(
+                            onPressed: _removePicture,
+                            icon: const Icon(Icons.delete, color: Colors.white),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              fixedSize: const Size(36, 36),
+                            ),
+                          ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: _pickImage,
+                          icon: const Icon(Icons.camera_alt, color: Colors.white),
+                          style: IconButton.styleFrom(
+                            backgroundColor: _profilePrimaryColor,
+                            fixedSize: const Size(36, 36),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
