@@ -5,10 +5,11 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 import '../../../models/student.dart';
 import '../../../services/authService.dart';
@@ -16,6 +17,34 @@ import '../../../services/storage_service.dart';
 
 // Color constant needed by some edit screens
 const Color _profilePrimaryColor = Color(0xFF422F5D);
+const Color _profileSecondaryColor = Color(0xFFF99D46);
+
+// --- Custom formatter for phone number spacing (from signup) ---
+class PhoneNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    final newText = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (newText.isEmpty) {
+      return const TextEditingValue();
+    }
+    
+    final buffer = StringBuffer();
+    for (int i = 0; i < newText.length; i++) {
+      if (i == 2 || i == 5) {
+        buffer.write(' ');
+      }
+      buffer.write(newText[i]);
+    }
+
+    final formattedText = buffer.toString();
+    return TextEditingValue(
+      text: formattedText,
+      selection: TextSelection.collapsed(offset: formattedText.length),
+    );
+  }
+}
 
 // --- 1. Personal Information Screen ---
 
@@ -42,7 +71,12 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   XFile? _pickedImage;
   Uint8List? _previewBytes;
   bool _saving = false;
-  bool _removedPicture = false;
+
+  // --- Username validation state (from signup) ---
+  String? _usernameError;
+  Timer? _debounce;
+  bool _isCheckingUsername = false;
+
 
   @override
   void initState() {
@@ -51,9 +85,23 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     _firstNameController = TextEditingController(text: student.firstName);
     _lastNameController = TextEditingController(text: student.lastName);
     _usernameController = TextEditingController(text: student.username);
-    _phoneController = TextEditingController(text: student.phoneNumber);
+    
+    // Extract 9-digit number for the phone controller
+    String phoneNumber = student.phoneNumber ?? '';
+    if (phoneNumber.startsWith('+966')) {
+        phoneNumber = phoneNumber.substring(4);
+    }
+    _phoneController = TextEditingController(text: phoneNumber.replaceAll(' ', ''));
+
     _locationController = TextEditingController(text: student.location ?? '');
     _summaryController = TextEditingController(text: student.shortSummary ?? '');
+
+    // Listener for username uniqueness check
+    _usernameController.addListener(() {
+      if (_usernameController.text.trim() != widget.student.username) {
+        _checkUsernameUniqueness(_usernameController.text.trim());
+      }
+    });
   }
 
   @override
@@ -64,7 +112,51 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     _phoneController.dispose();
     _locationController.dispose();
     _summaryController.dispose();
+    _debounce?.cancel();
     super.dispose();
+  }
+  
+  // --- Username validation logic (from signup) ---
+  String? _usernameManualValidator(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter a username';
+    }
+    if (value.length > 12) {
+      return 'Username cannot exceed 12 characters';
+    }
+    if (value.contains(' ')) {
+      return 'Username cannot contain spaces';
+    }
+    if (RegExp(r'[^a-zA-Z0-9_.-]').hasMatch(value)) {
+      return 'Only letters, numbers, and symbols (_, -, .) are allowed';
+    }
+    if (!RegExp(r'[a-zA-Z]').hasMatch(value)) {
+      return 'Username must contain at least one letter';
+    }
+    if (_usernameError != null) {
+      return _usernameError;
+    }
+    return null;
+  }
+
+  void _checkUsernameUniqueness(String value) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () async {
+      if (mounted) setState(() { _isCheckingUsername = true; });
+      if (_usernameError != null) {
+        setState(() { _usernameError = null; });
+      }
+      // Only check if it's different from the original and not empty
+      if (value.isNotEmpty && value != widget.student.username) {
+        final isUnique = await _authService.isUsernameUnique(value);
+        if (!isUnique && mounted) {
+          setState(() {
+            _usernameError = 'This username is already taken.';
+          });
+        }
+      }
+      if (mounted) setState(() { _isCheckingUsername = false; });
+    });
   }
 
   Future<void> _pickImage() async {
@@ -74,68 +166,28 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       setState(() {
         _pickedImage = picked;
         _previewBytes = bytes;
-        _removedPicture = false;
       });
     }
   }
 
-  void _removePicture() {
-    setState(() {
-      _pickedImage = null;
-      _previewBytes = null;
-      _removedPicture = true;
-    });
-  }
-
-  Future<void> _deleteOldProfilePicture(String? oldUrl) async {
-    if (oldUrl == null || oldUrl.isEmpty) return;
-
-    try {
-      final ref = firebase_storage.FirebaseStorage.instance.refFromURL(oldUrl);
-      await ref.delete();
-    } catch (e) {
-      // Ignore errors when deleting old picture (it might not exist)
-      print('Could not delete old profile picture: $e');
-    }
-  }
-
   Future<String?> _uploadProfilePicture(String uid, XFile file) async {
-    final firebase_storage.Reference ref =
-        firebase_storage.FirebaseStorage.instance.ref().child(
+    final firebase_storage.Reference ref = firebase_storage.FirebaseStorage.instance.ref().child(
       'students/$uid/profile/profile_${DateTime.now().millisecondsSinceEpoch}_${file.name}',
     );
 
-    String _resolveContentType() {
-      final lower = file.name.toLowerCase();
-      if (lower.endsWith('.png')) return 'image/png';
-      if (lower.endsWith('.webp')) return 'image/webp';
-      if (lower.endsWith('.gif')) return 'image/gif';
-      if (lower.endsWith('.heic') || lower.endsWith('.heif')) return 'image/heic';
-      return 'image/jpeg';
-    }
-
     final bytes = await file.readAsBytes();
-    final metadata = firebase_storage.SettableMetadata(
-      contentType: _resolveContentType(),
-    );
-
-    final firebase_storage.TaskSnapshot snapshot =
-        await ref.putData(bytes, metadata);
-
-    try {
-      return await snapshot.ref.getDownloadURL();
-    } on firebase_storage.FirebaseException catch (e) {
-      if (e.code == 'object-not-found') {
-        await Future.delayed(const Duration(milliseconds: 250));
-        return snapshot.ref.getDownloadURL();
-      }
-      rethrow;
-    }
+    await ref.putData(bytes, firebase_storage.SettableMetadata(contentType: 'image/jpeg'));
+    return ref.getDownloadURL();
   }
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_usernameError != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_usernameError!)));
+        return;
+    }
     setState(() => _saving = true);
+
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('No authenticated user found.');
@@ -149,26 +201,15 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       }
 
       String? profileUrl = widget.student.profilePictureUrl;
-
       if (_pickedImage != null) {
-        // Only delete old picture if we have a valid URL and we're uploading a new one
-        if (widget.student.profilePictureUrl != null && widget.student.profilePictureUrl!.isNotEmpty) {
-          await _deleteOldProfilePicture(widget.student.profilePictureUrl);
-        }
         profileUrl = await _uploadProfilePicture(user.uid, _pickedImage!);
-      } else if (_removedPicture) {
-        // Only delete if there's actually a picture to delete
-        if (widget.student.profilePictureUrl != null && widget.student.profilePictureUrl!.isNotEmpty) {
-          await _deleteOldProfilePicture(widget.student.profilePictureUrl);
-        }
-        profileUrl = null;
       }
 
       final updated = widget.student.copyWith(
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
         username: trimmedUsername,
-        phoneNumber: _phoneController.text.trim(),
+        phoneNumber: "+966${_phoneController.text.trim().replaceAll(' ', '')}",
         location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
         shortSummary: _summaryController.text.trim().isEmpty ? null : _summaryController.text.trim(),
         profilePictureUrl: profileUrl,
@@ -176,11 +217,13 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
 
       await _authService.updateStudent(user.uid, updated);
       if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully!')));
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+        if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -189,7 +232,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     ImageProvider? backgroundImage;
     if (_previewBytes != null) {
       backgroundImage = MemoryImage(_previewBytes!);
-    } else if (widget.student.profilePictureUrl != null && !_removedPicture) {
+    } else if (widget.student.profilePictureUrl != null) {
       backgroundImage = NetworkImage(widget.student.profilePictureUrl!);
     }
 
@@ -200,6 +243,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -213,28 +257,13 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       backgroundColor: Colors.grey[200],
                       child: backgroundImage == null ? const Icon(Icons.person, size: 40) : null,
                     ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (backgroundImage != null)
-                          IconButton(
-                            onPressed: _removePicture,
-                            icon: const Icon(Icons.delete, color: Colors.white),
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              fixedSize: const Size(36, 36),
-                            ),
-                          ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: _pickImage,
-                          icon: const Icon(Icons.camera_alt, color: Colors.white),
-                          style: IconButton.styleFrom(
-                            backgroundColor: _profilePrimaryColor,
-                            fixedSize: const Size(36, 36),
-                          ),
-                        ),
-                      ],
+                    IconButton(
+                      onPressed: _pickImage,
+                      icon: const Icon(Icons.camera_alt, color: Colors.white),
+                      style: IconButton.styleFrom(
+                        backgroundColor: _profilePrimaryColor,
+                        fixedSize: const Size(36, 36),
+                      ),
                     ),
                   ],
                 ),
@@ -246,6 +275,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                     child: TextFormField(
                       controller: _firstNameController,
                       decoration: const InputDecoration(labelText: 'First Name'),
+                      inputFormatters: [LengthLimitingTextInputFormatter(50)],
                       validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
                     ),
                   ),
@@ -254,6 +284,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                     child: TextFormField(
                       controller: _lastNameController,
                       decoration: const InputDecoration(labelText: 'Last Name'),
+                      inputFormatters: [LengthLimitingTextInputFormatter(50)],
                       validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
                     ),
                   ),
@@ -262,25 +293,75 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _usernameController,
-                decoration: const InputDecoration(labelText: 'Username'),
-                validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
+                decoration: InputDecoration(
+                  labelText: 'Username',
+                  errorText: _usernameError,
+                  suffixIcon: _isCheckingUsername 
+                    ? const Padding(padding: EdgeInsets.all(12.0), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.0)))
+                    : null,
+                ),
+                inputFormatters: [LengthLimitingTextInputFormatter(12)],
+                validator: _usernameManualValidator,
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(labelText: 'Phone Number'),
-                keyboardType: TextInputType.phone,
+              InputDecorator(
+                decoration: const InputDecoration(
+                    labelText: 'Phone Number',
+                    contentPadding: EdgeInsets.zero,
+                    border: InputBorder.none,
+                ),
+                child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: const Text(
+                          '+966',
+                          style: TextStyle(fontSize: 16, color: Colors.black54),
+                        ),
+                      ),
+                      Container(height: 20, width: 1, color: Colors.grey.shade400),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(9),
+                            PhoneNumberFormatter(),
+                          ],
+                          validator: (value) {
+                            if (value == null || value.isEmpty) return 'Please enter phone number';
+                            final digitsOnly = value.replaceAll(' ', '');
+                            if (digitsOnly.length != 9) return 'Must be 9 digits';
+                            if (!digitsOnly.startsWith('5')) return 'Must start with 5';
+                            return null;
+                          },
+                          decoration: const InputDecoration(
+                            hintText: '5X XXX XXXX',
+                            border: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            focusedErrorBorder: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _locationController,
                 decoration: const InputDecoration(labelText: 'Location'),
+                inputFormatters: [LengthLimitingTextInputFormatter(30)],
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _summaryController,
                 decoration: const InputDecoration(labelText: 'Short Summary'),
                 maxLines: 4,
+                inputFormatters: [LengthLimitingTextInputFormatter(250)],
               ),
               const SizedBox(height: 24),
               ElevatedButton(
@@ -314,14 +395,19 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
 
   late TextEditingController _universityController;
   late TextEditingController _majorController;
-  late TextEditingController _levelController;
   late TextEditingController _gpaController;
   late TextEditingController _graduationController;
+  
+  String? _selectedLevel;
+  String? _gpaScale;
 
   bool _saving = false;
-  bool _loadingLists = true;
-  List<String> _universities = [];
-  List<String> _majors = [];
+  
+  // --- Lists from signup page ---
+  final List<String> _academicLevels = [
+    'Freshman (Level 1-2)', 'Sophomore (Level 3-4)', 'Junior (Level 5-6)',
+    'Senior (Level 7-8)', 'Senior (Level +9)', 'Graduate Student'
+  ];
 
   @override
   void initState() {
@@ -329,43 +415,64 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
     final student = widget.student;
     _universityController = TextEditingController(text: student.university);
     _majorController = TextEditingController(text: student.major);
-    _levelController = TextEditingController(text: student.level ?? '');
+    _selectedLevel = student.level;
     _gpaController = TextEditingController(
-      text: student.gpa != null ? student.gpa!.toStringAsFixed(2) : '',
+      text: student.gpa != null ? student.gpa!.toString() : '',
     );
     _graduationController = TextEditingController(
       text: student.expectedGraduationDate ?? '',
     );
-    _loadLists();
+    
+    // Infer GPA scale from existing GPA
+    if (student.gpa != null) {
+      if (student.gpa! > 4.0) {
+        _gpaScale = '5.0';
+      } else {
+        _gpaScale = '4.0';
+      }
+    }
   }
 
   @override
   void dispose() {
     _universityController.dispose();
     _majorController.dispose();
-    _levelController.dispose();
     _gpaController.dispose();
     _graduationController.dispose();
     super.dispose();
   }
-
-  Future<void> _loadLists() async {
-    final result = await _authService.getUniversitiesAndMajors();
-    if (!mounted) return;
-    setState(() {
-      _universities = result['universities'] ?? [];
-      _majors = result['majors'] ?? [];
-      _loadingLists = false;
-    });
-  }
-
-  InputDecoration _dropdownDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      suffixIcon: _loadingLists
-          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-          : null,
+  
+  // --- Date Picker from signup ---
+  Future<void> _selectGraduationDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2024),
+      lastDate: DateTime(DateTime.now().year + 10),
+      initialDatePickerMode: DatePickerMode.year,
+       builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: _profilePrimaryColor,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: _profileSecondaryColor,
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
+    if (picked != null) {
+      setState(() {
+        _graduationController.text = DateFormat('MMMM yyyy').format(picked);
+      });
+    }
   }
 
   Future<void> _save() async {
@@ -378,13 +485,14 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
       final updated = widget.student.copyWith(
         university: _universityController.text.trim(),
         major: _majorController.text.trim(),
-        level: _levelController.text.trim().isEmpty ? null : _levelController.text.trim(),
+        level: _selectedLevel,
         expectedGraduationDate: _graduationController.text.trim().isEmpty ? null : _graduationController.text.trim(),
         gpa: _gpaController.text.trim().isEmpty ? null : double.tryParse(_gpaController.text.trim()),
       );
 
       await _authService.updateStudent(user.uid, updated);
       if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Academic info updated successfully!')));
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
@@ -402,70 +510,78 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
         padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextFormField(
                 controller: _universityController,
-                decoration: _dropdownDecoration('University'),
-                readOnly: _universities.isNotEmpty,
-                onTap: _universities.isEmpty
-                    ? null
-                    : () async {
-                        final selection = await showDialog<String>(
-                          context: context,
-                          builder: (_) => _SelectionDialog(
-                            title: 'Select University',
-                            options: _universities,
-                            selected: _universityController.text.trim(),
-                          ),
-                        );
-                        if (selection != null) _universityController.text = selection;
-                      },
-                validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _majorController,
-                decoration: _dropdownDecoration('Major'),
-                readOnly: _majors.isNotEmpty,
-                onTap: _majors.isEmpty
-                    ? null
-                    : () async {
-                        final selection = await showDialog<String>(
-                          context: context,
-                          builder: (_) => _SelectionDialog(
-                            title: 'Select Major',
-                            options: _majors,
-                            selected: _majorController.text.trim(),
-                          ),
-                        );
-                        if (selection != null) _majorController.text = selection;
-                      },
-                validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _levelController,
-                decoration: const InputDecoration(labelText: 'Level'),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _gpaController,
-                decoration: const InputDecoration(labelText: 'GPA'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'University'),
+                inputFormatters: [LengthLimitingTextInputFormatter(30)],
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) return null;
-                  final gpa = double.tryParse(value.trim());
-                  if (gpa == null || gpa < 0 || gpa > 4.0) return 'Enter a GPA between 0.0 and 4.0';
+                  if (value == null || value.trim().isEmpty) return 'Required';
+                  if (value.length > 30) return 'Cannot exceed 30 characters';
                   return null;
                 },
               ),
               const SizedBox(height: 16),
               TextFormField(
-                controller: _graduationController,
-                decoration: const InputDecoration(labelText: 'Expected Graduation (e.g., May 2026)'),
+                controller: _majorController,
+                decoration: const InputDecoration(labelText: 'Major'),
+                inputFormatters: [LengthLimitingTextInputFormatter(30)],
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) return 'Required';
+                  if (value.length > 30) return 'Cannot exceed 30 characters';
+                  return null;
+                },
               ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _selectedLevel,
+                onChanged: (value) => setState(() => _selectedLevel = value),
+                decoration: const InputDecoration(labelText: 'Academic Level'),
+                items: _academicLevels.map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _graduationController,
+                decoration: const InputDecoration(labelText: 'Expected Graduation Date'),
+                readOnly: true,
+                onTap: () => _selectGraduationDate(context),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _gpaScale,
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _gpaScale = newValue;
+                    _gpaController.clear();
+                  });
+                },
+                decoration: const InputDecoration(labelText: 'GPA Scale'),
+                items: ['4.0', '5.0'].map((scale) => DropdownMenuItem(value: scale, child: Text(scale))).toList(),
+              ),
+              if (_gpaScale != null)
+                const SizedBox(height: 16),
+              if (_gpaScale != null)
+                TextFormField(
+                  controller: _gpaController,
+                  decoration: const InputDecoration(labelText: 'GPA (e.g., 3.8)'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return null;
+                    final gpa = double.tryParse(value);
+                    if (gpa == null) return 'Invalid GPA format';
+                    if (_gpaScale == '4.0' && (gpa < 0 || gpa > 4.0)) return 'GPA must be between 0 and 4.0';
+                    if (_gpaScale == '5.0' && (gpa < 0 || gpa > 5.0)) return 'GPA must be between 0 and 5.0';
+                    return null;
+                  },
+                ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _saving ? null : _save,
@@ -522,32 +638,68 @@ class _SkillsScreenState extends State<SkillsScreen> {
 
   Future<void> _addSkill() async {
     final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
     final result = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Add Skill'),
-        content: TextField(controller: controller, decoration: const InputDecoration(labelText: 'Skill name')),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            decoration: const InputDecoration(labelText: 'Skill name'),
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            inputFormatters: [LengthLimitingTextInputFormatter(30)],
+            validator: (value) {
+                if (value == null || value.trim().isEmpty) return 'Cannot be empty';
+                if (value.length > 30) return 'Cannot exceed 30 characters';
+                return null;
+            }
+          ),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(controller.text.trim()), child: const Text('Add')),
+          ElevatedButton(onPressed: () {
+              if (formKey.currentState!.validate()) {
+                  Navigator.of(context).pop(controller.text.trim());
+              }
+          }, child: const Text('Add')),
         ],
       ),
     );
-    if (result != null && result.isNotEmpty) {
+    if (result != null && result.isNotEmpty && !_skills.contains(result)) {
       setState(() => _skills.add(result));
     }
   }
 
   Future<void> _editSkill(int index) async {
     final controller = TextEditingController(text: _skills[index]);
+    final formKey = GlobalKey<FormState>();
     final result = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Edit Skill'),
-        content: TextField(controller: controller, decoration: const InputDecoration(labelText: 'Skill name')),
+        content: Form(
+            key: formKey,
+            child: TextFormField(
+            controller: controller,
+            decoration: const InputDecoration(labelText: 'Skill name'),
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            inputFormatters: [LengthLimitingTextInputFormatter(30)],
+            validator: (value) {
+                if (value == null || value.trim().isEmpty) return 'Cannot be empty';
+                if (value.length > 30) return 'Cannot exceed 30 characters';
+                return null;
+            }
+          ),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(controller.text.trim()), child: const Text('Save')),
+          ElevatedButton(onPressed: () {
+             if (formKey.currentState!.validate()) {
+                  Navigator.of(context).pop(controller.text.trim());
+              }
+          }, child: const Text('Save')),
         ],
       ),
     );
@@ -617,7 +769,7 @@ class _SkillsScreenState extends State<SkillsScreen> {
   }
 }
 
-// --- 4. Followed Companies Screen ---
+// --- 4. Followed Companies Screen (No validation needed) ---
 
 class FollowedCompaniesScreen extends StatefulWidget {
   const FollowedCompaniesScreen({super.key, required this.student});
@@ -705,7 +857,7 @@ class _FollowedCompaniesScreenState extends State<FollowedCompaniesScreen> {
   }
 }
 
-// --- 5. Documents Screen ---
+// --- 5. Documents Screen (No validation needed) ---
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key, required this.student});
@@ -854,7 +1006,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   }
 }
 
-// --- 6. Generated Resumes Screen ---
+// --- 6. Generated Resumes Screen (No validation needed) ---
 
 class GeneratedResumesScreen extends StatefulWidget {
   const GeneratedResumesScreen({super.key, required this.student});
@@ -996,7 +1148,7 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
   }
 }
 
-// --- 7. Settings & Preferences Screen ---
+// --- 7. Settings & Preferences Screen (No validation needed) ---
 
 class SettingsPreferencesScreen extends StatefulWidget {
   const SettingsPreferencesScreen({super.key, required this.student});
@@ -1090,13 +1242,51 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final TextEditingController _confirmPasswordController = TextEditingController();
   bool _submitting = false;
   bool _sendingReset = false;
+  
+  // --- Password Strength State (from signup) ---
+  final FocusNode _passwordFocusNode = FocusNode();
+  bool _obscureNewPassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _isPasswordFocused = false;
+  bool _hasUppercase = false;
+  bool _hasLowercase = false;
+  bool _hasNumber = false;
+  bool _hasSymbol = false;
+  bool _is8CharsLong = false;
+  bool _hasNoSpaces = true;
+  bool get _isPasswordValid => _is8CharsLong && _hasUppercase && _hasLowercase && _hasNumber && _hasSymbol && _hasNoSpaces;
+
+  @override
+  void initState() {
+    super.initState();
+    _newPasswordController.addListener(_checkPasswordStrength);
+    _passwordFocusNode.addListener(() {
+      setState(() {
+        _isPasswordFocused = _passwordFocusNode.hasFocus;
+      });
+    });
+  }
 
   @override
   void dispose() {
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
+  }
+
+  // --- Password Strength Logic (from signup) ---
+  void _checkPasswordStrength() {
+    String password = _newPasswordController.text;
+    setState(() {
+      _is8CharsLong = password.length >= 8;
+      _hasUppercase = password.contains(RegExp(r'[A-Z]'));
+      _hasLowercase = password.contains(RegExp(r'[a-z]'));
+      _hasNumber = password.contains(RegExp(r'[0-9]'));
+      _hasSymbol = password.contains(RegExp(r'[!@#\$&*~]'));
+      _hasNoSpaces = !password.contains(' ');
+    });
   }
 
   Future<void> _submit() async {
@@ -1137,16 +1327,55 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     }
   }
 
+  // --- Password UI Widgets (from signup) ---
+  Widget _buildPasswordCriteriaRow(String text, bool met) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0),
+      child: Row(
+        children: [
+          Icon(
+            met ? Icons.check_circle : Icons.remove_circle_outline,
+            color: met ? Colors.green : Colors.grey,
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Text(text, style: TextStyle(color: met ? Colors.black87 : Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  double _calculatePasswordStrength() {
+    int metCriteria = 0;
+    if (_is8CharsLong) metCriteria++;
+    if (_hasUppercase) metCriteria++;
+    if (_hasLowercase) metCriteria++;
+    if (_hasNumber) metCriteria++;
+    if (_hasSymbol) metCriteria++;
+    if (_hasNoSpaces) metCriteria++;
+    return metCriteria / 6.0;
+  }
+
+  Color _getPasswordStrengthColor(double strength) {
+    if (strength < 0.5) return Colors.red;
+    if (strength < 0.9) return Colors.orange;
+    return Colors.green;
+  }
+
+
   @override
   Widget build(BuildContext context) {
+    final passwordStrength = _calculatePasswordStrength();
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(title: const Text('Change Password')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextFormField(
                 controller: _currentPasswordController,
@@ -1157,15 +1386,59 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _newPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'New Password'),
-                validator: (value) => (value == null || value.length < 6) ? 'Minimum 6 characters' : null,
+                obscureText: _obscureNewPassword,
+                focusNode: _passwordFocusNode,
+                decoration: InputDecoration(
+                  labelText: 'New Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscureNewPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                    onPressed: () => setState(() => _obscureNewPassword = !_obscureNewPassword),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Please enter new password';
+                  if (value.contains(' ')) return 'Password cannot contain spaces';
+                  if (!_isPasswordValid) return 'Please meet all password requirements';
+                  return null;
+                },
               ),
+              if ((_isPasswordFocused || _newPasswordController.text.isNotEmpty) && !_isPasswordValid)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildPasswordCriteriaRow('At least 8 characters', _is8CharsLong),
+                      _buildPasswordCriteriaRow('Contains an uppercase letter', _hasUppercase),
+                      _buildPasswordCriteriaRow('Contains a lowercase letter', _hasLowercase),
+                      _buildPasswordCriteriaRow('Contains a number', _hasNumber),
+                      _buildPasswordCriteriaRow('Contains a symbol (!@#\$&*~)', _hasSymbol),
+                      _buildPasswordCriteriaRow('Does not contain spaces', _hasNoSpaces),
+                      const SizedBox(height: 8),
+                      if(!_isPasswordValid)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: passwordStrength,
+                          minHeight: 5,
+                          backgroundColor: Colors.grey.shade300,
+                          color: _getPasswordStrengthColor(passwordStrength),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Confirm New Password'),
+                obscureText: _obscureConfirmPassword,
+                decoration: InputDecoration(
+                  labelText: 'Confirm New Password',
+                   suffixIcon: IconButton(
+                    icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                    onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                  ),
+                ),
                 validator: (value) => (value != _newPasswordController.text) ? 'Passwords do not match' : null,
               ),
               const SizedBox(height: 24),
@@ -1191,7 +1464,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }
 }
 
-// --- 9. Change Email Screen ---
+// --- 9. Change Email Screen (No validation needed to change) ---
 
 class ChangeEmailScreen extends StatefulWidget {
   const ChangeEmailScreen({super.key, required this.currentEmail});
@@ -1277,39 +1550,5 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
   }
 }
 
-// --- Private Helper Widget for this File ---
-
-/// A dialog used by AcademicInfoScreen to select from a list of options.
-class _SelectionDialog extends StatelessWidget {
-  const _SelectionDialog({
-    required this.title,
-    required this.options,
-    required this.selected,
-  });
-
-  final String title;
-  final List<String> options;
-  final String selected;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(title),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: ListView.builder(
-          shrinkWrap: true,
-          itemCount: options.length,
-          itemBuilder: (_, index) {
-            final option = options[index];
-            return ListTile(
-              title: Text(option),
-              trailing: option == selected ? const Icon(Icons.check) : null,
-              onTap: () => Navigator.of(context).pop(option),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
+// ---Private Helper Widget for this File ---
+// No longer needed after updating AcademicInfoScreen, can be removed.
