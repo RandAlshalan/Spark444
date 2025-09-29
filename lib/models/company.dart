@@ -32,7 +32,6 @@ class Company {
 
   Map<String, dynamic> toMap() {
     return {
-      'uid': uid,
       'email': email,
       'companyName': companyName,
       'sector': sector,
@@ -47,20 +46,25 @@ class Company {
     };
   }
 
-  factory Company.fromMap(Map<String, dynamic> map) {
+  // Corrected factory constructor that takes a DocumentSnapshot
+  factory Company.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final map = doc.data()!;
     return Company(
-      uid: map['uid'] as String?,
-      email: map['email'],
-      companyName: map['companyName'],
-      sector: map['sector'],
-      contactInfo: map['contactInfo'],
-      logoUrl: map['logoUrl'],
-      description: map['description'],
-      userType: map['userType'],
+      uid: doc.id, // Use the document ID as the UID
+      email: map['email'] ?? '',
+      companyName: map['companyName'] ?? '',
+      sector: map['sector'] ?? '',
+      contactInfo: map['contactInfo'] ?? '',
+      logoUrl: map['logoUrl'] as String?,
+      description: map['description'] as String?,
+      userType: map['userType'] ?? 'company',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       isVerified: map['isVerified'] ?? false,
       opportunitiesPosted: List<String>.from(map['opportunitiesPosted'] ?? []),
       studentReviews: List<String>.from(map['studentReviews'] ?? []),
     );
   }
+
+  // fromMap is kept for compatibility but fromFirestore is preferred.
+  factory Company.fromMap(Map<String, dynamic> map) => Company.fromFirestore(map as dynamic);
 }

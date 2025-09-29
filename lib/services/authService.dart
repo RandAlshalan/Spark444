@@ -36,6 +36,7 @@ class AuthService {
       DocumentSnapshot uniDoc = await _db.collection('lists').doc('universities').get();
       DocumentSnapshot majorDoc = await _db.collection('lists').doc('majors').get();
       DocumentSnapshot cityDoc = await _db.collection('lists').doc('city').get();
+      DocumentSnapshot sectorDoc = await _db.collection('lists').doc('sectors').get();
 
       final List<String> universities = uniDoc.exists
           ? List<String>.from((uniDoc.data() as Map<String, dynamic>)['names'] ?? [])
@@ -44,14 +45,19 @@ class AuthService {
       final List<String> majors = majorDoc.exists
           ? List<String>.from((majorDoc.data() as Map<String, dynamic>)['names'] ?? [])
           : [];
+
       final List<String> city = cityDoc.exists
           ? List<String>.from((cityDoc.data() as Map<String, dynamic>)['names'] ?? [])
           : [];
+      
+      final List<String> sectors = sectorDoc.exists
+          ? List<String>.from((sectorDoc.data() as Map<String, dynamic>)['names'] ?? [])
+          : [];
 
-      return {'universities': universities, 'majors': majors, 'cities': city};
+      return {'universities': universities, 'majors': majors, 'cities': city, 'sectors': sectors};
     } catch (e) {
       print("Error fetching lists: $e");
-      return {'universities': [], 'majors': [], 'cities': []};
+      return {'universities': [], 'majors': [], 'cities': [], 'sectors': []};
     }
   }
 
@@ -138,6 +144,27 @@ class AuthService {
     }
   }
 
+  /// Creates a user in Firebase Authentication without writing to Firestore.
+  /// Returns the created user so the UID can be used for file uploads before document creation.
+  Future<User?> createAuthUser({required String email, required String password}) async {
+    try {
+      final emailNorm = _normalizeEmail(email);
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: emailNorm,
+        password: password.trim(),
+      );
+      final user = credential.user;
+      if (user == null) {
+        throw Exception("Failed to create an authentication entry.");
+      }
+      await user.sendEmailVerification();
+      return user;
+    } on FirebaseAuthException catch (e) {
+      // Rethrow with a more user-friendly message
+      throw Exception(_mapAuthError(e));
+    }
+  }
+
   Future<User?> signUpCompany(Company company, String password) async {
     try {
       final isUnique = await isUsernameUnique(company.companyName);
@@ -152,32 +179,67 @@ class AuthService {
       final user = credential.user;
       if (user == null) throw Exception("Failed to create an account.");
 
-      await user.sendEmailVerification();
-
       final companyMap = company.toMap();
       companyMap['email'] = emailNorm;
       companyMap['isVerified'] = false;
       companyMap['username_lower'] = _normalizeUsername(company.companyName);
       companyMap['createdAt'] = FieldValue.serverTimestamp();
 
+      // Set the initial data. We will update it with profile info later if needed.
       await _db.collection(kCompanyCol).doc(user.uid).set(companyMap);
 
       final written = await _db.collection(kCompanyCol).doc(user.uid).get();
       if (!written.exists) throw Exception("Company Firestore doc was not created.");
 
+      // Send verification email after creating the doc, just in case.
+      await user.sendEmailVerification();
+
       return user;
 
     } on FirebaseAuthException catch (e) {
-      switch (e.code) {
-        case 'email-already-in-use':
-          throw Exception("This email address is already in use.");
-        case 'weak-password':
-          throw Exception("The password provided is too weak.");
-        default:
-          throw Exception(e.message ?? e.code);
-      }
+      // Rethrow with a more user-friendly message
+      throw Exception(_mapAuthError(e));
+    } catch (e) {
+      // Rethrow other exceptions
+      rethrow;
     }
   }
+  
+  /// Creates the company document in Firestore after the auth user and any file uploads are complete.
+  Future<void> createCompanyDocument(String uid, Company company) async {
+    try {
+      final companyMap = company.toMap();
+      companyMap['email'] = _normalizeEmail(company.email);
+      companyMap['isVerified'] = false; // Email is not verified at this point
+      companyMap['username_lower'] = _normalizeUsername(company.companyName);
+      companyMap['createdAt'] = FieldValue.serverTimestamp();
+
+      await _db.collection(kCompanyCol).doc(uid).set(companyMap);
+
+      final written = await _db.collection(kCompanyCol).doc(uid).get();
+      if (!written.exists) throw Exception("Company Firestore document was not created.");
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Helper to map Firebase Auth errors to user-friendly strings
+  String _mapAuthError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'email-already-in-use':
+        return "This email address is already in use by another account.";
+      case 'weak-password':
+        return "The password provided is too weak. Please use a stronger one.";
+      case 'invalid-email':
+        return "The email address is not valid.";
+      case 'operation-not-allowed':
+        return "Email/password accounts are not enabled.";
+      default:
+        return e.message ?? "An unknown error occurred during sign-up.";
+    }
+  }
+
+
 
   // ------------------------------
   // Resolve identifier → email
@@ -324,9 +386,13 @@ class AuthService {
   }
 
   Future<Company?> getCompany(String uid) async {
+    // Ensure you get a snapshot of the correct type.
     final doc = await _db.collection(kCompanyCol).doc(uid).get();
+
     if (!doc.exists) return null;
-    return Company.fromMap(doc.data()!);
+
+    // Use a constructor that accepts the DocumentSnapshot to get the ID.
+    return Company.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>);
   }
 
   Future<Company?> getCurrentCompany() async {

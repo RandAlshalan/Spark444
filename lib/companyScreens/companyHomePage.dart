@@ -80,10 +80,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       );
 
       // ************** CRITICAL CHANGE HERE **************
-      // Use company?.email to fetch opportunities, as per your preference
+      // Use the company's UID to fetch opportunities for consistency.
       final opportunities = await _opportunityService.getCompanyOpportunities(
-        company?.email ??
-            '', // <--- CHANGED FROM company?.uid to company?.email
+        company?.uid ?? '', // <-- Use UID to fetch opportunities
       );
       // **************************************************
 

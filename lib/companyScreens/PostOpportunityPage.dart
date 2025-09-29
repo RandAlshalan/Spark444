@@ -281,13 +281,11 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
 
       final User? currentUser = FirebaseAuth.instance.currentUser;
       // IMPORTANT: Now we need the email, not just existence or UID
-      if (currentUser == null || currentUser.email == null) {
+      if (currentUser == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text(
-                'You must be logged in with a valid email to post an opportunity.',
-              ),
+              content: Text('You must be logged in to post an opportunity.'),
             ),
           );
         }
@@ -295,9 +293,8 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
       }
 
       // ************** CRITICAL CHANGE HERE **************
-      // Use the Firebase Auth user's email as the companyId for the opportunity
-      final String companyEmailIdentifier =
-          currentUser.email!; // <--- CHANGED FROM currentUser.uid
+      // Use the Firebase Auth user's UID as the companyId for the opportunity
+      final String companyAuthUid = currentUser.uid;
       // **************************************************
 
       List<String> requirementsList = _requirementsController.text
@@ -308,8 +305,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
 
       final Opportunity newOpportunity = Opportunity(
         id: '', // Will be assigned by Firestore automatically when added
-        companyId:
-            companyEmailIdentifier, // Link to the posting company's Email
+        companyId: companyAuthUid, // Link to the posting company's Firebase Auth UID
         name: _nameController.text.trim(),
         role: _roleController.text.trim(),
         isPaid: _isPaid,
