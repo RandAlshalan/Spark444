@@ -433,7 +433,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
         items: [
           _MenuItemData(icon: Icons.tune_outlined, title: 'Preferences', subtitle: 'Notifications & privacy', onTap: () => _openScreen(SettingsPreferencesScreen(student: student))),
           _MenuItemData(icon: Icons.lock_outline, title: 'Change Password', subtitle: 'Keep your account secure', onTap: () => _openScreen(const ChangePasswordScreen())),
-  
+          _MenuItemData(icon: Icons.alternate_email, title: 'Change Email', subtitle: 'Update your login email', onTap: () => _openScreen(ChangeEmailScreen(currentEmail: profile.email))),
           _MenuItemData(icon: Icons.logout, title: 'Logout', subtitle: 'Sign out of this device', iconColor: _sparkRed, titleColor: _sparkRed, onTap: _showLogoutDialog),
         ],
       ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:my_app/studentScreens/studentViewProfile.dart';
 
 import 'firebase_options.dart';
 import 'companyScreens/companySignup.dart';
@@ -30,10 +29,10 @@ class MyApp extends StatelessWidget {
       initialRoute: '/welcome',
       routes: {
         '/welcome': (_) => const WelcomeScreen(),
-        //'/login': (_) => const LoginScreen(),
+        '/login': (_) => const LoginScreen(),
         '/signup': (_) => const StudentSignup(),
         '/companySignup': (_) => const CompanySignup(),
-        '/profile': (_) => const StudentViewProfile(),
+        '/profile': (_) => const StudentProfilePage(),
       },
       onUnknownRoute: (_) =>
           MaterialPageRoute(builder: (_) => const WelcomeScreen()),

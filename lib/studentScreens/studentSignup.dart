@@ -91,8 +91,7 @@ class _StudentSignupState extends State<StudentSignup> {
   bool _hasNumber = false;
   bool _hasSymbol = false;
   bool _is8CharsLong = false;
-  bool _hasNoSpaces = true; // --- ADDED: For password space check ---
-  bool get _isPasswordValid => _is8CharsLong && _hasUppercase && _hasLowercase && _hasNumber && _hasSymbol && _hasNoSpaces;
+  bool get _isPasswordValid => _is8CharsLong && _hasUppercase && _hasLowercase && _hasNumber && _hasSymbol;
 
   // Async username validation State
   bool _isCheckingUsername = false;
@@ -103,7 +102,7 @@ class _StudentSignupState extends State<StudentSignup> {
 
   final List<String> _academicLevels = [
     'Freshman (Level 1-2)', 'Sophomore (Level 3-4)', 'Junior (Level 5-6)',
-    'Senior (Level 7-8)', 'Senior (Level +9)', 'Graduate Student'
+    'Senior (Level 7-8)', 'Graduate Student'
   ];
 
   String? _usernameError;
@@ -172,7 +171,6 @@ class _StudentSignupState extends State<StudentSignup> {
     }
   }
 
-  // --- MODIFIED: Added space check ---
   void _checkPasswordStrength() {
     String password = _passwordController.text;
     setState(() {
@@ -181,14 +179,12 @@ class _StudentSignupState extends State<StudentSignup> {
       _hasLowercase = password.contains(RegExp(r'[a-z]'));
       _hasNumber = password.contains(RegExp(r'[0-9]'));
       _hasSymbol = password.contains(RegExp(r'[!@#\$&*~]'));
-      _hasNoSpaces = !password.contains(' ');
     });
   }
 
   void _addSkill() {
     final skill = _skillsController.text.trim();
-    // Also check length here as a safeguard
-    if (skill.isNotEmpty && !_selectedSkills.contains(skill) && skill.length <= 30) {
+    if (skill.isNotEmpty && !_selectedSkills.contains(skill)) {
       setState(() {
         _selectedSkills.add(skill);
         _skillsController.clear();
@@ -231,7 +227,7 @@ class _StudentSignupState extends State<StudentSignup> {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
-      firstDate: DateTime(2024),
+      firstDate: DateTime(DateTime.now().year),
       lastDate: DateTime(DateTime.now().year + 10),
       initialDatePickerMode: DatePickerMode.year,
        builder: (context, child) {
@@ -327,9 +323,10 @@ class _StudentSignupState extends State<StudentSignup> {
     }
   }
 
+  // MODIFIED WIDGET: Replaced hintText with labelText
   Widget _buildStyledTextFormField({
     required TextEditingController controller,
-    required String labelText,
+    required String labelText, // Changed from hintText
     IconData? icon,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
@@ -362,7 +359,7 @@ class _StudentSignupState extends State<StudentSignup> {
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
-          labelText: labelText,
+          labelText: labelText, // Changed from hintText
           prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -379,6 +376,7 @@ class _StudentSignupState extends State<StudentSignup> {
     );
   }
   
+  // MODIFIED WIDGET: Added labelText
   Widget _buildPhoneFormField() {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -409,8 +407,8 @@ class _StudentSignupState extends State<StudentSignup> {
               },
               autovalidateMode: AutovalidateMode.onUserInteraction,
               decoration: const InputDecoration(
-                labelText: 'Phone Number',
-                hintText: '5X XXX XXXX',
+                labelText: 'Phone Number', // Added labelText
+                hintText: '5X XXX XXXX',   // Kept hintText for format example
                 filled: true,
                 fillColor: Colors.white,
                 border: InputBorder.none,
@@ -431,17 +429,8 @@ class _StudentSignupState extends State<StudentSignup> {
     if (value == null || value.isEmpty) {
       return 'Please enter a username';
     }
-    if (value.length > 12) {
-      return 'Username cannot exceed 12 characters';
-    }
     if (value.contains(' ')) {
       return 'Username cannot contain spaces';
-    }
-    if (RegExp(r'[^a-zA-Z0-9_.-]').hasMatch(value)) {
-      return 'Only letters, numbers, and symbols (_, -, .) are allowed';
-    }
-    if (!RegExp(r'[a-zA-Z]').hasMatch(value)) {
-      return 'Username must contain at least one letter';
     }
     if (_usernameError != null) {
       return _usernameError;
@@ -468,8 +457,9 @@ class _StudentSignupState extends State<StudentSignup> {
     });
   }
 
+  // MODIFIED WIDGET: Replaced hintText with labelText
   Widget _buildSearchableDropdown({
-    required String labelText,
+    required String labelText, // Changed from hintText
     required String? selectedValue,
     required IconData icon,
     required VoidCallback onTap,
@@ -485,7 +475,7 @@ class _StudentSignupState extends State<StudentSignup> {
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
-          labelText: labelText,
+          labelText: labelText, // Changed from hintText
           prefixIcon: Icon(icon, color: Colors.grey),
           suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF422F5D)),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -545,9 +535,7 @@ class _StudentSignupState extends State<StudentSignup> {
                         itemCount: filteredItems.length,
                         itemBuilder: (context, index) {
                           final item = filteredItems[index];
-                          Widget? leadingIcon;
                           return ListTile(
-                            leading: leadingIcon,
                             title: Text(item, style: const TextStyle(color: Colors.black87)),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             onTap: () {
@@ -574,8 +562,9 @@ class _StudentSignupState extends State<StudentSignup> {
   );
   }
 
+  // MODIFIED WIDGET: Replaced hintText with labelText
   Widget _buildDropdownFormField({
-    required String labelText,
+    required String labelText, // Changed from hintText
     required List<String> items,
     required String? selectedValue,
     required void Function(String?) onChanged,
@@ -594,7 +583,7 @@ class _StudentSignupState extends State<StudentSignup> {
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
-          labelText: labelText,
+          labelText: labelText, // Changed from hintText
           prefixIcon: Icon(icon, color: Colors.grey),
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -656,7 +645,6 @@ class _StudentSignupState extends State<StudentSignup> {
     );
   }
 
-  // --- MODIFIED: Added space check to calculation ---
   double _calculatePasswordStrength() {
     int metCriteria = 0;
     if (_is8CharsLong) metCriteria++;
@@ -664,8 +652,7 @@ class _StudentSignupState extends State<StudentSignup> {
     if (_hasLowercase) metCriteria++;
     if (_hasNumber) metCriteria++;
     if (_hasSymbol) metCriteria++;
-    if (_hasNoSpaces) metCriteria++;
-    return metCriteria / 6.0;
+    return metCriteria / 5.0;
   }
 
   Color _getPasswordStrengthColor(double strength) {
@@ -707,7 +694,6 @@ class _StudentSignupState extends State<StudentSignup> {
             return null;
           },
         ),
-        // --- MODIFIED: Added space validator ---
         _buildStyledTextFormField(
           controller: _passwordController,
           labelText: 'Password',
@@ -720,12 +706,10 @@ class _StudentSignupState extends State<StudentSignup> {
           ),
           validator: (value) {
             if (value == null || value.isEmpty) return 'Please enter password';
-            if (value.contains(' ')) return 'Password cannot contain spaces';
             if (!_isPasswordValid) return 'Please meet all password requirements';
             return null;
           },
         ),
-        // --- MODIFIED: Added UI check for spaces ---
         if ((_isPasswordFocused || _passwordController.text.isNotEmpty) && !_isPasswordValid)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
@@ -737,7 +721,6 @@ class _StudentSignupState extends State<StudentSignup> {
                 _buildPasswordCriteriaRow('Contains a lowercase letter', _hasLowercase),
                 _buildPasswordCriteriaRow('Contains a number', _hasNumber),
                 _buildPasswordCriteriaRow('Contains a symbol (!@#\$&*~)', _hasSymbol),
-                _buildPasswordCriteriaRow('Does not contain spaces', _hasNoSpaces),
                 const SizedBox(height: 8),
                 if(!_isPasswordValid)
                 ClipRRect(
@@ -771,9 +754,6 @@ class _StudentSignupState extends State<StudentSignup> {
           controller: _usernameController,
           labelText: 'Username',
           icon: Icons.person_pin_outlined,
-          inputFormatters: [
-            LengthLimitingTextInputFormatter(12),
-          ],
           validator: _usernameManualValidator,
           onChanged: _checkUsernameUniqueness,
           errorText: _usernameError,
@@ -803,18 +783,12 @@ class _StudentSignupState extends State<StudentSignup> {
             );
           },
         ),
-        // --- MODIFIED: Added length limit ---
         if (_selectedUniversity == 'Other')
           _buildStyledTextFormField(
             controller: _otherUniversityController,
             labelText: 'Please specify your university',
-            icon: Icons.school,
-            inputFormatters: [LengthLimitingTextInputFormatter(30)],
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) return 'This field is required';
-              if (value.length > 30) return 'Cannot exceed 30 characters';
-              return null;
-            },
+            icon: Icons.edit,
+            validator: (value) => value == null || value.trim().isEmpty ? 'This field is required' : null,
           ),
         _buildSearchableDropdown(
           labelText: 'Major',
@@ -837,18 +811,12 @@ class _StudentSignupState extends State<StudentSignup> {
             );
           },
         ),
-        // --- MODIFIED: Added length limit ---
         if (_selectedMajor == 'Other')
            _buildStyledTextFormField(
             controller: _otherMajorController,
             labelText: 'Please specify your major',
-            icon: Icons.book,
-            inputFormatters: [LengthLimitingTextInputFormatter(30)],
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) return 'This field is required';
-              if (value.length > 30) return 'Cannot exceed 30 characters';
-              return null;
-            },
+            icon: Icons.edit,
+            validator: (value) => value == null || value.trim().isEmpty ? 'This field is required' : null,
           ),
         _buildSearchableDropdown(
           labelText: 'Location',
@@ -871,18 +839,14 @@ class _StudentSignupState extends State<StudentSignup> {
             );
           },
         ),
-        // --- MODIFIED: Added length limit ---
         if (_selectedLocation == 'Other')
           _buildStyledTextFormField(
             controller: _otherLocationController,
             labelText: 'Please specify your location',
-            icon: Icons.location_on,
-            inputFormatters: [LengthLimitingTextInputFormatter(30)],
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) return 'This field is required';
-              if (value.length > 30) return 'Cannot exceed 30 characters';
-              return null;
-            },
+            icon: Icons.edit,
+            validator: (value) => value == null || value.trim().isEmpty 
+              ? 'This field is required' 
+              : null,
           ),
         const SizedBox(height: 20),
         _buildGradientButton(text: 'Next Step', onPressed: _goToNextStep),
@@ -945,18 +909,9 @@ class _StudentSignupState extends State<StudentSignup> {
           ),
         _buildStyledTextFormField(
           controller: _skillsController,
-          labelText: 'Add a Skill',
+          labelText: 'Add a Skill and press Enter',
           icon: Icons.lightbulb_outline,
           onFieldSubmitted: (value) => _addSkill(),
-          inputFormatters: [
-            LengthLimitingTextInputFormatter(30),
-          ],
-          validator: (value) {
-            if (value != null && value.length > 30) {
-              return 'Skill cannot exceed 30 characters';
-            }
-            return null;
-          },
           suffixIcon: IconButton(
             icon: const Icon(Icons.add_circle, color: Colors.blue),
             onPressed: _addSkill,
