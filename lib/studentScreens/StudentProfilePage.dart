@@ -177,7 +177,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
 
     final mediaQuery = MediaQuery.of(context);
     final double headerContentTopPadding =
-        mediaQuery.padding.top + (kToolbarHeight / 2) + 12;
+        mediaQuery.padding.top + (kToolbarHeight / 2.5) + 24;
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: _profileBackgroundColor,
@@ -262,7 +262,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Spacer(),
+                const SizedBox(height: 28),
                 Text(
                   greeting,
                   style: TextStyle(
@@ -279,13 +279,14 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
                     fontSize: 13,
                   ),
                 ),
+                const Spacer(),
               ],
             ),
           ),
           Positioned(
             left: 20,
             right: 20,
-            bottom: -70,
+            bottom: -36,
             child: _buildProfileSummaryCard(
               profile,
               student,
@@ -1331,17 +1332,37 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   }
 
   Future<String?> _uploadProfilePicture(String uid, XFile file) async {
-    final firebase_storage.Reference
-    ref = firebase_storage.FirebaseStorage.instance.ref().child(
+    final firebase_storage.Reference ref =
+        firebase_storage.FirebaseStorage.instance.ref().child(
       'students/$uid/profile/profile_${DateTime.now().millisecondsSinceEpoch}_${file.name}',
     );
 
+    String _resolveContentType() {
+      final lower = file.name.toLowerCase();
+      if (lower.endsWith('.png')) return 'image/png';
+      if (lower.endsWith('.webp')) return 'image/webp';
+      if (lower.endsWith('.gif')) return 'image/gif';
+      if (lower.endsWith('.heic') || lower.endsWith('.heif')) return 'image/heic';
+      return 'image/jpeg';
+    }
+
     final bytes = await file.readAsBytes();
-    await ref.putData(
-      bytes,
-      firebase_storage.SettableMetadata(contentType: 'image/jpeg'),
+    final metadata = firebase_storage.SettableMetadata(
+      contentType: _resolveContentType(),
     );
-    return ref.getDownloadURL();
+
+    final firebase_storage.TaskSnapshot snapshot =
+        await ref.putData(bytes, metadata);
+
+    try {
+      return await snapshot.ref.getDownloadURL();
+    } on firebase_storage.FirebaseException catch (e) {
+      if (e.code == 'object-not-found') {
+        await Future.delayed(const Duration(milliseconds: 250));
+        return snapshot.ref.getDownloadURL();
+      }
+      rethrow;
+    }
   }
 
   Future<void> _save() async {

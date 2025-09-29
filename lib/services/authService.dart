@@ -3,12 +3,17 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+import 'package:image_picker/image_picker.dart';
 import '../models/student.dart';
 import '../models/company.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final firebase_storage.FirebaseStorage _storage =
+      firebase_storage.FirebaseStorage.instance;
+  final ImagePicker _imagePicker = ImagePicker();
 
   static const String kStudentCol = 'student';
   static const String kCompanyCol = 'companies';
@@ -399,6 +404,72 @@ class AuthService {
     final currentUser = _auth.currentUser;
     if (currentUser != null) return await getCompany(currentUser.uid);
     return null;
+  }
+
+  Future<String?> pickUploadAndStoreProfileImage() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No authenticated user found.');
+    }
+
+    final XFile? file = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+    );
+    if (file == null) return null;
+
+    String _resolveContentType() {
+      final lower = file.name.toLowerCase();
+      if (lower.endsWith('.png')) return 'image/png';
+      if (lower.endsWith('.webp')) return 'image/webp';
+      if (lower.endsWith('.gif')) return 'image/gif';
+      if (lower.endsWith('.heic') || lower.endsWith('.heif')) {
+        return 'image/heic';
+      }
+      return 'image/jpeg';
+    }
+
+    final firebase_storage.Reference ref = _storage.ref().child(
+          'users/${user.uid}/profile/profile_${DateTime.now().millisecondsSinceEpoch}_${file.name}',
+        );
+
+    final bytes = await file.readAsBytes();
+    final metadata = firebase_storage.SettableMetadata(
+      contentType: _resolveContentType(),
+    );
+
+    final firebase_storage.TaskSnapshot snapshot =
+        await ref.putData(bytes, metadata);
+
+    Future<String> _downloadUrlWithRetry() async {
+      try {
+        return await snapshot.ref.getDownloadURL();
+      } on firebase_storage.FirebaseException catch (e) {
+        if (e.code == 'object-not-found') {
+          await Future.delayed(const Duration(milliseconds: 250));
+          return snapshot.ref.getDownloadURL();
+        }
+        rethrow;
+      }
+    }
+
+    final downloadUrl = await _downloadUrlWithRetry();
+
+    final studentRef = _db.collection(kStudentCol).doc(user.uid);
+    final studentDoc = await studentRef.get();
+    if (studentDoc.exists) {
+      await studentRef.update({'profilePictureUrl': downloadUrl});
+      return downloadUrl;
+    }
+
+    final companyRef = _db.collection(kCompanyCol).doc(user.uid);
+    final companyDoc = await companyRef.get();
+    if (companyDoc.exists) {
+      await companyRef.update({'logoUrl': downloadUrl});
+      return downloadUrl;
+    }
+
+    throw Exception('User type not found while saving profile image URL.');
   }
 
   Future<void> updateCompany(String uid, Company company) async {

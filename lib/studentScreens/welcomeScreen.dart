@@ -54,10 +54,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final isSmall = size.height < 740;
+    final topInset = MediaQuery.of(context).padding.top;
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
+        top: false,
         child: Stack(
           children: [
             // خلفية بنفسجية شعاعية أغمق
@@ -77,176 +79,188 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ),
             ),
 
-            Column(
-              children: [
-                const SizedBox(height: 20),
+            SingleChildScrollView(
+              padding: EdgeInsets.only(top: topInset + 12, bottom: 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: size.height + topInset),
+                child: Column(
+                  mainAxisSize: MainAxisSize.max,
+                  children: [
+                    // Logo + Tagline
+                    Column(
+                      children: const [
+                        _Logo(), // 120px
+                        SizedBox(height: 12),
+                        Text(
+                          'SPARK',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF422F5D),
+                          ),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          'Ignite your future',
+                          style: TextStyle(
+                            color: Color(0xFFE65100), // برتقالي غامق
+                            fontStyle: FontStyle.italic,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
 
-                // Logo + Tagline
-                Column(
-                  children: const [
-                    _Logo(), // 120px
-                    SizedBox(height: 12),
-                    Text(
-                      'SPARK',
+                    const SizedBox(height: 50), // ننزّل النص والأزرار شوي
+
+                    const Text(
+                      'Your Way to\n Unlock Your Future.\n',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 28,
+                        height: 1.25,
                         fontWeight: FontWeight.w900,
                         color: Color(0xFF422F5D),
                       ),
                     ),
-                    SizedBox(height: 3),
-                    Text(
-                      'Ignite your future',
-                      style: TextStyle(
-                        color: Color(0xFFE65100), // برتقالي غامق
-                        fontStyle: FontStyle.italic,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                    const SizedBox(height: 14),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Text(
+                        'Connect with careers that fit your skills, ambition, and personality',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          height: 1.5,
+                          color: Color(0xFF6B4791),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // زر Get Started
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: _grad,
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(.08),
+                                blurRadius: 10,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: _toggleBubbles,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: const Text(
+                              'Get Started',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // بابلز التسجيل (as Student / as Company)
+                    ClipRect(
+                      child: AnimatedSize(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOut,
+                        child: _expanded
+                            ? Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 14,
+                                  bottom: 4,
+                                ),
+                                child: FadeTransition(
+                                  opacity: _fade,
+                                  child: SlideTransition(
+                                    position: _slide,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        _Bubble(
+                                          icon: Icons.school_outlined,
+                                          label: 'as Student',
+                                          onTap: () {
+                                            _toggleBubbles();
+                                            Navigator.pushNamed(
+                                              context,
+                                              '/signup',
+                                            );
+                                          },
+                                        ),
+                                        const SizedBox(width: 22),
+                                        _Bubble(
+                                          icon: Icons.business_center_outlined,
+                                          label: 'as Company',
+                                          onTap: () {
+                                            _toggleBubbles();
+                                            Navigator.pushNamed(
+                                              context,
+                                              '/companySignup',
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Log In
+                    TextButton(
+                      onPressed: () => Navigator.pushNamed(context, '/login'),
+                      child: const Text(
+                        'Log In',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF6B4791),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // صورة الطلاب أسفل
+                    Image.asset(
+                      'assets/students.png',
+                      width: double.infinity,
+                      height: isSmall ? 150 : 180,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.image_not_supported, size: 64),
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 50), // ننزّل النص والأزرار شوي
-
-                const Text(
-                  'Your Way to\n Unlock Your Future.\n',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 28,
-                    height: 1.25,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF422F5D),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Text(
-                    'Connect with careers that fit your skills, ambition, and personality',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      height: 1.5,
-                      color: Color(0xFF6B4791),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-
-                // زر Get Started
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: _grad,
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(.08),
-                            blurRadius: 10,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: _toggleBubbles,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        child: const Text(
-                          'Get Started',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // بابلز التسجيل (as Student / as Company)
-                ClipRect(
-                  child: AnimatedSize(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOut,
-                    child: _expanded
-                        ? Padding(
-                            padding: const EdgeInsets.only(top: 14, bottom: 4),
-                            child: FadeTransition(
-                              opacity: _fade,
-                              child: SlideTransition(
-                                position: _slide,
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    _Bubble(
-                                      icon: Icons.school_outlined,
-                                      label: 'as Student',
-                                      onTap: () {
-                                        _toggleBubbles();
-                                        Navigator.pushNamed(context, '/signup');
-                                      },
-                                    ),
-                                    const SizedBox(width: 22),
-                                    _Bubble(
-                                      icon: Icons.business_center_outlined,
-                                      label: 'as Company',
-                                      onTap: () {
-                                        _toggleBubbles();
-                                        Navigator.pushNamed(
-                                          context,
-                                          '/companySignup',
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Log In
-                TextButton(
-                  onPressed: () => Navigator.pushNamed(context, '/login'),
-                  child: const Text(
-                    'Log In',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF6B4791),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-
-                const Spacer(),
-
-                // صورة الطلاب أسفل
-                Image.asset(
-                  'assets/students.png',
-                  width: double.infinity,
-                  height: isSmall ? 150 : 180,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      const Icon(Icons.image_not_supported, size: 64),
-                ),
-              ],
+              ),
             ),
           ],
         ),
