@@ -65,17 +65,22 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   late TextEditingController _lastNameController;
   late TextEditingController _usernameController;
   late TextEditingController _phoneController;
-  late TextEditingController _locationController;
+  late TextEditingController _otherLocationController;
+  String? _selectedLocation;
   late TextEditingController _summaryController;
 
   XFile? _pickedImage;
   Uint8List? _previewBytes;
   bool _saving = false;
 
-  // --- Username validation state (from signup) ---
   String? _usernameError;
   Timer? _debounce;
   bool _isCheckingUsername = false;
+
+  // --- ADDED: Sample list for cities. In a real app, fetch this from a service. ---
+  final List<String> _locationsList = [
+    'Riyadh', 'Jeddah', 'Dammam', 'Khobar', 'Dhahran', 'Mecca', 'Medina', 'Other'
+  ];
 
   @override
   void initState() {
@@ -85,17 +90,22 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     _lastNameController = TextEditingController(text: student.lastName);
     _usernameController = TextEditingController(text: student.username);
     
-    // Extract 9-digit number for the phone controller
     String phoneNumber = student.phoneNumber ?? '';
     if (phoneNumber.startsWith('+966')) {
         phoneNumber = phoneNumber.substring(4);
     }
     _phoneController = TextEditingController(text: phoneNumber.replaceAll(' ', ''));
 
-    _locationController = TextEditingController(text: student.location ?? '');
     _summaryController = TextEditingController(text: student.shortSummary ?? '');
+    _otherLocationController = TextEditingController();
+    // Set initial location. If it's not in our predefined list, set it as 'Other'.
+    if (student.location != null && _locationsList.contains(student.location)) {
+        _selectedLocation = student.location;
+    } else if (student.location != null) {
+        _selectedLocation = 'Other';
+        _otherLocationController.text = student.location!;
+    }
 
-    // Listener for username uniqueness check
     _usernameController.addListener(() {
       if (_usernameController.text.trim() != widget.student.username) {
         _checkUsernameUniqueness(_usernameController.text.trim());
@@ -109,13 +119,102 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     _lastNameController.dispose();
     _usernameController.dispose();
     _phoneController.dispose();
-    _locationController.dispose();
+    _otherLocationController.dispose();
     _summaryController.dispose();
     _debounce?.cancel();
     super.dispose();
   }
   
-  // --- Username validation logic (from signup) ---
+  Widget _buildSearchableDropdown({
+    required String labelText,
+    required String? selectedValue,
+    required VoidCallback onTap,
+    String? Function(String?)? validator,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        controller: TextEditingController(text: selectedValue),
+        readOnly: true,
+        onTap: onTap,
+        validator: validator,
+        decoration: InputDecoration(
+          labelText: labelText,
+          suffixIcon: const Icon(Icons.arrow_drop_down, color: _profilePrimaryColor),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showSearchDialog({
+    required BuildContext context,
+    required List<String> items,
+    required String title,
+    required Function(String) onItemSelected,
+  }) async {
+    final TextEditingController searchController = TextEditingController();
+    List<String> filteredItems = List.from(items);
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Select $title'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: searchController,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'Search for a $title...',
+                        prefixIcon: const Icon(Icons.search),
+                      ),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          filteredItems = items
+                              .where((item) => item.toLowerCase().contains(value.toLowerCase()))
+                              .toList();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: filteredItems.length,
+                        itemBuilder: (context, index) {
+                          final item = filteredItems[index];
+                          return ListTile(
+                            title: Text(item),
+                            onTap: () {
+                              onItemSelected(item);
+                              Navigator.of(context).pop();
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                )
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+  
   String? _usernameManualValidator(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter a username';
@@ -145,7 +244,6 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       if (_usernameError != null) {
         setState(() { _usernameError = null; });
       }
-      // Only check if it's different from the original and not empty
       if (value.isNotEmpty && value != widget.student.username) {
         final isUnique = await _authService.isUsernameUnique(value);
         if (!isUnique && mounted) {
@@ -204,12 +302,16 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         profileUrl = await _uploadProfilePicture(user.uid, _pickedImage!);
       }
 
+      final String finalLocation = _selectedLocation == 'Other'
+          ? _otherLocationController.text.trim()
+          : _selectedLocation!;
+
       final updated = widget.student.copyWith(
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
         username: trimmedUsername,
         phoneNumber: "+966${_phoneController.text.trim().replaceAll(' ', '')}",
-        location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+        location: finalLocation.isEmpty ? null : finalLocation,
         shortSummary: _summaryController.text.trim().isEmpty ? null : _summaryController.text.trim(),
         profilePictureUrl: profileUrl,
       );
@@ -350,11 +452,41 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                   ),
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _locationController,
-                decoration: const InputDecoration(labelText: 'Location'),
-                inputFormatters: [LengthLimitingTextInputFormatter(30)],
+              _buildSearchableDropdown(
+                labelText: 'City',
+                selectedValue: _selectedLocation,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Please select your city';
+                  if (value == 'Other' && _otherLocationController.text.trim().isEmpty) {
+                    return 'Please specify your city';
+                  }
+                  return null;
+                },
+                onTap: () async {
+                  await _showSearchDialog(
+                    context: context,
+                    items: _locationsList,
+                    title: 'Location',
+                    onItemSelected: (value) => setState(() {
+                      _selectedLocation = value;
+                      if (value != 'Other') _otherLocationController.clear();
+                    }),
+                  );
+                },
               ),
+              if (_selectedLocation == 'Other')
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: TextFormField(
+                    controller: _otherLocationController,
+                    decoration: const InputDecoration(labelText: 'Please specify your location'),
+                    inputFormatters: [LengthLimitingTextInputFormatter(30)],
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) return 'This field is required';
+                      return null;
+                    },
+                  ),
+                ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _summaryController,
@@ -392,17 +524,24 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
   final _formKey = GlobalKey<FormState>();
   final AuthService _authService = AuthService();
 
-  late TextEditingController _universityController;
-  late TextEditingController _majorController;
+  late TextEditingController _otherUniversityController;
+  late TextEditingController _otherMajorController;
   late TextEditingController _gpaController;
   late TextEditingController _graduationController;
   
+  String? _selectedUniversity;
+  String? _selectedMajor;
   String? _selectedLevel;
   String? _gpaScale;
-
   bool _saving = false;
   
-  // --- Lists from signup page ---
+  final List<String> _universitiesList = [
+    'King Saud University', 'King Fahd University of Petroleum and Minerals', 'Alfaisal University', 'Princess Nourah bint Abdulrahman University', 'Imam Abdulrahman bin Faisal University', 'Other'
+  ];
+  final List<String> _majorsList = [
+    'Computer Science', 'Software Engineering', 'Information Technology', 'Cybersecurity', 'Electrical Engineering', 'Mechanical Engineering', 'Business Administration', 'Finance', 'Other'
+  ];
+  
   final List<String> _academicLevels = [
     'Freshman (Level 1-2)', 'Sophomore (Level 3-4)', 'Junior (Level 5-6)',
     'Senior (Level 7-8)', 'Senior (Level +9)', 'Graduate Student'
@@ -412,36 +551,130 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
   void initState() {
     super.initState();
     final student = widget.student;
-    _universityController = TextEditingController(text: student.university);
-    _majorController = TextEditingController(text: student.major);
+
+    _otherUniversityController = TextEditingController();
+    _otherMajorController = TextEditingController();
+    if (student.university.isNotEmpty && _universitiesList.contains(student.university)) {
+      _selectedUniversity = student.university;
+    } else {
+      _selectedUniversity = 'Other';
+      _otherUniversityController.text = student.university;
+    }
+    if (student.major.isNotEmpty && _majorsList.contains(student.major)) {
+      _selectedMajor = student.major;
+    } else {
+      _selectedMajor = 'Other';
+      _otherMajorController.text = student.major;
+    }
+
     _selectedLevel = student.level;
-    _gpaController = TextEditingController(
-      text: student.gpa != null ? student.gpa!.toString() : '',
-    );
-    _graduationController = TextEditingController(
-      text: student.expectedGraduationDate ?? '',
-    );
+    _gpaController = TextEditingController(text: student.gpa?.toString() ?? '');
+    _graduationController = TextEditingController(text: student.expectedGraduationDate ?? '');
     
-    // Infer GPA scale from existing GPA
     if (student.gpa != null) {
-      if (student.gpa! > 4.0) {
-        _gpaScale = '5.0';
-      } else {
-        _gpaScale = '4.0';
-      }
+      _gpaScale = student.gpa! > 4.0 ? '5.0' : '4.0';
     }
   }
 
   @override
   void dispose() {
-    _universityController.dispose();
-    _majorController.dispose();
+    _otherUniversityController.dispose();
+    _otherMajorController.dispose();
     _gpaController.dispose();
     _graduationController.dispose();
     super.dispose();
   }
+
+  Widget _buildSearchableDropdown({
+    required String labelText,
+    required String? selectedValue,
+    required VoidCallback onTap,
+    String? Function(String?)? validator,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        controller: TextEditingController(text: selectedValue),
+        readOnly: true,
+        onTap: onTap,
+        validator: validator,
+        decoration: InputDecoration(
+          labelText: labelText,
+          suffixIcon: const Icon(Icons.arrow_drop_down, color: _profilePrimaryColor),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showSearchDialog({
+    required BuildContext context,
+    required List<String> items,
+    required String title,
+    required Function(String) onItemSelected,
+  }) async {
+    final TextEditingController searchController = TextEditingController();
+    List<String> filteredItems = List.from(items);
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Select $title'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: searchController,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'Search for a $title...',
+                        prefixIcon: const Icon(Icons.search),
+                      ),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          filteredItems = items
+                              .where((item) => item.toLowerCase().contains(value.toLowerCase()))
+                              .toList();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: filteredItems.length,
+                        itemBuilder: (context, index) {
+                          final item = filteredItems[index];
+                          return ListTile(
+                            title: Text(item),
+                            onTap: () {
+                              onItemSelected(item);
+                              Navigator.of(context).pop();
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                )
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
   
-  // --- Date Picker from signup ---
   Future<void> _selectGraduationDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -481,9 +714,16 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('No authenticated user found.');
 
+      final String finalUniversity = _selectedUniversity == 'Other'
+          ? _otherUniversityController.text.trim()
+          : _selectedUniversity!;
+      final String finalMajor = _selectedMajor == 'Other'
+          ? _otherMajorController.text.trim()
+          : _selectedMajor!;
+
       final updated = widget.student.copyWith(
-        university: _universityController.text.trim(),
-        major: _majorController.text.trim(),
+        university: finalUniversity,
+        major: finalMajor,
         level: _selectedLevel,
         expectedGraduationDate: _graduationController.text.trim().isEmpty ? null : _graduationController.text.trim(),
         gpa: _gpaController.text.trim().isEmpty ? null : double.tryParse(_gpaController.text.trim()),
@@ -513,27 +753,62 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextFormField(
-                controller: _universityController,
-                decoration: const InputDecoration(labelText: 'University'),
-                inputFormatters: [LengthLimitingTextInputFormatter(30)],
+              _buildSearchableDropdown(
+                labelText: 'University',
+                selectedValue: _selectedUniversity,
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) return 'Required';
-                  if (value.length > 30) return 'Cannot exceed 30 characters';
-                  return null;
+                   if (value == null || value.isEmpty) return 'Required';
+                   if (value == 'Other' && _otherUniversityController.text.trim().isEmpty) return 'Please specify your university';
+                   return null;
+                },
+                onTap: () async {
+                  await _showSearchDialog(
+                    context: context, items: _universitiesList, title: 'University',
+                    onItemSelected: (value) => setState(() {
+                      _selectedUniversity = value;
+                      if (value != 'Other') _otherUniversityController.clear();
+                    }),
+                  );
                 },
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _majorController,
-                decoration: const InputDecoration(labelText: 'Major'),
-                inputFormatters: [LengthLimitingTextInputFormatter(30)],
+              if (_selectedUniversity == 'Other')
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                  child: TextFormField(
+                    controller: _otherUniversityController,
+                    decoration: const InputDecoration(labelText: 'Please specify your university'),
+                    inputFormatters: [LengthLimitingTextInputFormatter(30)],
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  ),
+                ),
+              _buildSearchableDropdown(
+                labelText: 'Major',
+                selectedValue: _selectedMajor,
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) return 'Required';
-                  if (value.length > 30) return 'Cannot exceed 30 characters';
-                  return null;
+                   if (value == null || value.isEmpty) return 'Required';
+                   if (value == 'Other' && _otherMajorController.text.trim().isEmpty) return 'Please specify your major';
+                   return null;
+                },
+                onTap: () async {
+                  await _showSearchDialog(
+                    context: context, items: _majorsList, title: 'Major',
+                    onItemSelected: (value) => setState(() {
+                      _selectedMajor = value;
+                      if (value != 'Other') _otherMajorController.clear();
+                    }),
+                  );
                 },
               ),
+               if (_selectedMajor == 'Other')
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                  child: TextFormField(
+                    controller: _otherMajorController,
+                    decoration: const InputDecoration(labelText: 'Please specify your major'),
+                    inputFormatters: [LengthLimitingTextInputFormatter(30)],
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  ),
+                ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _selectedLevel,
@@ -1242,7 +1517,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _submitting = false;
   bool _sendingReset = false;
   
-  // --- Password Strength State (from signup) ---
   final FocusNode _passwordFocusNode = FocusNode();
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
@@ -1275,7 +1549,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     super.dispose();
   }
 
-  // --- Password Strength Logic (from signup) ---
   void _checkPasswordStrength() {
     String password = _newPasswordController.text;
     setState(() {
@@ -1326,7 +1599,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     }
   }
 
-  // --- Password UI Widgets (from signup) ---
   Widget _buildPasswordCriteriaRow(String text, bool met) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4.0),
@@ -1463,7 +1735,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }
 }
 
-// --- 9. Change Email Screen (No validation needed to change) ---
+// --- 9. Change Email Screen ---
 
 class ChangeEmailScreen extends StatefulWidget {
   const ChangeEmailScreen({super.key, required this.currentEmail});
