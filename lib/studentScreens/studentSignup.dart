@@ -91,7 +91,7 @@ class _StudentSignupState extends State<StudentSignup> {
   bool _hasNumber = false;
   bool _hasSymbol = false;
   bool _is8CharsLong = false;
-  bool _hasNoSpaces = true; // --- ADDED: For password space check ---
+  bool _hasNoSpaces = true;
   bool get _isPasswordValid => _is8CharsLong && _hasUppercase && _hasLowercase && _hasNumber && _hasSymbol && _hasNoSpaces;
 
   // Async username validation State
@@ -133,7 +133,6 @@ class _StudentSignupState extends State<StudentSignup> {
     final lists = await _authService.getUniversitiesAndMajors();
     if (mounted) {
       setState(() {
-        // --- MODIFIED: "Other" is now at the end of each list ---
         _universitiesList = [...lists['universities'] ?? [], "Other"];
         _majorsList = [...lists['majors'] ?? [], "Other"];
         _locationsList = [...lists['cities'] ?? [], "Other"]; 
@@ -173,7 +172,6 @@ class _StudentSignupState extends State<StudentSignup> {
     }
   }
 
-  // --- MODIFIED: Added space check ---
   void _checkPasswordStrength() {
     String password = _passwordController.text;
     setState(() {
@@ -188,8 +186,7 @@ class _StudentSignupState extends State<StudentSignup> {
 
   void _addSkill() {
     final skill = _skillsController.text.trim();
-    // Also check length here as a safeguard
-    if (skill.isNotEmpty && !_selectedSkills.contains(skill) && skill.length <= 30) {
+    if (skill.isNotEmpty && !_selectedSkills.contains(skill) && skill.length <= 15) {
       setState(() {
         _selectedSkills.add(skill);
         _skillsController.clear();
@@ -432,8 +429,8 @@ class _StudentSignupState extends State<StudentSignup> {
     if (value == null || value.isEmpty) {
       return 'Please enter a username';
     }
-    if (value.length > 12) {
-      return 'Username cannot exceed 12 characters';
+    if (value.length > 15) {
+      return 'Username cannot exceed 15 characters';
     }
     if (value.contains(' ')) {
       return 'Username cannot contain spaces';
@@ -546,9 +543,7 @@ class _StudentSignupState extends State<StudentSignup> {
                         itemCount: filteredItems.length,
                         itemBuilder: (context, index) {
                           final item = filteredItems[index];
-                          Widget? leadingIcon;
                           return ListTile(
-                            leading: leadingIcon,
                             title: Text(item, style: const TextStyle(color: Colors.black87)),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             onTap: () {
@@ -657,7 +652,6 @@ class _StudentSignupState extends State<StudentSignup> {
     );
   }
 
-  // --- MODIFIED: Added space check to calculation ---
   double _calculatePasswordStrength() {
     int metCriteria = 0;
     if (_is8CharsLong) metCriteria++;
@@ -684,13 +678,31 @@ class _StudentSignupState extends State<StudentSignup> {
           controller: _firstNameController,
           labelText: 'First Name',
           icon: Icons.person_outline,
-          validator: (value) => value == null || value.isEmpty ? 'Please enter first name' : null,
+          inputFormatters: [
+            LengthLimitingTextInputFormatter(15),
+          ],
+          validator: (value) {
+            if (value == null || value.isEmpty) return 'Please enter first name';
+            if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
+              return 'Names cannot contain numbers or symbols';
+            }
+            return null;
+          },
         ),
         _buildStyledTextFormField(
           controller: _lastNameController,
           labelText: 'Last Name',
           icon: Icons.person_outline,
-          validator: (value) => value == null || value.isEmpty ? 'Please enter last name' : null,
+          inputFormatters: [
+            LengthLimitingTextInputFormatter(15),
+          ],
+          validator: (value) {
+            if (value == null || value.isEmpty) return 'Please enter last name';
+            if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
+              return 'Names cannot contain numbers or symbols';
+            }
+            return null;
+          },
         ),
         _buildStyledTextFormField(
           controller: _emailController,
@@ -708,7 +720,6 @@ class _StudentSignupState extends State<StudentSignup> {
             return null;
           },
         ),
-        // --- MODIFIED: Added space validator ---
         _buildStyledTextFormField(
           controller: _passwordController,
           labelText: 'Password',
@@ -726,7 +737,6 @@ class _StudentSignupState extends State<StudentSignup> {
             return null;
           },
         ),
-        // --- MODIFIED: Added UI check for spaces ---
         if ((_isPasswordFocused || _passwordController.text.isNotEmpty) && !_isPasswordValid)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
@@ -773,7 +783,7 @@ class _StudentSignupState extends State<StudentSignup> {
           labelText: 'Username',
           icon: Icons.person_pin_outlined,
           inputFormatters: [
-            LengthLimitingTextInputFormatter(12),
+            LengthLimitingTextInputFormatter(15),
           ],
           validator: _usernameManualValidator,
           onChanged: _checkUsernameUniqueness,
@@ -804,16 +814,15 @@ class _StudentSignupState extends State<StudentSignup> {
             );
           },
         ),
-        // --- MODIFIED: Added length limit ---
         if (_selectedUniversity == 'Other')
           _buildStyledTextFormField(
             controller: _otherUniversityController,
             labelText: 'Please specify your university',
             icon: Icons.school,
-            inputFormatters: [LengthLimitingTextInputFormatter(30)],
+            inputFormatters: [LengthLimitingTextInputFormatter(15)],
             validator: (value) {
               if (value == null || value.trim().isEmpty) return 'This field is required';
-              if (value.length > 30) return 'Cannot exceed 30 characters';
+              if (value.length > 15) return 'Cannot exceed 15 characters';
               return null;
             },
           ),
@@ -838,16 +847,15 @@ class _StudentSignupState extends State<StudentSignup> {
             );
           },
         ),
-        // --- MODIFIED: Added length limit ---
         if (_selectedMajor == 'Other')
            _buildStyledTextFormField(
             controller: _otherMajorController,
             labelText: 'Please specify your major',
             icon: Icons.book,
-            inputFormatters: [LengthLimitingTextInputFormatter(30)],
+            inputFormatters: [LengthLimitingTextInputFormatter(15)],
             validator: (value) {
               if (value == null || value.trim().isEmpty) return 'This field is required';
-              if (value.length > 30) return 'Cannot exceed 30 characters';
+              if (value.length > 15) return 'Cannot exceed 15 characters';
               return null;
             },
           ),
@@ -872,16 +880,15 @@ class _StudentSignupState extends State<StudentSignup> {
             );
           },
         ),
-        // --- MODIFIED: Added length limit ---
         if (_selectedLocation == 'Other')
           _buildStyledTextFormField(
             controller: _otherLocationController,
             labelText: 'Please specify your location',
             icon: Icons.location_on,
-            inputFormatters: [LengthLimitingTextInputFormatter(30)],
+            inputFormatters: [LengthLimitingTextInputFormatter(15)],
             validator: (value) {
               if (value == null || value.trim().isEmpty) return 'This field is required';
-              if (value.length > 30) return 'Cannot exceed 30 characters';
+              if (value.length > 15) return 'Cannot exceed 15 characters';
               return null;
             },
           ),
@@ -950,11 +957,11 @@ class _StudentSignupState extends State<StudentSignup> {
           icon: Icons.lightbulb_outline,
           onFieldSubmitted: (value) => _addSkill(),
           inputFormatters: [
-            LengthLimitingTextInputFormatter(30),
+            LengthLimitingTextInputFormatter(15),
           ],
           validator: (value) {
-            if (value != null && value.length > 30) {
-              return 'Skill cannot exceed 30 characters';
+            if (value != null && value.length > 15) {
+              return 'Skill cannot exceed 15 characters';
             }
             return null;
           },

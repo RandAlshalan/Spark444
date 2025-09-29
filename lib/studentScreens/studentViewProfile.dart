@@ -9,24 +9,32 @@ import '../../../models/student.dart';
 import '../../../services/authService.dart';
 import '../models/profile_ui_model.dart'; // Ensure this file exists
 import '/studentScreens/studentEditProfile.dart'; // Ensure this file exists
+import '../studentScreens/welcomeScreen.dart';
 
 // A placeholder for the login screen to navigate to after logout
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
   @override
-  Widget build(BuildContext context) => const LoginScreen();
+  Widget build(BuildContext context) {
+    // FIX: Return a real widget, like a Scaffold, to prevent a crash.
+    return const Scaffold(
+      body: Center(
+        child: Text('You have been logged out.'),
+      ),
+    );
+  }
 }
 
 // --- Color Constants inspired by Spark Logo ---
-const Color _sparkPrimaryPurple = Color(0xFF422F5D);  // Deep Purple from Spark text
-const Color _sparkOrange = Color(0xFFF99D46);         // Orange from Spark flame
-const Color _sparkPink = Color(0xFFD64483);           // Pink/Fuchsia from Spark flame
-const Color _sparkRed = Color(0xFFCC3333);            // Reddish tone from Spark flame
+const Color _sparkPrimaryPurple = Color(0xFF422F5D); // Deep Purple from Spark text
+const Color _sparkOrange = Color(0xFFF99D46); // Orange from Spark flame
+const Color _sparkPink = Color(0xFFD64483); // Pink/Fuchsia from Spark flame
+const Color _sparkRed = Color(0xFFCC3333); // Reddish tone from Spark flame
 
 const Color _profileBackgroundColor = Color(0xFFF8F9FA); // Light background for contrast
-const Color _profileTextColor = Color(0xFF1E1E1E);      // Dark text for readability
-const Color _profileCardColor = Color(0xFFFFFFFF);      // White cards
-const Color _profileSurfaceColor = Color(0xFFEEEAEF);   // A very light purple/grey for surfaces
+const Color _profileTextColor = Color(0xFF1E1E1E); // Dark text for readability
+const Color _profileCardColor = Color(0xFFFFFFFF); // White cards
+const Color _profileSurfaceColor = Color(0xFFEEEAEF); // A very light purple/grey for surfaces
 
 /// The main profile page that displays student information.
 class StudentViewProfile extends StatefulWidget {
@@ -97,7 +105,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
     try {
       if (showSpinner) setState(() => _loading = true);
       final fetchedStudent = await _authService.getCurrentStudent();
-      
+
       if (!mounted) return; // Fix: Check if widget is still mounted
 
       setState(() {
@@ -114,9 +122,10 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
 
   Future<void> _logout() async {
     await _authService.signOut();
-    if (!mounted) return; // Fix: Check if widget is still mounted
+    if (!mounted) return; // Check if widget is still mounted
+
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
       (route) => false,
     );
   }
@@ -137,7 +146,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
               _logout();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: _sparkRed, // Using a red from the logo for destructive action
+              backgroundColor: _sparkRed,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: const Text('Logout', style: TextStyle(color: Colors.white)),
@@ -158,11 +167,11 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
       ),
     );
   }
-  
+
   void _onNavigationTap(int index) {
     if (!mounted) return; // Fix: Check if widget is still mounted
     if (_currentIndex == index) return;
-    
+
     setState(() => _currentIndex = index);
     const placeholders = ['Home page', 'Companies page', 'Jobs page', null, 'Settings page'];
     final message = placeholders[index];
@@ -171,9 +180,9 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
 
   Future<void> _openScreen(Widget page) async {
     final result = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => page));
-    
+
     if (!mounted) return; // Fix: Check if widget is still mounted after navigation
-    
+
     if (result == true) {
       await _loadProfile(showSpinner: false);
     }
@@ -189,9 +198,8 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
 
     final profile = _ProfileUiModel.fromStudent(student);
     final mediaQuery = MediaQuery.of(context);
-    final double headerContentTopPadding =
-        mediaQuery.padding.top + (kToolbarHeight / 2.5) + 24;
-    
+    final double headerContentTopPadding = mediaQuery.padding.top + (kToolbarHeight / 2.5) + 24;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: _profileBackgroundColor,
@@ -207,7 +215,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildHeaderSection(profile, student, headerContentTopPadding),
-              const SizedBox(height: 100), // Space for the profile card to float over
+              const SizedBox(height: 100),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
@@ -222,9 +230,9 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
-  
+
   // --- UI Builder Methods ---
-  
+
   PreferredSizeWidget _buildAppBar({bool onGradient = false}) {
     return AppBar(
       backgroundColor: onGradient ? Colors.transparent : _profileBackgroundColor,
@@ -238,7 +246,6 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
 
   Widget _buildHeaderSection(_ProfileUiModel profile, Student student, double topPadding) {
     final completion = _calculateProfileCompletion(profile).clamp(0.0, 1.0);
-    final completionPercent = (completion * 100).round();
     final mediaSize = MediaQuery.of(context).size;
     final double backgroundHeight = (mediaSize.height * 0.36 + topPadding).clamp(topPadding + 200, topPadding + 260);
     final greeting = _buildGreeting(profile.fullName);
@@ -253,10 +260,9 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
             height: backgroundHeight,
             width: double.infinity,
             padding: EdgeInsets.fromLTRB(24, topPadding, 24, 96),
-            // STYLE UPDATE: Reinstated gradient using Spark logo colors
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [_sparkPrimaryPurple, _sparkPink], // From purple to pink for header
+                colors: [_sparkPrimaryPurple, _sparkPink],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -293,14 +299,14 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
             left: 20,
             right: 20,
             bottom: -36,
-            child: _buildProfileSummaryCard(profile, student, completion, completionPercent),
+            child: _buildProfileSummaryCard(profile, student, completion),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProfileSummaryCard(_ProfileUiModel profile, Student student, double completion, int completionPercent) {
+  Widget _buildProfileSummaryCard(_ProfileUiModel profile, Student student, double completion) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
       decoration: BoxDecoration(
@@ -328,13 +334,11 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
                       value: 1.0,
                       strokeWidth: 8,
                       valueColor: AlwaysStoppedAnimation<Color>(_sparkPrimaryPurple.withOpacity(0.1)),
-                      backgroundColor: Colors.transparent,
                     ),
-                    // STYLE UPDATE: Progress ring gradient using Spark logo colors
                     ShaderMask(
                       shaderCallback: (rect) {
                         return const LinearGradient(
-                          colors: [_sparkOrange, _sparkPink], // Orange to Pink gradient
+                          colors: [_sparkOrange, _sparkPink],
                           begin: Alignment.bottomLeft,
                           end: Alignment.topRight,
                         ).createShader(rect);
@@ -345,7 +349,6 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
                         strokeWidth: 8,
                         strokeCap: StrokeCap.round,
                         valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                        backgroundColor: Colors.transparent,
                       ),
                     ),
                     Container(
@@ -362,9 +365,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
                         radius: 43,
                         backgroundColor: _profileSurfaceColor,
                         backgroundImage: profile.profilePictureUrl != null ? NetworkImage(profile.profilePictureUrl!) : null,
-                        child: profile.profilePictureUrl == null
-                            ? const Icon(Icons.person_rounded, size: 40, color: _sparkPrimaryPurple)
-                            : null,
+                        child: profile.profilePictureUrl == null ? const Icon(Icons.person_rounded, size: 40, color: _sparkPrimaryPurple) : null,
                       ),
                     ),
                     Positioned(
@@ -425,25 +426,170 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
     );
   }
 
+  // --- Static View Builders ---
+  Widget _buildPersonalDetailsView(_ProfileUiModel profile) {
+    return _InfoCard(
+      title: 'Personal Information',
+      children: [
+        _StyledInfoTile(icon: Icons.person_outline, label: 'Full Name', value: profile.fullName),
+        _StyledInfoTile(icon: Icons.alternate_email_outlined, label: 'Email Address', value: profile.email),
+        _StyledInfoTile(icon: Icons.tag, label: 'Username', value: profile.username != null ? '@${profile.username}' : null),
+        _StyledInfoTile(icon: Icons.phone_outlined, label: 'Phone Number', value: profile.phoneNumber),
+        _StyledInfoTile(icon: Icons.location_on_outlined, label: 'Location', value: profile.location),
+        _StyledInfoTile(icon: Icons.notes_outlined, label: 'Short Summary', value: profile.shortSummary),
+      ],
+    );
+  }
+
+  Widget _buildAcademicInfoView(_ProfileUiModel profile) {
+    return _InfoCard(
+      title: 'Academic Background',
+      children: [
+        _StyledInfoTile(icon: Icons.school_outlined, label: 'University', value: profile.university),
+        _StyledInfoTile(icon: Icons.book_outlined, label: 'Major', value: profile.major),
+        _StyledInfoTile(icon: Icons.layers_outlined, label: 'Level', value: profile.level),
+        _StyledInfoTile(icon: Icons.star_border_outlined, label: 'GPA', value: profile.gpa),
+        _StyledInfoTile(icon: Icons.calendar_today_outlined, label: 'Expected Graduation', value: profile.graduationDate),
+      ],
+    );
+  }
+
+  Widget _buildSkillsView(_ProfileUiModel profile) {
+    return _InfoCard(
+      title: 'Skills',
+      children: [
+        if (profile.skills.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(child: Text('No skills have been added yet.')),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Wrap(
+              spacing: 8.0,
+              runSpacing: 8.0,
+              children: profile.skills.map((skill) => Chip(
+                label: Text(skill),
+                backgroundColor: _sparkPrimaryPurple.withOpacity(0.1),
+                labelStyle: const TextStyle(color: _sparkPrimaryPurple, fontWeight: FontWeight.w500),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              )).toList(),
+            ),
+          )
+      ],
+    );
+  }
+
+  Widget _buildDocumentsView() {
+    return _InfoCard(title: 'Documents', children: [
+      ListTile(
+        leading: Icon(Icons.info_outline, color: _profileTextColor.withOpacity(0.6)),
+        title: const Text('This section is for managing your uploaded documents like transcripts and certificates.'),
+      )
+    ]);
+  }
+
+  Widget _buildGeneratedResumesView() {
+    return _InfoCard(title: 'Generated Resumes', children: [
+      ListTile(
+        leading: Icon(Icons.info_outline, color: _profileTextColor.withOpacity(0.6)),
+        title: const Text('Your tailored resumes for different job applications will appear here.'),
+      )
+    ]);
+  }
+
+  Widget _buildFollowedCompaniesView(_ProfileUiModel profile) {
+    return _InfoCard(
+      title: 'Followed Companies',
+      children: [
+        if (profile.followedCompanies.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(child: Text('You are not following any companies.')),
+          )
+        else
+          ...profile.followedCompanies.map((company) => ListTile(
+                leading: const Icon(Icons.business_outlined),
+                title: Text(company),
+              )),
+      ],
+    );
+  }
+
   List<Widget> _buildMenuContent(Student student, _ProfileUiModel profile) {
     final sections = [
-       _MenuSection(
+      _MenuSection(
         title: 'Profile Management',
         items: [
-          _MenuItemData(icon: Icons.person_outline, title: 'Personal Details', subtitle: 'Name, contact, photo', onTap: () => _openScreen(PersonalInformationScreen(student: student))),
-          _MenuItemData(icon: Icons.school_outlined, title: 'Academic Info', subtitle: 'University, major, GPA', onTap: () => _openScreen(AcademicInfoScreen(student: student))),
-          _MenuItemData(icon: Icons.psychology_outlined, title: 'Skills', subtitle: 'You have ${profile.skills.length} skills', trailing: profile.skills.isEmpty ? null : _BadgeChip(label: profile.skills.length.toString()), onTap: () => _openScreen(SkillsScreen(student: student))),
+          _MenuItemData(
+            icon: Icons.person_outline,
+            title: 'Personal Details',
+            subtitle: 'Name, contact, photo',
+            onTap: () => _openScreen(StaticInfoViewerPage(
+              title: 'Personal Details',
+              content: _buildPersonalDetailsView(profile),
+              editingPage: PersonalInformationScreen(student: student),
+            )),
+          ),
+          _MenuItemData(
+            icon: Icons.school_outlined,
+            title: 'Academic Info',
+            subtitle: 'University, major, GPA',
+            onTap: () => _openScreen(StaticInfoViewerPage(
+              title: 'Academic Info',
+              content: _buildAcademicInfoView(profile),
+              editingPage: AcademicInfoScreen(student: student),
+            )),
+          ),
+          _MenuItemData(
+              icon: Icons.psychology_outlined,
+              title: 'Skills',
+              subtitle: 'You have ${profile.skills.length} skills',
+              trailing: profile.skills.isEmpty ? null : _BadgeChip(label: profile.skills.length.toString()),
+              onTap: () => _openScreen(StaticInfoViewerPage(
+                    title: 'Skills',
+                    content: _buildSkillsView(profile),
+                    editingPage: SkillsScreen(student: student),
+                  ))),
         ],
       ),
-       _MenuSection(
+      _MenuSection(
         title: 'Career',
         items: [
-          _MenuItemData(icon: Icons.folder_open_outlined, title: 'Documents', subtitle: 'Upload transcripts & certificates', onTap: () => _openScreen(DocumentsScreen(student: student))),
-          _MenuItemData(icon: Icons.description_outlined, title: 'Generated Resumes', subtitle: 'Tailored resumes for employers', onTap: () => _openScreen(GeneratedResumesScreen(student: student))),
-          _MenuItemData(icon: Icons.bookmark_border_outlined, title: 'Followed Companies', subtitle: 'Following ${profile.followedCompanies.length} companies', trailing: profile.followedCompanies.isEmpty ? null : _BadgeChip(label: profile.followedCompanies.length.toString()), onTap: () => _openScreen(FollowedCompaniesScreen(student: student))),
+          _MenuItemData(
+            icon: Icons.folder_open_outlined,
+            title: 'Documents',
+            subtitle: 'Upload transcripts & certificates',
+            onTap: () => _openScreen(StaticInfoViewerPage(
+              title: 'Documents',
+              content: _buildDocumentsView(),
+              editingPage: DocumentsScreen(student: student),
+            )),
+          ),
+          _MenuItemData(
+            icon: Icons.description_outlined,
+            title: 'Generated Resumes',
+            subtitle: 'Tailored resumes for employers',
+            onTap: () => _openScreen(StaticInfoViewerPage(
+              title: 'Generated Resumes',
+              content: _buildGeneratedResumesView(),
+              editingPage: GeneratedResumesScreen(student: student),
+            )),
+          ),
+          _MenuItemData(
+              icon: Icons.bookmark_border_outlined,
+              title: 'Followed Companies',
+              subtitle: 'Following ${profile.followedCompanies.length} companies',
+              trailing: profile.followedCompanies.isEmpty ? null : _BadgeChip(label: profile.followedCompanies.length.toString()),
+              onTap: () => _openScreen(StaticInfoViewerPage(
+                    title: 'Followed Companies',
+                    content: _buildFollowedCompaniesView(profile),
+                    editingPage: FollowedCompaniesScreen(student: student),
+                  ))),
         ],
       ),
-       _MenuSection(
+      _MenuSection(
         title: 'Account',
         items: [
           _MenuItemData(icon: Icons.tune_outlined, title: 'Preferences', subtitle: 'Notifications & privacy', onTap: () => _openScreen(SettingsPreferencesScreen(student: student))),
@@ -474,12 +620,11 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
               const SizedBox(height: 8),
               Container(
                 decoration: BoxDecoration(
-                  color: _profileCardColor,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                     BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 5)),
-                  ]
-                ),
+                    color: _profileCardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 5)),
+                    ]),
                 child: Column(
                   children: buildSectionTiles(sections[i]),
                 ),
@@ -510,9 +655,9 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
-  
+
   Widget _buildBottomNavigationBar() {
-     return Container(
+    return Container(
       decoration: BoxDecoration(
         color: _profileCardColor,
         boxShadow: [
@@ -527,7 +672,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
           onTap: _onNavigationTap,
           type: BottomNavigationBarType.fixed,
           backgroundColor: _profileCardColor,
-          selectedItemColor: _sparkPrimaryPurple, // Selected item color with Spark purple
+          selectedItemColor: _sparkPrimaryPurple,
           unselectedItemColor: _profileTextColor.withOpacity(0.5),
           selectedLabelStyle: GoogleFonts.lato(fontWeight: FontWeight.bold),
           unselectedLabelStyle: GoogleFonts.lato(),
@@ -545,7 +690,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
       ),
     );
   }
-  
+
   Scaffold _buildLoadingScaffold() {
     return Scaffold(
       backgroundColor: _profileBackgroundColor,
@@ -566,7 +711,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
       ),
     );
   }
-  
+
   Scaffold _buildMissingProfileScaffold() {
     return Scaffold(
       backgroundColor: _profileBackgroundColor,
@@ -632,13 +777,11 @@ class _ProfileUiModel {
   });
 
   factory _ProfileUiModel.fromStudent(Student student) {
-    String? safePhone =
-        student.phoneNumber.trim().isEmpty ? null : student.phoneNumber.trim();
+    String? safePhone = student.phoneNumber.trim().isEmpty ? null : student.phoneNumber.trim();
     return _ProfileUiModel(
       fullName: '${student.firstName} ${student.lastName}'.trim(),
       email: student.email,
-      username:
-          student.username.trim().isEmpty ? null : student.username.trim(),
+      username: student.username.trim().isEmpty ? null : student.username.trim(),
       phoneNumber: safePhone,
       university: student.university,
       major: student.major,
@@ -648,9 +791,7 @@ class _ProfileUiModel {
       skills: student.skills.where((skill) => skill.trim().isNotEmpty).toList(),
       shortSummary: _emptyToNull(student.shortSummary),
       profilePictureUrl: _emptyToNull(student.profilePictureUrl),
-      followedCompanies: student.followedCompanies
-          .where((company) => company.trim().isNotEmpty)
-          .toList(),
+      followedCompanies: student.followedCompanies.where((company) => company.trim().isNotEmpty).toList(),
       location: _emptyToNull(student.location),
     );
   }
@@ -719,7 +860,7 @@ class _BadgeChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        gradient: const LinearGradient( // Using gradient from logo
+        gradient: const LinearGradient(
           colors: [_sparkOrange, _sparkPink],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
@@ -749,7 +890,7 @@ class _InfoPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: _profileSurfaceColor,
-        borderRadius: BorderRadius.circular(100), // Makes it a pill
+        borderRadius: BorderRadius.circular(100),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -766,6 +907,120 @@ class _InfoPill extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// --- REDESIGNED STATIC VIEWER PAGE AND HELPERS ---
+
+class StaticInfoViewerPage extends StatelessWidget {
+  final String title;
+  final Widget content;
+  final Widget editingPage;
+
+  const StaticInfoViewerPage({
+    super.key,
+    required this.title,
+    required this.content,
+    required this.editingPage,
+  });
+
+  Future<void> _navigateToEdit(BuildContext context) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => editingPage),
+    );
+
+    if (result == true && context.mounted) {
+      Navigator.of(context).pop(true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _profileBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: _profileBackgroundColor,
+        elevation: 0,
+        foregroundColor: _profileTextColor,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        title: Text(title, style: GoogleFonts.lato(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: IconButton(
+              tooltip: 'Edit',
+              onPressed: () => _navigateToEdit(context),
+              icon: const Icon(Icons.edit_outlined),
+              color: _sparkPrimaryPurple,
+            ),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: content,
+      ),
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+  const _InfoCard({required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              title,
+              style: GoogleFonts.lato(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: _sparkPrimaryPurple,
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _StyledInfoTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? value;
+
+  const _StyledInfoTile({required this.icon, required this.label, this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final displayValue = value?.trim();
+    if (displayValue == null || displayValue.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return ListTile(
+      leading: Icon(icon, color: _profileTextColor.withOpacity(0.6)),
+      title: Text(displayValue, style: GoogleFonts.lato(fontSize: 16, color: _profileTextColor)),
+      subtitle: Text(label, style: GoogleFonts.lato(fontSize: 13, color: _profileTextColor.withOpacity(0.7))),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
     );
   }
 }

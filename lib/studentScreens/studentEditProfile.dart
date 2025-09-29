@@ -15,6 +15,149 @@ import '../../../models/student.dart';
 import '../../../services/authService.dart';
 import '../../../services/storage_service.dart';
 
+// --- ADDED: Main Edit Profile Screen ---
+// This screen acts as a navigation hub to other edit screens.
+
+class EditProfileScreen extends StatefulWidget {
+  const EditProfileScreen({super.key, required this.student});
+  final Student student;
+
+  @override
+  State<EditProfileScreen> createState() => _EditProfileScreenState();
+}
+
+class _EditProfileScreenState extends State<EditProfileScreen> {
+  late Student _student;
+
+  @override
+  void initState() {
+    super.initState();
+    _student = widget.student;
+  }
+
+  /// Navigates to a detail screen and triggers a data refresh upon return if changes were made.
+  Future<void> _navigateAndRefresh(Widget screen) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => screen),
+    );
+
+    // If the popped screen returns `true`, it indicates a successful update.
+    // We re-fetch the student's data to reflect the changes.
+    if (result == true) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final updatedStudent = await AuthService().getStudent(user.uid);
+        if (updatedStudent != null && mounted) {
+          setState(() {
+            _student = updatedStudent;
+          });
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: const Text('Edit Profile'),
+        backgroundColor: Colors.white,
+        elevation: 1,
+      ),
+      body: ListView(
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 10),
+          _buildSection(
+            header: 'Profile Information',
+            tiles: [
+              _buildProfileTile('Personal Information', Icons.person_outline, () => _navigateAndRefresh(PersonalInformationScreen(student: _student))),
+              _buildProfileTile('Academic Information', Icons.school_outlined, () => _navigateAndRefresh(AcademicInfoScreen(student: _student))),
+              _buildProfileTile('Skills', Icons.lightbulb_outline, () => _navigateAndRefresh(SkillsScreen(student: _student))),
+              _buildProfileTile('Followed Companies', Icons.business_center_outlined, () => _navigateAndRefresh(FollowedCompaniesScreen(student: _student))),
+            ],
+          ),
+          _buildSection(
+            header: 'Documents & Resumes',
+            tiles: [
+              _buildProfileTile('My Documents', Icons.folder_open_outlined, () => _navigateAndRefresh(DocumentsScreen(student: _student))),
+              _buildProfileTile('Generated Resumes', Icons.description_outlined, () => _navigateAndRefresh(GeneratedResumesScreen(student: _student))),
+            ],
+          ),
+          _buildSection(
+            header: 'Account Settings',
+            tiles: [
+              _buildProfileTile('Settings & Preferences', Icons.settings_outlined, () => _navigateAndRefresh(SettingsPreferencesScreen(student: _student))),
+              _buildProfileTile('Change Email', Icons.email_outlined, () => _navigateAndRefresh(ChangeEmailScreen(currentEmail: _student.email))),
+              _buildProfileTile('Change Password', Icons.lock_outline, () => _navigateAndRefresh(const ChangePasswordScreen())),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds the top section with the user's profile picture and name.
+  Widget _buildHeader() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: Colors.grey.shade200,
+            backgroundImage: _student.profilePictureUrl != null ? NetworkImage(_student.profilePictureUrl!) : null,
+            child: _student.profilePictureUrl == null ? const Icon(Icons.person, size: 40, color: Colors.grey) : null,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '${_student.firstName} ${_student.lastName}',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '@${_student.username}',
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// Builds a section with a header and a list of navigation tiles.
+  Widget _buildSection({required String header, required List<Widget> tiles}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+          child: Text(
+            header.toUpperCase(),
+            style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+        ),
+        Container(
+          color: Colors.white,
+          child: Column(children: tiles),
+        ),
+        const SizedBox(height: 10),
+      ],
+    );
+  }
+
+  /// Builds a single navigation list tile.
+  Widget _buildProfileTile(String title, IconData icon, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFF422F5D)),
+      title: Text(title),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+      onTap: onTap,
+    );
+  }
+}
+
 // Color constant needed by some edit screens
 const Color _profilePrimaryColor = Color(0xFF422F5D);
 const Color _profileSecondaryColor = Color(0xFFF99D46);
@@ -215,12 +358,13 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     );
   }
   
+  // --- MODIFIED --- Character limit changed from 12 to 15
   String? _usernameManualValidator(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter a username';
     }
-    if (value.length > 12) {
-      return 'Username cannot exceed 12 characters';
+    if (value.length > 15) {
+      return 'Username cannot exceed 15 characters';
     }
     if (value.contains(' ')) {
       return 'Username cannot contain spaces';
@@ -373,20 +517,34 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
               Row(
                 children: [
                   Expanded(
+                    // --- MODIFIED --- Added consistent validation for first name
                     child: TextFormField(
                       controller: _firstNameController,
                       decoration: const InputDecoration(labelText: 'First Name'),
-                      inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                      validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
+                      inputFormatters: [LengthLimitingTextInputFormatter(15)],
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) return 'Required';
+                        if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                          return 'Names cannot contain numbers or symbols';
+                        }
+                        return null;
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
+                    // --- MODIFIED --- Added consistent validation for last name
                     child: TextFormField(
                       controller: _lastNameController,
                       decoration: const InputDecoration(labelText: 'Last Name'),
-                      inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                      validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
+                      inputFormatters: [LengthLimitingTextInputFormatter(15)],
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) return 'Required';
+                        if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                          return 'Names cannot contain numbers or symbols';
+                        }
+                        return null;
+                      },
                     ),
                   ),
                 ],
@@ -401,7 +559,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                     ? const Padding(padding: EdgeInsets.all(12.0), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.0)))
                     : null,
                 ),
-                inputFormatters: [LengthLimitingTextInputFormatter(12)],
+                // --- MODIFIED --- Character limit changed from 12 to 15
+                inputFormatters: [LengthLimitingTextInputFormatter(15)],
                 validator: _usernameManualValidator,
               ),
               const SizedBox(height: 16),
@@ -480,7 +639,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                   child: TextFormField(
                     controller: _otherLocationController,
                     decoration: const InputDecoration(labelText: 'Please specify your location'),
-                    inputFormatters: [LengthLimitingTextInputFormatter(30)],
+                    // --- MODIFIED --- Character limit changed from 30 to 15
+                    inputFormatters: [LengthLimitingTextInputFormatter(15)],
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) return 'This field is required';
                       return null;
@@ -492,7 +652,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                 controller: _summaryController,
                 decoration: const InputDecoration(labelText: 'Short Summary'),
                 maxLines: 4,
-                inputFormatters: [LengthLimitingTextInputFormatter(250)],
+                maxLength: 250,
               ),
               const SizedBox(height: 24),
               ElevatedButton(
@@ -682,7 +842,7 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
       firstDate: DateTime(2024),
       lastDate: DateTime(DateTime.now().year + 10),
       initialDatePickerMode: DatePickerMode.year,
-       builder: (context, child) {
+        builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
@@ -757,9 +917,9 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                 labelText: 'University',
                 selectedValue: _selectedUniversity,
                 validator: (value) {
-                   if (value == null || value.isEmpty) return 'Required';
-                   if (value == 'Other' && _otherUniversityController.text.trim().isEmpty) return 'Please specify your university';
-                   return null;
+                  if (value == null || value.isEmpty) return 'Required';
+                  if (value == 'Other' && _otherUniversityController.text.trim().isEmpty) return 'Please specify your university';
+                  return null;
                 },
                 onTap: () async {
                   await _showSearchDialog(
@@ -777,7 +937,8 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                   child: TextFormField(
                     controller: _otherUniversityController,
                     decoration: const InputDecoration(labelText: 'Please specify your university'),
-                    inputFormatters: [LengthLimitingTextInputFormatter(30)],
+                    // --- MODIFIED --- Character limit changed from 30 to 15
+                    inputFormatters: [LengthLimitingTextInputFormatter(15)],
                     validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                   ),
                 ),
@@ -785,9 +946,9 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                 labelText: 'Major',
                 selectedValue: _selectedMajor,
                 validator: (value) {
-                   if (value == null || value.isEmpty) return 'Required';
-                   if (value == 'Other' && _otherMajorController.text.trim().isEmpty) return 'Please specify your major';
-                   return null;
+                  if (value == null || value.isEmpty) return 'Required';
+                  if (value == 'Other' && _otherMajorController.text.trim().isEmpty) return 'Please specify your major';
+                  return null;
                 },
                 onTap: () async {
                   await _showSearchDialog(
@@ -799,13 +960,14 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                   );
                 },
               ),
-               if (_selectedMajor == 'Other')
+                if (_selectedMajor == 'Other')
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
                   child: TextFormField(
                     controller: _otherMajorController,
                     decoration: const InputDecoration(labelText: 'Please specify your major'),
-                    inputFormatters: [LengthLimitingTextInputFormatter(30)],
+                    // --- MODIFIED --- Character limit changed from 30 to 15
+                    inputFormatters: [LengthLimitingTextInputFormatter(15)],
                     validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                   ),
                 ),
@@ -923,10 +1085,11 @@ class _SkillsScreenState extends State<SkillsScreen> {
             controller: controller,
             decoration: const InputDecoration(labelText: 'Skill name'),
             autovalidateMode: AutovalidateMode.onUserInteraction,
-            inputFormatters: [LengthLimitingTextInputFormatter(30)],
+            // --- MODIFIED --- Character limit changed from 30 to 15
+            inputFormatters: [LengthLimitingTextInputFormatter(15)],
             validator: (value) {
                 if (value == null || value.trim().isEmpty) return 'Cannot be empty';
-                if (value.length > 30) return 'Cannot exceed 30 characters';
+                if (value.length > 15) return 'Cannot exceed 15 characters';
                 return null;
             }
           ),
@@ -934,9 +1097,9 @@ class _SkillsScreenState extends State<SkillsScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
           ElevatedButton(onPressed: () {
-              if (formKey.currentState!.validate()) {
-                  Navigator.of(context).pop(controller.text.trim());
-              }
+            if (formKey.currentState!.validate()) {
+                Navigator.of(context).pop(controller.text.trim());
+            }
           }, child: const Text('Add')),
         ],
       ),
@@ -959,10 +1122,11 @@ class _SkillsScreenState extends State<SkillsScreen> {
             controller: controller,
             decoration: const InputDecoration(labelText: 'Skill name'),
             autovalidateMode: AutovalidateMode.onUserInteraction,
-            inputFormatters: [LengthLimitingTextInputFormatter(30)],
+            // --- MODIFIED --- Character limit changed from 30 to 15
+            inputFormatters: [LengthLimitingTextInputFormatter(15)],
             validator: (value) {
                 if (value == null || value.trim().isEmpty) return 'Cannot be empty';
-                if (value.length > 30) return 'Cannot exceed 30 characters';
+                if (value.length > 15) return 'Cannot exceed 15 characters';
                 return null;
             }
           ),
@@ -970,9 +1134,9 @@ class _SkillsScreenState extends State<SkillsScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
           ElevatedButton(onPressed: () {
-             if (formKey.currentState!.validate()) {
-                  Navigator.of(context).pop(controller.text.trim());
-              }
+            if (formKey.currentState!.validate()) {
+                Navigator.of(context).pop(controller.text.trim());
+            }
           }, child: const Text('Save')),
         ],
       ),
@@ -1705,7 +1869,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 obscureText: _obscureConfirmPassword,
                 decoration: InputDecoration(
                   labelText: 'Confirm New Password',
-                   suffixIcon: IconButton(
+                    suffixIcon: IconButton(
                     icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
                     onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                   ),
