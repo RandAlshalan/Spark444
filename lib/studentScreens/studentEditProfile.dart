@@ -89,8 +89,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             header: 'Account Settings',
             tiles: [
               _buildProfileTile('Settings & Preferences', Icons.settings_outlined, () => _navigateAndRefresh(SettingsPreferencesScreen(student: _student))),
-              _buildProfileTile('Change Email', Icons.email_outlined, () => _navigateAndRefresh(ChangeEmailScreen(currentEmail: _student.email))),
               _buildProfileTile('Change Password', Icons.lock_outline, () => _navigateAndRefresh(const ChangePasswordScreen())),
+              // --- ADDED: Delete Account Tile ---
+              _buildProfileTile(
+                'Delete Account',
+                Icons.delete_forever_outlined,
+                () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const DeleteAccountScreen())),
+                color: Colors.red,
+              ),
             ],
           ),
         ],
@@ -147,11 +153,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  /// --- MODIFIED: Added optional color parameter for styling ---
   /// Builds a single navigation list tile.
-  Widget _buildProfileTile(String title, IconData icon, VoidCallback onTap) {
+  Widget _buildProfileTile(String title, IconData icon, VoidCallback onTap, {Color? color}) {
     return ListTile(
-      leading: Icon(icon, color: const Color(0xFF422F5D)),
-      title: Text(title),
+      leading: Icon(icon, color: color ?? const Color(0xFF422F5D)),
+      title: Text(title, style: TextStyle(color: color)),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
       onTap: onTap,
     );
@@ -524,6 +531,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       inputFormatters: [LengthLimitingTextInputFormatter(15)],
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) return 'Required';
+                            if (value.contains(' ')) {
+      return 'First name cannot contain spaces';
+    }
                         if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
                           return 'Names cannot contain numbers or symbols';
                         }
@@ -540,6 +550,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       inputFormatters: [LengthLimitingTextInputFormatter(15)],
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) return 'Required';
+                            if (value.contains(' ')) {
+      return 'Last name cannot contain spaces';
+    }
                         if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
                           return 'Names cannot contain numbers or symbols';
                         }
@@ -1890,6 +1903,156 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.email_outlined),
                 label: Text(_sendingReset ? 'Sending reset email...' : 'Email me a reset link'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- ADDED: 9. Delete Account Screen ---
+
+class DeleteAccountScreen extends StatefulWidget {
+  const DeleteAccountScreen({super.key});
+
+  @override
+  State<DeleteAccountScreen> createState() => _DeleteAccountScreenState();
+}
+
+class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _deleting = false;
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleDelete() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Are you absolutely sure?'),
+        content: const Text('This action is irreversible. All your data, including your profile, documents, and resumes, will be permanently deleted.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Yes, Delete My Account'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _deleting = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
+    try {
+      // IMPORTANT: The implementation for this method needs to be added in `AuthService`.
+      // It must handle:
+      // 1. Re-authenticating the user with the provided password.
+      // 2. Deleting all user files from Firebase Storage.
+      // 3. Deleting the user's document from Firestore.
+      // 4. Finally, deleting the user from Firebase Authentication.
+      await _authService.deleteStudentAccount(_passwordController.text);
+
+      if (!mounted) return;
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Your account has been permanently deleted.'),
+        backgroundColor: Colors.green,
+      ));
+      
+      // Pop all routes and push a new root route (e.g., a login or splash screen).
+      // Replace '/login' with your actual initial route name.
+      navigator.pushNamedAndRemoveUntil('/login', (route) => false);
+
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(
+        content: Text("Deletion failed: ${e.toString()}"),
+        backgroundColor: Colors.red,
+      ));
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(title: const Text('Delete Account')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 50),
+              const SizedBox(height: 16),
+              const Text(
+                'Delete Your Account Permanently',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.red),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'You are about to request the permanent deletion of your account. Once this process begins, it cannot be undone.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.black54),
+              ),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 24),
+              const Text(
+                'For security, please enter your password to continue.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  labelText: 'Current Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+                validator: (value) => (value == null || value.isEmpty) ? 'Please enter your password' : null,
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: _deleting ? null : _handleDelete,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: _deleting
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Delete Account Permanently', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
