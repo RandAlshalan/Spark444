@@ -236,26 +236,41 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
     if (confirmed == true) {
       try {
+        print('DEBUG: _showDeleteConfirmationDialog: User confirmed deletion. Attempting to delete account.');
         await _authService.deleteCompanyAccount(passwordController.text);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Account deleted successfully.')),
+            const SnackBar(
+                content: Text('Account deleted successfully.'),
+                duration: Duration(seconds: 4),
+            ),
           );
+          print('DEBUG: _showDeleteConfirmationDialog: Account deletion successful. Navigating to WelcomeScreen.');
+          // Use pushAndRemoveUntil to clear the navigation stack and go to the welcome screen
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-            (route) => false,
+            (route) => false, // This predicate ensures all previous routes are removed
           );
+        } else {
+          print('DEBUG: _showDeleteConfirmationDialog: Widget is not mounted after successful deletion, cannot show SnackBar or navigate.');
         }
       } catch (e) {
-        if (mounted)
+        print('DEBUG: _showDeleteConfirmationDialog: Error caught during account deletion: $e');
+        if (mounted) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(
-            SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+            SnackBar(
+                content: Text(e.toString().replaceFirst('Exception: ', '')), // Display the descriptive message
+                duration: Duration(seconds: 8),
+            ),
           );
+        }
       }
+    } else {
+      print('DEBUG: _showDeleteConfirmationDialog: Delete action cancelled by user or form validation failed.');
     }
-  }
+  } 
 
   @override
   Widget build(BuildContext context) {

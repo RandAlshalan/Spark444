@@ -562,20 +562,24 @@ class AuthService {
   Future<void> deleteCompanyAccount(String password) async {
     final user = _auth.currentUser;
     if (user == null || user.email == null) {
+      print('DEBUG: deleteCompanyAccount: No authenticated user found.');
       throw Exception('No authenticated user found to delete.');
     }
 
     try {
+      print('DEBUG: deleteCompanyAccount: Attempting to re-authenticate user: ${user.email}');
       // Step 1: Re-authenticate the user for security.
       final credential = EmailAuthProvider.credential(
         email: user.email!,
         password: password.trim(),
       );
       await user.reauthenticateWithCredential(credential);
+      print('DEBUG: deleteCompanyAccount: User re-authenticated successfully.');
 
       final uid = user.uid;
 
       // Step 2: Delete all opportunities posted by the company.
+      print('DEBUG: deleteCompanyAccount: Deleting opportunities for company UID: $uid');
       final opportunitiesSnapshot = await _db
           .collection('opportunities')
           .where('companyId', isEqualTo: uid)
@@ -586,31 +590,50 @@ class AuthService {
         batch.delete(doc.reference);
       }
       await batch.commit();
+      print('DEBUG: deleteCompanyAccount: Opportunities deleted successfully.');
 
       // Step 3: Delete the company's document from Firestore.
+      print('DEBUG: deleteCompanyAccount: Deleting company document for UID: $uid');
       await _db.collection(kCompanyCol).doc(uid).delete();
+      print('DEBUG: deleteCompanyAccount: Company document deleted successfully.');
 
       // Step 4: Delete the user from Firebase Authentication.
       // This should be the last step.
+      print('DEBUG: deleteCompanyAccount: Deleting Firebase Auth user: ${user.email}');
       await user.delete();
+      print('DEBUG: deleteCompanyAccount: Firebase Auth user deleted successfully.');
+
     } on FirebaseAuthException catch (e) {
-      // Handle specific, common authentication errors first.
-      if (e.code == 'wrong-password' || e.code == 'invalid-credential' || e.code == 'user-mismatch') {
-        throw Exception('Incorrect password. Please try again.');
-      } else if (e.code == 'requires-recent-login') {
-        throw Exception(
-          'This action requires a recent login. Please sign out and sign in again.',
-        );
+      print('DEBUG: deleteCompanyAccount: FirebaseAuthException caught: ${e.code} - ${e.message}');
+      String errorMessage;
+      switch (e.code) {
+        case 'wrong-password':
+        case 'invalid-credential':
+        case 'user-mismatch': // Firebase can sometimes return 'user-mismatch' for reauth with wrong credentials.
+          errorMessage = 'Incorrect password. Please try again.';
+          break;
+        case 'requires-recent-login':
+          errorMessage = 'This is a sensitive action and requires a recent login. Please sign out and sign in again.';
+          break;
+        case 'user-not-found':
+          errorMessage = 'The user account could not be found.';
+          break;
+        case 'operation-not-allowed':
+          errorMessage = 'Account deletion is not enabled for this project.';
+          break;
+        case 'network-request-failed':
+          errorMessage = 'Network error. Please check your internet connection.';
+          break;
+        default:
+          errorMessage = e.message ?? 'An unknown authentication error occurred (Code: ${e.code}).';
+          break;
       }
-      // For any other FirebaseAuthException, use the general error mapper.
-      throw Exception(_mapAuthError(e));
+      throw Exception(errorMessage); // Throw a descriptive exception
     } catch (e) {
-      // Catch any other non-Firebase errors (e.g., from Firestore or batch commit)
-      // and provide a clear, user-friendly message.
-      throw Exception('An unexpected error occurred. Please try again.');
+      print('DEBUG: deleteCompanyAccount: General Exception caught: $e');
+      throw Exception('An unexpected error occurred: ${e.toString().replaceFirst('Exception: ', '')}. Please try again.');
     }
   }
-
   Future<void> signOut() async {
     await _auth.signOut();
   }
