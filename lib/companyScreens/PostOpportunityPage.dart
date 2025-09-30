@@ -24,13 +24,12 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _roleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _startDateController = TextEditingController();
-  final TextEditingController _endDateController = TextEditingController();
-  final TextEditingController _applicationOpenController =
+  final TextEditingController _opportunityDatesController =
       TextEditingController();
-  final TextEditingController _applicationDeadlineController =
+  final TextEditingController _applicationDatesController =
       TextEditingController();
-  final TextEditingController _responseDateController = TextEditingController();
+  final TextEditingController _responseDurationController =
+      TextEditingController();
   final TextEditingController _durationController = TextEditingController();
   final TextEditingController _skillController = TextEditingController();
   final TextEditingController _requirementController = TextEditingController();
@@ -50,7 +49,8 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
   DateTime? _endDate;
   DateTime? _applicationOpenDate;
   DateTime? _applicationDeadline;
-  DateTime? _responseDate;
+  String _responseDurationUnit = 'Days';
+  final List<String> _responseDurationUnits = ['Days', 'Weeks'];
 
   final List<String> _selectedSkills = [];
   final List<String> _selectedRequirements = [];
@@ -120,11 +120,9 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     _nameController.dispose();
     _roleController.dispose();
     _descriptionController.dispose();
-    _startDateController.dispose();
-    _endDateController.dispose();
-    _applicationOpenController.dispose();
-    _applicationDeadlineController.dispose();
-    _responseDateController.dispose();
+    _opportunityDatesController.dispose();
+    _applicationDatesController.dispose();
+    _responseDurationController.dispose();
     _durationController.dispose();
     _skillController.dispose();
     _requirementController.dispose();
@@ -150,40 +148,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
             ? durationText
             : '0 days';
       });
-    }
-  }
-
-  // Helper function to show date picker
-  Future<void> _selectDate(
-    BuildContext context, {
-    required ValueChanged<DateTime> onSelected,
-    DateTime? initialDate,
-    DateTime? firstDate,
-    DateTime? lastDate,
-  }) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate ?? DateTime.now(),
-      firstDate: firstDate ?? DateTime(2024),
-      lastDate: lastDate ?? DateTime(2030),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: primaryColor,
-              onPrimary: Colors.white, // Header text color
-              onSurface: Colors.black,
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(foregroundColor: secondaryColor),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) {
-      onSelected(picked);
     }
   }
 
@@ -239,9 +203,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
         applicationDeadline: _applicationDeadline != null
             ? Timestamp.fromDate(_applicationDeadline!)
             : null,
-        responseDeadline: _isResponseDateVisible && _responseDate != null
-            ? Timestamp.fromDate(_responseDate!) // Use _responseDate here
-            : null,
+        responseDeadline: _calculateResponseDeadline(),
         postedDate:
             null, // This is null because the service sets the server timestamp.
         isActive: true,
@@ -269,11 +231,31 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     }
   }
 
+  Timestamp? _calculateResponseDeadline() {
+    if (!_isResponseDateVisible ||
+        _applicationDeadline == null ||
+        _responseDurationController.text.trim().isEmpty) {
+      return null;
+    }
+
+    final durationValue = int.tryParse(_responseDurationController.text.trim());
+    if (durationValue == null) return null;
+
+    final duration = _responseDurationUnit == 'Days'
+        ? Duration(days: durationValue)
+        : Duration(days: durationValue * 7);
+
+    final calculatedDate = _applicationDeadline!.add(duration);
+    return Timestamp.fromDate(calculatedDate);
+  }
+
   void _addSkill() {
     final skill = _skillController.text.trim();
-    if (skill.isNotEmpty &&
-        !_selectedSkills.contains(skill) &&
-        skill.length <= 30) {
+    // Case-insensitive check for duplicates
+    final isDuplicate = _selectedSkills.any(
+      (s) => s.toLowerCase() == skill.toLowerCase(),
+    );
+    if (skill.isNotEmpty && !isDuplicate && skill.length <= 30) {
       setState(() {
         _selectedSkills.add(skill);
         _skillController.clear();
@@ -289,9 +271,11 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
 
   void _addRequirement() {
     final requirement = _requirementController.text.trim();
-    if (requirement.isNotEmpty &&
-        !_selectedRequirements.contains(requirement) &&
-        requirement.length <= 100) {
+    // Case-insensitive check for duplicates
+    final isDuplicate = _selectedRequirements.any(
+      (r) => r.toLowerCase() == requirement.toLowerCase(),
+    );
+    if (requirement.isNotEmpty && !isDuplicate && requirement.length <= 100) {
       setState(() {
         _selectedRequirements.add(requirement);
         _requirementController.clear();
@@ -449,6 +433,98 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     );
   }
 
+  // Helper function to show a single date picker
+  Future<DateTime?> _selectDate(
+    BuildContext context, {
+    DateTime? initialDate,
+    DateTime? firstDate,
+    DateTime? lastDate,
+  }) async {
+    return await showDatePicker(
+      context: context,
+      initialDate: initialDate ?? DateTime.now(),
+      firstDate: firstDate ?? DateTime(2024),
+      lastDate: lastDate ?? DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: primaryColor,
+              onPrimary: Colors.white, // Header text color
+              onSurface: Colors.black,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(foregroundColor: secondaryColor),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+  }
+
+  // Helper function to show a date range picker
+  Future<DateTimeRange?> _selectDateRange(
+    BuildContext context, {
+    DateTimeRange? initialDateRange,
+    DateTime? firstDate,
+    DateTime? lastDate,
+  }) async {
+    return await showDateRangePicker(
+      context: context,
+      initialDateRange: initialDateRange,
+      firstDate: firstDate ?? DateTime(2024),
+      lastDate: lastDate ?? DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: primaryColor,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(foregroundColor: secondaryColor),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+  }
+
+  void _handleOpportunityDateSelection(DateTimeRange? pickedRange) {
+    if (pickedRange == null) return;
+
+    setState(() {
+      _startDate = pickedRange.start;
+      _endDate = pickedRange.end;
+      final format = DateFormat('MMM d, yyyy');
+      _opportunityDatesController.text =
+          '${format.format(_startDate!)} - ${format.format(_endDate!)}';
+      _calculateDuration();
+
+      // --- CONSTRAINTS CHECK ---
+      // Application period must be before the new start date.
+      if (_applicationDeadline != null &&
+          !_applicationDeadline!.isBefore(_startDate!)) {
+        _applicationOpenDate = null;
+      }
+    });
+  }
+
+  void _handleApplicationDateSelection(DateTimeRange? pickedRange) {
+    if (pickedRange == null) return;
+
+    setState(() {
+      _applicationOpenDate = pickedRange.start;
+      _applicationDeadline = pickedRange.end;
+      final format = DateFormat('MMM d, yyyy');
+      _applicationDatesController.text =
+          '${format.format(_applicationOpenDate!)} - ${format.format(_applicationDeadline!)}';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final today = DateUtils.dateOnly(DateTime.now());
@@ -508,7 +584,9 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                       ? null
                       : (value) {
                           if (_selectedMajor == null)
-                            return 'Please select a major';
+                            if (_selectedMajor == null) {
+                              return 'Please select a major';
+                            }
                           if (_selectedMajor == 'Other' &&
                               _otherMajorController.text.trim().isEmpty) {
                             return 'Please specify the major';
@@ -561,8 +639,9 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                   maxLines: 4,
                   keyboardType: TextInputType.multiline,
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'Please enter a description';
+                    }
                     return null;
                   },
                 ),
@@ -698,87 +777,64 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                   ),
                 ),
 
-                // Start Date
+                // Opportunity Dates (Start & End)
                 _buildStyledTextFormField(
-                  controller: _startDateController,
-                  labelText: 'Start Date',
+                  controller: _opportunityDatesController,
+                  labelText: 'Opportunity Duration (Start - End)',
                   icon: Icons.calendar_today,
                   readOnly: true,
-                  onTap: () => _selectDate(
-                    context,
-                    firstDate: today,
-                    onSelected: (date) {
-                      setState(() {
-                        _startDate = date;
-                        _startDateController.text = DateFormat(
-                          'MMMM dd, yyyy',
-                        ).format(date);
-                        // Clear dependent dates if they are now invalid
-                        // End Date must be after the new Start Date
-                        if (_endDate != null &&
-                            !_endDate!.isAfter(_startDate!)) {
-                          _endDate = null;
-                          _endDateController.clear();
-                        }
-                        if (_applicationDeadline != null &&
-                            !_applicationDeadline!.isBefore(_startDate!)) {
-                          // Clear application dates if they are no longer valid
-                          _applicationDeadline = null;
-                          _applicationDeadlineController.clear();
-                          _applicationOpenDate = null;
-                          _applicationOpenController.clear();
-                        }
-                        if (_responseDate != null &&
-                            !_responseDate!.isBefore(_startDate!)) {
-                          _responseDate = null;
-                          _responseDateController.clear();
-                        }
-                        if (_applicationOpenDate != null &&
-                            !_applicationOpenDate!.isBefore(_startDate!)) {
-                          _applicationOpenDate = null;
-                          _applicationOpenController.clear();
-                        }
-                        _calculateDuration();
-                      });
-                    },
-                  ),
+                  onTap: () async {
+                    final pickedRange = await _selectDateRange(
+                      context,
+                      firstDate: today,
+                      initialDateRange: (_startDate != null && _endDate != null)
+                          ? DateTimeRange(start: _startDate!, end: _endDate!)
+                          : null,
+                    );
+                    _handleOpportunityDateSelection(pickedRange);
+                  },
                   validator: (value) => value == null || value.isEmpty
-                      ? 'Please select start date'
+                      ? 'Please select opportunity start and end dates'
                       : null,
                 ),
 
-                // End Date
+                // Application Dates (Begins & Deadline)
                 _buildStyledTextFormField(
-                  controller: _endDateController,
-                  labelText: 'End Date',
-                  icon: Icons.event,
-                  readOnly: true, // Always readOnly
-                  // Disable onTap if start date is not selected
+                  controller: _applicationDatesController,
+                  labelText: 'Application Period (Begins - Deadline)',
+                  icon: Icons.calendar_month,
+                  readOnly: true,
                   onTap: _startDate == null
-                      ? null
-                      : () => _selectDate(
-                          context,
-                          firstDate: _startDate!.add(const Duration(days: 1)),
-                          onSelected: (date) {
-                            setState(() {
-                              _endDate = date;
-                              _endDateController.text = DateFormat(
-                                'MMMM dd, yyyy',
-                              ).format(date);
-                              _calculateDuration();
-                            });
-                          },
-                        ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty)
-                      return 'Please select end date';
-                    if (_startDate != null &&
-                        _endDate != null &&
-                        !_endDate!.isAfter(_startDate!)) {
-                      return 'End date must be after start date';
-                    }
-                    return null;
-                  },
+                      ? () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Please select the opportunity duration first.',
+                              ),
+                            ),
+                          );
+                        }
+                      : () async {
+                          final pickedRange = await _selectDateRange(
+                            context,
+                            firstDate: today,
+                            lastDate: _startDate!.subtract(
+                              const Duration(days: 1),
+                            ),
+                            initialDateRange:
+                                (_applicationOpenDate != null &&
+                                    _applicationDeadline != null)
+                                ? DateTimeRange(
+                                    start: _applicationOpenDate!,
+                                    end: _applicationDeadline!,
+                                  )
+                                : null,
+                          );
+                          _handleApplicationDateSelection(pickedRange);
+                        },
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'Please select the application period'
+                      : null,
                 ),
 
                 // Duration (Auto-calculated)
@@ -787,133 +843,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                   labelText: 'Duration (Auto-calculated)',
                   icon: Icons.timelapse,
                   readOnly: true,
-                ),
-
-                // Application Begins
-                _buildStyledTextFormField(
-                  controller: _applicationOpenController,
-                  labelText: 'Application Begins',
-                  icon: Icons.calendar_month,
-                  readOnly: true,
-                  onTap: () => _selectDate(
-                    context,
-                    firstDate: today,
-                    lastDate: _startDate?.subtract(const Duration(days: 1)),
-                    onSelected: (date) {
-                      setState(() {
-                        _applicationOpenDate = date;
-                        // Clear deadline if it's now invalid
-                        if (_applicationDeadline != null &&
-                            !_applicationDeadline!.isAfter(
-                              _applicationOpenDate!,
-                            )) {
-                          _applicationDeadline = null;
-                          _applicationDeadlineController.clear();
-                        }
-                        // Also clear response date if it's now invalid
-                        if (_responseDate != null &&
-                            !_responseDate!.isAfter(_applicationOpenDate!)) {
-                          _responseDate = null;
-                          _responseDateController.clear();
-                        }
-
-                        _applicationOpenController.text = DateFormat(
-                          'MMMM dd, yyyy',
-                        ).format(date);
-                      });
-                    },
-                  ),
-                  validator: (value) => value == null || value.isEmpty
-                      ? 'Please select when applications begin'
-                      : (_startDate != null &&
-                            _applicationOpenDate != null &&
-                            !_applicationOpenDate!.isBefore(_startDate!))
-                      ? 'Must be before start date'
-                      : null,
-                ),
-
-                // Application Deadline
-                _buildStyledTextFormField(
-                  controller: _applicationDeadlineController,
-                  labelText: 'Application Deadline',
-                  icon: Icons.access_time,
-                  readOnly: true,
-                  onTap: _applicationOpenDate == null
-                      ? null
-                      : () => _selectDate(
-                          context,
-                          firstDate: _applicationOpenDate!.add(
-                            const Duration(days: 1),
-                          ),
-                          lastDate: _startDate?.subtract(
-                            const Duration(days: 1),
-                          ),
-                          onSelected: (date) {
-                            setState(() {
-                              _applicationDeadline = date;
-                              _applicationDeadlineController.text = DateFormat(
-                                'MMMM dd, yyyy',
-                              ).format(date);
-                            });
-                          },
-                        ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty)
-                      return 'Please select application deadline';
-                    if (_applicationOpenDate != null &&
-                        _applicationDeadline != null &&
-                        !_applicationDeadline!.isAfter(_applicationOpenDate!)) {
-                      return 'Deadline must be after open date';
-                    }
-                    if (_startDate != null &&
-                        _applicationDeadline != null &&
-                        !_applicationDeadline!.isBefore(_startDate!)) {
-                      return 'Deadline must be before the opportunity starts';
-                    }
-                    return null;
-                  },
-                ),
-
-                // Response Date
-                _buildStyledTextFormField(
-                  controller: _responseDateController,
-                  labelText: 'Response Date',
-                  icon: Icons.notifications_active_outlined,
-                  readOnly: true,
-                  onTap: _applicationDeadline == null
-                      ? null
-                      : () => _selectDate(
-                          context,
-                          firstDate: _applicationDeadline!.add(
-                            const Duration(days: 1),
-                          ),
-                          lastDate: _startDate?.subtract(
-                            const Duration(days: 1),
-                          ),
-                          onSelected: (date) {
-                            setState(() {
-                              _responseDate = date;
-                              _responseDateController.text = DateFormat(
-                                'MMMM dd, yyyy',
-                              ).format(date);
-                            });
-                          },
-                        ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty)
-                      return 'Please select response date';
-                    if (_applicationDeadline != null &&
-                        _responseDate != null &&
-                        !_responseDate!.isAfter(_applicationDeadline!)) {
-                      return 'Response date must be after deadline';
-                    }
-                    if (_startDate != null &&
-                        _responseDate != null &&
-                        !_responseDate!.isBefore(_startDate!)) {
-                      return 'Response date must be before start date';
-                    }
-                    return null;
-                  },
                 ),
 
                 // Response Date Visibility Toggle
@@ -943,6 +872,67 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                     ],
                   ),
                 ),
+
+                // Response Date (Now conditional)
+                if (_isResponseDateVisible)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: TextFormField(
+                            controller: _responseDurationController,
+                            decoration: _buildInputDecoration(
+                              'Respond within',
+                              icon: Icons.notifications_active_outlined,
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Required';
+                              }
+                              final calculatedDeadline =
+                                  _calculateResponseDeadline()?.toDate();
+                              if (calculatedDeadline != null &&
+                                  _startDate != null &&
+                                  !calculatedDeadline.isBefore(_startDate!)) {
+                                return 'Must be before start date';
+                              }
+                              return null;
+                            },
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 3,
+                          child: DropdownButtonFormField<String>(
+                            value: _responseDurationUnit,
+                            items: _responseDurationUnits
+                                .map(
+                                  (unit) => DropdownMenuItem(
+                                    value: unit,
+                                    child: Text(unit),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() => _responseDurationUnit = value!);
+                            },
+                            decoration: _buildInputDecoration(
+                              'after application deadline',
+                            ).copyWith(prefixIcon: null),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                 const SizedBox(height: 30),
 

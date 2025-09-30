@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import '../studentScreens/login.dart';
+import '../studentScreens/studentViewProfile.dart' hide LoginScreen;
 import '../studentScreens/welcomeScreen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
