@@ -26,11 +26,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _opportunityDatesController =
       TextEditingController();
-  final TextEditingController _applicationDatesController =
-      TextEditingController();
-  final TextEditingController _responseWeeksController =
-      TextEditingController();
-  final TextEditingController _responseDaysController = TextEditingController();
+  final TextEditingController _applicationDatesController = TextEditingController();
   final TextEditingController _durationController = TextEditingController();
   final TextEditingController _skillController = TextEditingController();
   final TextEditingController _requirementController = TextEditingController();
@@ -42,15 +38,13 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
   String? _displayMajor; // To hold the value for the dropdown display
   String? _selectedMajor;
   String? _selectedType;
-  bool _isPaid = true;
-  bool _isResponseDateVisible = true;
+  bool _isPaid = true; // Default to paid
   bool _isLoading = false;
 
   DateTime? _startDate;
   DateTime? _endDate;
   DateTime? _applicationOpenDate;
   DateTime? _applicationDeadline;
-  DateTime? _calculatedResponseDate; // To show the calculated date in real-time
 
   final List<String> _selectedSkills = [];
   final List<String> _selectedRequirements = [];
@@ -97,9 +91,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
   void initState() {
     super.initState();
     _loadMajorsFuture = _loadMajors();
-    // Add listeners to update the calculated response date in real-time
-    _responseWeeksController.addListener(_updateAndDisplayResponseDate);
-    _responseDaysController.addListener(_updateAndDisplayResponseDate);
   }
 
   Future<void> _loadMajors() async {
@@ -128,8 +119,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     _descriptionController.dispose();
     _opportunityDatesController.dispose();
     _applicationDatesController.dispose();
-    _responseWeeksController.dispose();
-    _responseDaysController.dispose();
     _durationController.dispose();
     _skillController.dispose();
     _requirementController.dispose();
@@ -210,7 +199,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
         applicationDeadline: _applicationDeadline != null
             ? Timestamp.fromDate(_applicationDeadline!)
             : null,
-        responseDeadline: _calculateResponseDeadline(),
+        responseDeadline: null, // This functionality is removed.
         postedDate:
             null, // This is null because the service sets the server timestamp.
         isActive: true,
@@ -236,44 +225,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
         if (mounted) setState(() => _isLoading = false);
       }
     }
-  }
-
-  Timestamp? _calculateResponseDeadline() {
-    if (!_isResponseDateVisible || _applicationDeadline == null) {
-      return null;
-    }
-
-    final weeks = int.tryParse(_responseWeeksController.text.trim()) ?? 0;
-    final days = int.tryParse(_responseDaysController.text.trim()) ?? 0;
-
-    if (weeks == 0 && days == 0) {
-      return null; // No duration entered, so no deadline.
-    }
-
-    final totalDays = (weeks * 7) + days;
-    final calculatedDate = _applicationDeadline!.add(Duration(days: totalDays));
-    return Timestamp.fromDate(calculatedDate);
-  }
-
-  void _updateAndDisplayResponseDate() {
-    if (!_isResponseDateVisible || _applicationDeadline == null) {
-      setState(() => _calculatedResponseDate = null);
-      return;
-    }
-
-    final weeks = int.tryParse(_responseWeeksController.text.trim()) ?? 0;
-    final days = int.tryParse(_responseDaysController.text.trim()) ?? 0;
-
-    if (weeks == 0 && days == 0) {
-      setState(() => _calculatedResponseDate = null);
-      return;
-    }
-
-    final totalDays = (weeks * 7) + days;
-    final calculatedDate = _applicationDeadline!.add(Duration(days: totalDays));
-
-    // Update the state to rebuild the UI and show the new date
-    setState(() => _calculatedResponseDate = calculatedDate);
   }
 
   void _addSkill() {
@@ -581,7 +532,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
       _applicationOpenDate = pickedRange.start;
       _applicationDeadline = pickedRange.end;
       final format = DateFormat('MMM d, yyyy');
-      _updateAndDisplayResponseDate(); // Recalculate response date
       _applicationDatesController.text =
           '${format.format(_applicationOpenDate!)} - ${format.format(_applicationDeadline!)}';
     });
@@ -906,118 +856,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                   icon: Icons.timelapse,
                   readOnly: true,
                 ),
-
-                // Response Date Visibility Toggle
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 8.0),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Make Response Date Visible to Students?',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Switch(
-                        value: _isResponseDateVisible,
-                        onChanged: (value) =>
-                            setState(() => _isResponseDateVisible = value),
-                        activeColor: accentColor,
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Response Date (Now conditional)
-                if (_isResponseDateVisible)
-                  Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Weeks Input
-                            SizedBox(
-                              width: 70,
-                              child: TextFormField(
-                                controller: _responseWeeksController,
-                                decoration: _buildInputDecoration('').copyWith(
-                                  prefixIcon: const Icon(
-                                    Icons.notifications_active_outlined,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                textAlign: TextAlign.center,
-                                validator: (value) {
-                                  final calculatedDeadline =
-                                      _calculateResponseDeadline()?.toDate();
-                                  if (calculatedDeadline != null &&
-                                      _startDate != null &&
-                                      !calculatedDeadline.isBefore(
-                                        _startDate!,
-                                      )) {
-                                    return 'Must be before start date!!';
-                                  }
-                                  return null;
-                                },
-                                autovalidateMode:
-                                    AutovalidateMode.onUserInteraction,
-                              ),
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.only(left: 8.0, right: 12.0),
-                              child: Text('weeks and'),
-                            ),
-                            const SizedBox(width: 10),
-                            // Days Input
-                            SizedBox(
-                              width: 70,
-                              child: TextFormField(
-                                controller: _responseDaysController,
-                                decoration: _buildInputDecoration(''),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                textAlign: TextAlign.center,
-                                autovalidateMode:
-                                    AutovalidateMode.onUserInteraction,
-                              ),
-                            ),
-                            const Expanded(
-                              child: Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text('days after deadline'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (_calculatedResponseDate != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4, bottom: 8),
-                          child: Text(
-                            'Expected Response By: ${DateFormat('MMMM dd, yyyy').format(_calculatedResponseDate!)}',
-                            style: TextStyle(
-                              color: primaryColor.withOpacity(0.8),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
 
                 const SizedBox(height: 30),
 
