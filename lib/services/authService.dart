@@ -105,7 +105,7 @@ class AuthService {
   Future<User?> signUpStudent(Student student, String password) async {
     try {
       final isUnique = await isUsernameUnique(student.username);
-      if (!isUnique) throw Exception("This username is already taken. Please choose another one.");
+      if (!isUnique) throw Exception("This username is already in use. Please choose another one.");
 
       final emailNorm = _normalizeEmail(student.email);
       final credential = await _auth.createUserWithEmailAndPassword(
@@ -383,6 +383,54 @@ class AuthService {
     await user.reauthenticateWithCredential(credential);
     await user.verifyBeforeUpdateEmail(normalizedEmail);
     await _db.collection(kStudentCol).doc(user.uid).update({'email': normalizedEmail});
+  }
+
+  /// --- ADDED: Method to permanently delete a student account ---
+  ///
+  /// This is a destructive operation that requires the user's current password for security.
+  /// It re-authenticates the user, then deletes their Firestore document and their auth record.
+  Future<void> deleteStudentAccount(String currentPassword) async {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      throw Exception('No authenticated user found to delete.');
+    }
+
+    try {
+      // Step 1: Re-authenticate the user to confirm their identity.
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword.trim(),
+      );
+      await user.reauthenticateWithCredential(credential);
+
+      final uid = user.uid;
+
+      // Step 2: Delete user's Firestore document.
+      await _db.collection(kStudentCol).doc(uid).delete();
+
+      // Step 3 (Crucial): Delete all associated files from Firebase Storage.
+      // This typically requires a Cloud Function for reliability, as client-side
+      // deletion of entire directories is not directly supported.
+      // You would call a service here, for example:
+      // await StorageService().deleteAllUserData(uid);
+      // For now, this serves as a placeholder for that logic.
+
+      // Step 4: Delete the user from Firebase Authentication.
+      await user.delete();
+
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        throw Exception('Incorrect password. Please try again.');
+      } else if (e.code == 'requires-recent-login') {
+        throw Exception(
+            'This is a sensitive action and requires a recent login. Please sign out and sign in again to proceed.');
+      }
+      // Re-throw other specific Firebase auth errors.
+      throw Exception(_mapAuthError(e));
+    } catch (e) {
+      // Catch any other errors (e.g., from Firestore)
+      throw Exception('An unexpected error occurred while deleting your account. Please try again.');
+    }
   }
 
   Future<Company?> getCompany(String uid) async {
