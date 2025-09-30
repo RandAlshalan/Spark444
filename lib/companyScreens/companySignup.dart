@@ -96,6 +96,28 @@ class _CompanySignupState extends State<CompanySignup> {
   static const Color secondaryColor = Color(0xFFF99D46);
   static const Color backgroundColor = Color(0xFFF7F4F0);
 
+  // ✅ ADDED: Hardcoded list of sectors as requested.
+  static const List<String> _hardcodedSectors = [
+    'Information Technology & Software',
+    'Telecommunications',
+    'Finance & Banking',
+    'Insurance',
+    'Healthcare & Pharmaceuticals',
+    'Education & Training',
+    'Manufacturing',
+    'Construction & Real Estate',
+    'Transportation & Logistics',
+    'Retail & E-commerce',
+    'Hospitality & Tourism',
+    'Food & Beverages',
+    'Energy & Utilities (Oil, Gas, Renewable, Electricity, Water)',
+    'Agriculture & Farming',
+    'Media & Entertainment',
+    'Professional Services (Consulting, Legal, Accounting, etc.)',
+    'Government & Public Sector',
+    'Non-Profit & NGOs',
+    'Other', // The 'Other' option is included here.
+  ];
 
   @override
   void initState() {
@@ -110,12 +132,11 @@ class _CompanySignupState extends State<CompanySignup> {
     });
   }
 
-  // ✅ ADDED: Method to load sectors from AuthService
+  // ✅ MODIFIED: Method to load sectors from a hardcoded list instead of AuthService
   Future<void> _loadLists() async {
-    final lists = await _authService.getUniversitiesAndMajors();
     if (mounted) {
       setState(() {
-        _sectorsList = ["Other", ...lists['sectors'] ?? []];
+        _sectorsList = _hardcodedSectors;
       });
     }
   }
@@ -391,12 +412,10 @@ class _CompanySignupState extends State<CompanySignup> {
                 : null,
             validator: (value) {
               if (value == null || value.isEmpty) return 'Please enter company name';
-                              if (value.contains(' ')) {
-      return 'Company name cannot contain spaces';
-    }
-            if (RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
-              return 'Names cannot contain numbers or symbols';
-            }
+              // ✅ MODIFIED: Allow spaces and common symbols like '&' in company names.
+              if (RegExp(r'[@#\$%^*{}|<>]').hasMatch(value)) {
+                return 'Company name contains invalid symbols';
+              }
               if (_companyNameError != null) return _companyNameError;
               return null;
               
