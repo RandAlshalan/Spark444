@@ -250,7 +250,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         if (mounted)
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+          ).showSnackBar(
+            SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+          );
       }
     }
   }
@@ -310,28 +312,20 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
                 radius: 40,
                 backgroundColor: Colors.white,
                 backgroundImage: _company?.logoUrl != null
                     ? NetworkImage(_company!.logoUrl!)
-                    : const AssetImage('assets/spark_logo.png')
-                          as ImageProvider,
+                    : const AssetImage('assets/spark_logo.png') as ImageProvider,
               ),
               const SizedBox(width: 20),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _company?.companyName ?? 'Company Name',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
                     Text(
                       _company?.sector ?? 'Sector Not Specified',
                       style: TextStyle(
@@ -340,6 +334,27 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context)
+                      .push(
+                        MaterialPageRoute(
+                          builder: (_) => EditCompanyProfilePage(company: _company!),
+                        ),
+                      )
+                      .then((_) => _fetchCompanyData());
+                },
+                icon: const Icon(Icons.edit, size: 18),
+                label: const Text('Edit'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
               ),
             ],
@@ -353,28 +368,6 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 10),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.of(context)
-                  .push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          EditCompanyProfilePage(company: _company!),
-                    ),
-                  )
-                  .then((_) => _fetchCompanyData());
-            },
-            icon: const Icon(Icons.edit, size: 18),
-            label: const Text('Edit Profile'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withOpacity(0.2),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
           ),
         ],
       ),

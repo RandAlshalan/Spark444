@@ -81,6 +81,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
   ];
 
   List<String> _majorsList = [];
+  bool _majorsLoading = true;
   late Future<void> _loadMajorsFuture;
 
   // Color constants
@@ -106,6 +107,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
         final data = doc.data();
         setState(() {
           _majorsList = [...List<String>.from(data?['names'] ?? []), 'Other'];
+          _majorsLoading = false;
         });
       }
     } catch (e) {
@@ -461,524 +463,514 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
         iconTheme: const IconThemeData(color: primaryColor),
         elevation: 0,
       ),
-      body: FutureBuilder<void>(
-        future: _loadMajorsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: primaryColor),
-            );
-          }
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                // Opportunity Name
+                _buildStyledTextFormField(
+                  controller: _nameController,
+                  labelText: 'Opportunity Name',
+                  icon: Icons.work_outline,
+                  inputFormatters: [LengthLimitingTextInputFormatter(50)],
+                  validator: (value) {
+                    if (value == null || value.isEmpty)
+                      return 'Please enter opportunity name';
+                    if (value.length > 50) return 'Cannot exceed 50 characters';
+                    return null;
+                  },
+                ),
 
-          return Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    // Opportunity Name
-                    _buildStyledTextFormField(
-                      controller: _nameController,
-                      labelText: 'Opportunity Name',
-                      icon: Icons.work_outline,
-                      inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                      validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return 'Please enter opportunity name';
-                        if (value.length > 50)
-                          return 'Cannot exceed 50 characters';
-                        return null;
-                      },
-                    ),
+                // Role
+                _buildStyledTextFormField(
+                  controller: _roleController,
+                  labelText: 'Role',
+                  icon: Icons.badge_outlined,
+                  inputFormatters: [LengthLimitingTextInputFormatter(40)],
+                  validator: (value) {
+                    if (value == null || value.isEmpty)
+                      return 'Please enter the role';
+                    if (value.length > 40) return 'Cannot exceed 40 characters';
+                    return null;
+                  },
+                ),
 
-                    // Role
-                    _buildStyledTextFormField(
-                      controller: _roleController,
-                      labelText: 'Role',
-                      icon: Icons.badge_outlined,
-                      inputFormatters: [LengthLimitingTextInputFormatter(40)],
-                      validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return 'Please enter the role';
-                        if (value.length > 40)
-                          return 'Cannot exceed 40 characters';
-                        return null;
-                      },
-                    ),
-
-                    // Preferred Major
-                    _buildSearchableDropdown(
-                      labelText: 'Preferred Major',
-                      // Use the displayMajor for the UI
-                      selectedValue: _displayMajor,
-                      icon: Icons.book_outlined,
-                      validator: (value) {
-                        if (_selectedMajor == null)
-                          return 'Please select a major';
-                        if (_selectedMajor == 'Other' &&
-                            _otherMajorController.text.trim().isEmpty) {
-                          return 'Please specify the major';
-                        }
-                        return null;
-                      },
-                      onTap: () async {
-                        await _showSearchDialog(
-                          context: context,
-                          items: _majorsList, // This now includes "Other"
-                          title: 'Major',
-                          onItemSelected: (value) {
-                            setState(() {
-                              _selectedMajor =
-                                  value; // This tracks the actual selection
-                              _displayMajor = (value == 'Other')
-                                  ? null
-                                  : value; // This is for display
-                              if (value != 'Other') {
-                                _otherMajorController.clear();
-                              }
-                            });
-                          },
-                        );
-                      },
-                    ),
-                    if (_selectedMajor == 'Other')
-                      _buildStyledTextFormField(
-                        controller: _otherMajorController,
-                        labelText: 'Please specify the major',
-                        icon: Icons.edit_note_outlined,
-                        inputFormatters: [LengthLimitingTextInputFormatter(40)],
-                        validator: (v) {
+                // Preferred Major
+                _buildSearchableDropdown(
+                  labelText: 'Preferred Major',
+                  // Use the displayMajor for the UI
+                  selectedValue: _displayMajor,
+                  icon: Icons.book_outlined,
+                  validator: _majorsLoading
+                      ? null
+                      : (value) {
+                          if (_selectedMajor == null)
+                            return 'Please select a major';
                           if (_selectedMajor == 'Other' &&
-                              (v == null || v.trim().isEmpty))
-                            return 'This field is required';
+                              _otherMajorController.text.trim().isEmpty) {
+                            return 'Please specify the major';
+                          }
                           return null;
                         },
-                      ),
-
-                    // Description
-                    _buildStyledTextFormField(
-                      controller: _descriptionController,
-                      labelText: 'Description',
-                      icon: Icons.description_outlined,
-                      maxLength: 500,
-                      maxLines: 4,
-                      keyboardType: TextInputType.multiline,
-                      validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return 'Please enter a description';
-                        return null;
-                      },
-                    ),
-
-                    // Work Mode
-                    _buildDropdownFormField(
-                      labelText: 'Work Mode',
-                      items: _workModes,
-                      selectedValue: _selectedWorkMode,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedWorkMode = value;
-                          if (value == 'Remote') _selectedLocation = null;
-                        });
-                      },
-                      icon: Icons.location_city_outlined,
-                      validator: (value) =>
-                          value == null ? 'Please select work mode' : null,
-                    ),
-
-                    // Location (only for In-person or Hybrid)
-                    if (_selectedWorkMode == 'In-person' ||
-                        _selectedWorkMode == 'Hybrid')
-                      _buildDropdownFormField(
-                        labelText: 'Location',
-                        items: _saudiCities,
-                        selectedValue: _selectedLocation,
-                        onChanged: (value) =>
-                            setState(() => _selectedLocation = value),
-                        icon: Icons.location_on_outlined,
-                        validator: (value) =>
-                            value == null ? 'Please select a location' : null,
-                      ),
-
-                    // Skills
-                    _buildStyledTextFormField(
-                      controller: _skillController,
-                      labelText: 'Add Required Skills',
-                      icon: Icons.lightbulb_outline,
-                      onFieldSubmitted: (value) => _addSkill(),
-                      inputFormatters: [LengthLimitingTextInputFormatter(30)],
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.add_circle, color: Colors.blue),
-                        onPressed: _addSkill,
-                      ),
-                    ),
-                    if (_selectedSkills.isNotEmpty)
-                      Wrap(
-                        spacing: 8.0,
-                        children: _selectedSkills
-                            .map(
-                              (skill) => Chip(
-                                label: Text(skill),
-                                backgroundColor: secondaryColor.withOpacity(
-                                  0.8,
-                                ),
-                                labelStyle: const TextStyle(
-                                  color: Colors.white,
-                                ),
-                                onDeleted: () => _removeSkill(skill),
-                                deleteIconColor: Colors.white,
-                              ),
-                            )
-                            .toList(),
-                      ),
-
-                    const SizedBox(height: 8),
-
-                    // Requirements
-                    _buildStyledTextFormField(
-                      controller: _requirementController,
-                      labelText: 'Add Requirements',
-                      icon: Icons.checklist_outlined,
-                      onFieldSubmitted: (value) => _addRequirement(),
-                      inputFormatters: [LengthLimitingTextInputFormatter(100)],
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.add_circle, color: Colors.blue),
-                        onPressed: _addRequirement,
-                      ),
-                    ),
-                    if (_selectedRequirements.isNotEmpty)
-                      Wrap(
-                        spacing: 8.0,
-                        children: _selectedRequirements
-                            .map(
-                              (req) => Chip(
-                                label: Text(req),
-                                backgroundColor: accentColor.withOpacity(0.8),
-                                labelStyle: const TextStyle(
-                                  color: Colors.white,
-                                ),
-                                onDeleted: () => _removeRequirement(req),
-                                deleteIconColor: Colors.white,
-                              ),
-                            )
-                            .toList(),
-                      ),
-
-                    const SizedBox(height: 8),
-
-                    // Opportunity Type
-                    _buildDropdownFormField(
-                      labelText: 'Opportunity Type',
-                      items: _opportunityTypes,
-                      selectedValue: _opportunityTypes.contains(_selectedType)
-                          ? _selectedType
-                          : null,
-                      onChanged: (value) =>
-                          setState(() => _selectedType = value),
-                      icon: Icons.category_outlined,
-                      validator: (value) => value == null || value.isEmpty
-                          ? 'Please select opportunity type'
-                          : null,
-                    ),
-
-                    // Is Paid Toggle
-                    Container(
-                      margin: const EdgeInsets.symmetric(vertical: 8.0),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Paid Opportunity?',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Switch(
-                            value: _isPaid,
-                            onChanged: (value) =>
-                                setState(() => _isPaid = value),
-                            activeColor: accentColor,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Start Date
-                    _buildStyledTextFormField(
-                      controller: _startDateController,
-                      labelText: 'Start Date',
-                      icon: Icons.calendar_today,
-                      readOnly: true,
-                      onTap: () => _selectDate(
-                        context,
-                        firstDate: today,
-                        onSelected: (date) {
-                          setState(() {
-                            _startDate = date;
-                            _startDateController.text = DateFormat(
-                              'MMMM dd, yyyy',
-                            ).format(date);
-                            // Clear dependent dates if they are now invalid
-                            // End Date must be after the new Start Date
-                            if (_endDate != null &&
-                                !_endDate!.isAfter(_startDate!)) {
-                              _endDate = null;
-                              _endDateController.clear();
-                            }
-                            if (_applicationDeadline != null &&
-                                !_applicationDeadline!.isBefore(_startDate!)) {
-                              // Clear application dates if they are no longer valid
-                              _applicationDeadline = null;
-                              _applicationDeadlineController.clear();
-                              _applicationOpenDate = null;
-                              _applicationOpenController.clear();
-                            }
-                            if (_responseDate != null &&
-                                !_responseDate!.isBefore(_startDate!)) {
-                              _responseDate = null;
-                              _responseDateController.clear();
-                            }
-                            // Also clear application open date if it's after the new start date
-                            if (_applicationOpenDate != null &&
-                                !_applicationOpenDate!.isBefore(_startDate!)) {
-                              _applicationOpenDate = null;
-                              _applicationOpenController.clear();
-                            }
-                            _calculateDuration();
-                          });
+                  onTap: _majorsLoading
+                      ? null // Disable tap while loading
+                      : () async {
+                          await _showSearchDialog(
+                            context: context,
+                            items: _majorsList, // This now includes "Other"
+                            title: 'Major',
+                            onItemSelected: (value) {
+                              setState(() {
+                                _selectedMajor =
+                                    value; // This tracks the actual selection
+                                _displayMajor = (value == 'Other')
+                                    ? null
+                                    : value; // This is for display
+                                if (value != 'Other') {
+                                  _otherMajorController.clear();
+                                }
+                              });
+                            },
+                          );
                         },
-                      ),
-                      validator: (value) => value == null || value.isEmpty
-                          ? 'Please select start date'
-                          : null,
-                    ),
+                  enabled: !_majorsLoading,
+                ),
+                if (_selectedMajor == 'Other')
+                  _buildStyledTextFormField(
+                    controller: _otherMajorController,
+                    labelText: 'Please specify the major',
+                    icon: Icons.edit_note_outlined,
+                    inputFormatters: [LengthLimitingTextInputFormatter(40)],
+                    validator: (v) {
+                      if (_selectedMajor == 'Other' &&
+                          (v == null || v.trim().isEmpty))
+                        return 'This field is required';
+                      return null;
+                    },
+                  ),
 
-                    // End Date
-                    _buildStyledTextFormField(
-                      controller: _endDateController,
-                      labelText: 'End Date',
-                      icon: Icons.event,
-                      readOnly: true,
-                      onTap: () => _selectDate(
-                        context,
-                        firstDate:
-                            _startDate?.add(const Duration(days: 1)) ??
-                            today.add(const Duration(days: 1)),
-                        onSelected: (date) {
-                          setState(() {
-                            _endDate = date;
-                            _endDateController.text = DateFormat(
-                              'MMMM dd, yyyy',
-                            ).format(date);
-                            _calculateDuration();
-                          });
-                        },
+                // Description
+                _buildStyledTextFormField(
+                  controller: _descriptionController,
+                  labelText: 'Description',
+                  icon: Icons.description_outlined,
+                  maxLength: 500,
+                  maxLines: 4,
+                  keyboardType: TextInputType.multiline,
+                  validator: (value) {
+                    if (value == null || value.isEmpty)
+                      return 'Please enter a description';
+                    return null;
+                  },
+                ),
+
+                // Work Mode
+                _buildDropdownFormField(
+                  labelText: 'Work Mode',
+                  items: _workModes,
+                  selectedValue: _selectedWorkMode,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedWorkMode = value;
+                      if (value == 'Remote') _selectedLocation = null;
+                    });
+                  },
+                  icon: Icons.location_city_outlined,
+                  validator: (value) =>
+                      value == null ? 'Please select work mode' : null,
+                ),
+
+                // Location (only for In-person or Hybrid)
+                if (_selectedWorkMode == 'In-person' ||
+                    _selectedWorkMode == 'Hybrid')
+                  _buildDropdownFormField(
+                    labelText: 'Location',
+                    items: _saudiCities,
+                    selectedValue: _selectedLocation,
+                    onChanged: (value) =>
+                        setState(() => _selectedLocation = value),
+                    icon: Icons.location_on_outlined,
+                    validator: (value) =>
+                        value == null ? 'Please select a location' : null,
+                  ),
+
+                // Skills
+                _buildStyledTextFormField(
+                  controller: _skillController,
+                  labelText: 'Add Required Skills',
+                  icon: Icons.lightbulb_outline,
+                  onFieldSubmitted: (value) => _addSkill(),
+                  inputFormatters: [LengthLimitingTextInputFormatter(30)],
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.add_circle, color: Colors.blue),
+                    onPressed: _addSkill,
+                  ),
+                ),
+                if (_selectedSkills.isNotEmpty)
+                  Wrap(
+                    spacing: 8.0,
+                    children: _selectedSkills
+                        .map(
+                          (skill) => Chip(
+                            label: Text(skill),
+                            backgroundColor: secondaryColor.withOpacity(0.8),
+                            labelStyle: const TextStyle(color: Colors.white),
+                            onDeleted: () => _removeSkill(skill),
+                            deleteIconColor: Colors.white,
+                          ),
+                        )
+                        .toList(),
+                  ),
+
+                const SizedBox(height: 8),
+
+                // Requirements
+                _buildStyledTextFormField(
+                  controller: _requirementController,
+                  labelText: 'Add Requirements',
+                  icon: Icons.checklist_outlined,
+                  onFieldSubmitted: (value) => _addRequirement(),
+                  inputFormatters: [LengthLimitingTextInputFormatter(100)],
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.add_circle, color: Colors.blue),
+                    onPressed: _addRequirement,
+                  ),
+                ),
+                if (_selectedRequirements.isNotEmpty)
+                  Wrap(
+                    spacing: 8.0,
+                    children: _selectedRequirements
+                        .map(
+                          (req) => Chip(
+                            label: Text(req),
+                            backgroundColor: accentColor.withOpacity(0.8),
+                            labelStyle: const TextStyle(color: Colors.white),
+                            onDeleted: () => _removeRequirement(req),
+                            deleteIconColor: Colors.white,
+                          ),
+                        )
+                        .toList(),
+                  ),
+
+                const SizedBox(height: 8),
+
+                // Opportunity Type
+                _buildDropdownFormField(
+                  labelText: 'Opportunity Type',
+                  items: _opportunityTypes,
+                  selectedValue: _opportunityTypes.contains(_selectedType)
+                      ? _selectedType
+                      : null,
+                  onChanged: (value) => setState(() => _selectedType = value),
+                  icon: Icons.category_outlined,
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'Please select opportunity type'
+                      : null,
+                ),
+
+                // Is Paid Toggle
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8.0),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Paid Opportunity?',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return 'Please select end date';
-                        if (_startDate != null &&
-                            _endDate != null &&
+                      Switch(
+                        value: _isPaid,
+                        onChanged: (value) => setState(() => _isPaid = value),
+                        activeColor: accentColor,
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Start Date
+                _buildStyledTextFormField(
+                  controller: _startDateController,
+                  labelText: 'Start Date',
+                  icon: Icons.calendar_today,
+                  readOnly: true,
+                  onTap: () => _selectDate(
+                    context,
+                    firstDate: today,
+                    onSelected: (date) {
+                      setState(() {
+                        _startDate = date;
+                        _startDateController.text = DateFormat(
+                          'MMMM dd, yyyy',
+                        ).format(date);
+                        // Clear dependent dates if they are now invalid
+                        // End Date must be after the new Start Date
+                        if (_endDate != null &&
                             !_endDate!.isAfter(_startDate!)) {
-                          return 'End date must be after start date';
+                          _endDate = null;
+                          _endDateController.clear();
                         }
-                        return null;
-                      },
-                    ),
-
-                    // Duration (Auto-calculated)
-                    _buildStyledTextFormField(
-                      controller: _durationController,
-                      labelText: 'Duration (Auto-calculated)',
-                      icon: Icons.timelapse,
-                      readOnly: true,
-                    ),
-
-                    // Application Begins
-                    _buildStyledTextFormField(
-                      controller: _applicationOpenController,
-                      labelText: 'Application Begins',
-                      icon: Icons.calendar_month,
-                      readOnly: true,
-                      onTap: () => _selectDate(
-                        context,
-                        firstDate: today,
-                        lastDate: _startDate?.subtract(const Duration(days: 1)),
-                        onSelected: (date) {
-                          setState(() {
-                            _applicationOpenDate = date;
-                            // Clear deadline if it's now invalid
-                            if (_applicationDeadline != null &&
-                                !_applicationDeadline!.isAfter(
-                                  _applicationOpenDate!,
-                                )) {
-                              _applicationDeadline = null;
-                              _applicationDeadlineController.clear();
-                            }
-                            // Also clear response date if it's now invalid
-                            if (_responseDate != null &&
-                                !_responseDate!.isAfter(
-                                  _applicationOpenDate!,
-                                )) {
-                              _responseDate = null;
-                              _responseDateController.clear();
-                            }
-
-                            _applicationOpenController.text = DateFormat(
-                              'MMMM dd, yyyy',
-                            ).format(date);
-                          });
-                        },
-                      ),
-                      validator: (value) => value == null || value.isEmpty
-                          ? 'Please select when applications begin'
-                          : (_startDate != null &&
-                                _applicationOpenDate != null &&
-                                !_applicationOpenDate!.isBefore(_startDate!))
-                          ? 'Must be before start date'
-                          : null,
-                    ),
-
-                    // Application Deadline
-                    _buildStyledTextFormField(
-                      controller: _applicationDeadlineController,
-                      labelText: 'Application Deadline',
-                      icon: Icons.access_time,
-                      readOnly: true,
-                      onTap: () => _selectDate(
-                        context,
-                        firstDate:
-                            _applicationOpenDate?.add(
-                              const Duration(days: 1),
-                            ) ??
-                            today,
-                        lastDate: _startDate?.subtract(const Duration(days: 1)),
-                        onSelected: (date) {
-                          setState(() {
-                            _applicationDeadline = date;
-                            _applicationDeadlineController.text = DateFormat(
-                              'MMMM dd, yyyy',
-                            ).format(date);
-                          });
-                        },
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return 'Please select application deadline';
+                        if (_applicationDeadline != null &&
+                            !_applicationDeadline!.isBefore(_startDate!)) {
+                          // Clear application dates if they are no longer valid
+                          _applicationDeadline = null;
+                          _applicationDeadlineController.clear();
+                          _applicationOpenDate = null;
+                          _applicationOpenController.clear();
+                        }
+                        if (_responseDate != null &&
+                            !_responseDate!.isBefore(_startDate!)) {
+                          _responseDate = null;
+                          _responseDateController.clear();
+                        }
                         if (_applicationOpenDate != null &&
-                            _applicationDeadline != null &&
+                            !_applicationOpenDate!.isBefore(_startDate!)) {
+                          _applicationOpenDate = null;
+                          _applicationOpenController.clear();
+                        }
+                        _calculateDuration();
+                      });
+                    },
+                  ),
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'Please select start date'
+                      : null,
+                ),
+
+                // End Date
+                _buildStyledTextFormField(
+                  controller: _endDateController,
+                  labelText: 'End Date',
+                  icon: Icons.event,
+                  readOnly: true, // Always readOnly
+                  // Disable onTap if start date is not selected
+                  onTap: _startDate == null
+                      ? null
+                      : () => _selectDate(
+                          context,
+                          firstDate: _startDate!.add(const Duration(days: 1)),
+                          onSelected: (date) {
+                            setState(() {
+                              _endDate = date;
+                              _endDateController.text = DateFormat(
+                                'MMMM dd, yyyy',
+                              ).format(date);
+                              _calculateDuration();
+                            });
+                          },
+                        ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty)
+                      return 'Please select end date';
+                    if (_startDate != null &&
+                        _endDate != null &&
+                        !_endDate!.isAfter(_startDate!)) {
+                      return 'End date must be after start date';
+                    }
+                    return null;
+                  },
+                ),
+
+                // Duration (Auto-calculated)
+                _buildStyledTextFormField(
+                  controller: _durationController,
+                  labelText: 'Duration (Auto-calculated)',
+                  icon: Icons.timelapse,
+                  readOnly: true,
+                ),
+
+                // Application Begins
+                _buildStyledTextFormField(
+                  controller: _applicationOpenController,
+                  labelText: 'Application Begins',
+                  icon: Icons.calendar_month,
+                  readOnly: true,
+                  onTap: () => _selectDate(
+                    context,
+                    firstDate: today,
+                    lastDate: _startDate?.subtract(const Duration(days: 1)),
+                    onSelected: (date) {
+                      setState(() {
+                        _applicationOpenDate = date;
+                        // Clear deadline if it's now invalid
+                        if (_applicationDeadline != null &&
                             !_applicationDeadline!.isAfter(
                               _applicationOpenDate!,
                             )) {
-                          return 'Deadline must be after open date';
+                          _applicationDeadline = null;
+                          _applicationDeadlineController.clear();
                         }
-                        if (_startDate != null &&
-                            _applicationDeadline != null &&
-                            !_applicationDeadline!.isBefore(_startDate!)) {
-                          return 'Deadline must be before the opportunity starts';
+                        // Also clear response date if it's now invalid
+                        if (_responseDate != null &&
+                            !_responseDate!.isAfter(_applicationOpenDate!)) {
+                          _responseDate = null;
+                          _responseDateController.clear();
                         }
-                        return null;
-                      },
-                    ),
 
-                    // Response Date
-                    _buildStyledTextFormField(
-                      controller: _responseDateController,
-                      labelText: 'Response Date',
-                      icon: Icons.notifications_active_outlined,
-                      readOnly: true,
-                      onTap: () => _selectDate(
-                        context,
-                        firstDate:
-                            _applicationDeadline?.add(
-                              const Duration(days: 1),
-                            ) ??
-                            today,
-                        lastDate: _startDate?.subtract(const Duration(days: 1)),
-                        onSelected: (date) {
-                          setState(() {
-                            _responseDate = date;
-                            _responseDateController.text = DateFormat(
-                              'MMMM dd, yyyy',
-                            ).format(date);
-                          });
-                        },
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return 'Please select response date';
-                        if (_applicationDeadline != null &&
-                            _responseDate != null &&
-                            !_responseDate!.isAfter(_applicationDeadline!)) {
-                          return 'Response date must be after deadline';
-                        }
-                        if (_startDate != null &&
-                            _responseDate != null &&
-                            !_responseDate!.isBefore(_startDate!)) {
-                          return 'Response date must be before start date';
-                        }
-                        return null;
-                      },
-                    ),
-
-                    // Response Date Visibility Toggle
-                    Container(
-                      margin: const EdgeInsets.symmetric(vertical: 8.0),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Make Response Date Visible to Students?',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Switch(
-                            value: _isResponseDateVisible,
-                            onChanged: (value) =>
-                                setState(() => _isResponseDateVisible = value),
-                            activeColor: accentColor,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 30),
-
-                    // Post Opportunity Button
-                    _buildGradientButton(
-                      text: 'Post Opportunity',
-                      onPressed: _postOpportunity,
-                    ),
-                  ],
+                        _applicationOpenController.text = DateFormat(
+                          'MMMM dd, yyyy',
+                        ).format(date);
+                      });
+                    },
+                  ),
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'Please select when applications begin'
+                      : (_startDate != null &&
+                            _applicationOpenDate != null &&
+                            !_applicationOpenDate!.isBefore(_startDate!))
+                      ? 'Must be before start date'
+                      : null,
                 ),
-              ),
+
+                // Application Deadline
+                _buildStyledTextFormField(
+                  controller: _applicationDeadlineController,
+                  labelText: 'Application Deadline',
+                  icon: Icons.access_time,
+                  readOnly: true,
+                  onTap: _applicationOpenDate == null
+                      ? null
+                      : () => _selectDate(
+                          context,
+                          firstDate: _applicationOpenDate!.add(
+                            const Duration(days: 1),
+                          ),
+                          lastDate: _startDate?.subtract(
+                            const Duration(days: 1),
+                          ),
+                          onSelected: (date) {
+                            setState(() {
+                              _applicationDeadline = date;
+                              _applicationDeadlineController.text = DateFormat(
+                                'MMMM dd, yyyy',
+                              ).format(date);
+                            });
+                          },
+                        ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty)
+                      return 'Please select application deadline';
+                    if (_applicationOpenDate != null &&
+                        _applicationDeadline != null &&
+                        !_applicationDeadline!.isAfter(_applicationOpenDate!)) {
+                      return 'Deadline must be after open date';
+                    }
+                    if (_startDate != null &&
+                        _applicationDeadline != null &&
+                        !_applicationDeadline!.isBefore(_startDate!)) {
+                      return 'Deadline must be before the opportunity starts';
+                    }
+                    return null;
+                  },
+                ),
+
+                // Response Date
+                _buildStyledTextFormField(
+                  controller: _responseDateController,
+                  labelText: 'Response Date',
+                  icon: Icons.notifications_active_outlined,
+                  readOnly: true,
+                  onTap: _applicationDeadline == null
+                      ? null
+                      : () => _selectDate(
+                          context,
+                          firstDate: _applicationDeadline!.add(
+                            const Duration(days: 1),
+                          ),
+                          lastDate: _startDate?.subtract(
+                            const Duration(days: 1),
+                          ),
+                          onSelected: (date) {
+                            setState(() {
+                              _responseDate = date;
+                              _responseDateController.text = DateFormat(
+                                'MMMM dd, yyyy',
+                              ).format(date);
+                            });
+                          },
+                        ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty)
+                      return 'Please select response date';
+                    if (_applicationDeadline != null &&
+                        _responseDate != null &&
+                        !_responseDate!.isAfter(_applicationDeadline!)) {
+                      return 'Response date must be after deadline';
+                    }
+                    if (_startDate != null &&
+                        _responseDate != null &&
+                        !_responseDate!.isBefore(_startDate!)) {
+                      return 'Response date must be before start date';
+                    }
+                    return null;
+                  },
+                ),
+
+                // Response Date Visibility Toggle
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8.0),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Make Response Date Visible to Students?',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Switch(
+                        value: _isResponseDateVisible,
+                        onChanged: (value) =>
+                            setState(() => _isResponseDateVisible = value),
+                        activeColor: accentColor,
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                // Post Opportunity Button
+                _buildGradientButton(
+                  text: 'Post Opportunity',
+                  onPressed: _postOpportunity,
+                ),
+              ],
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
 
   // Helper for consistent InputDecorations
-  InputDecoration _buildInputDecoration(String labelText, {IconData? icon}) {
+  InputDecoration _buildInputDecoration(
+    String labelText, {
+    IconData? icon,
+    bool enabled = true,
+  }) {
     return InputDecoration(
       labelText: labelText,
-      labelStyle: const TextStyle(color: primaryColor),
-      prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
+      labelStyle: TextStyle(color: enabled ? primaryColor : Colors.grey),
+      prefixIcon: icon != null
+          ? Icon(icon, color: enabled ? Colors.grey : Colors.grey.shade300)
+          : null,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: primaryColor),
@@ -989,10 +981,12 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0x80422F5D)),
+        borderSide: BorderSide(
+          color: enabled ? const Color(0x80422F5D) : Colors.grey.shade300,
+        ),
       ),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: enabled ? Colors.white : Colors.grey.shade100,
     );
   }
 
@@ -1000,14 +994,17 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     required String labelText,
     required String? selectedValue,
     required IconData icon,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
+    bool enabled = true,
     String? Function(String?)?
     validator, // This validator will check the text field's value
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
-        controller: TextEditingController(text: selectedValue),
+        controller: TextEditingController(
+          text: selectedValue ?? (_majorsLoading ? 'Loading majors...' : ''),
+        ),
         readOnly: true,
         onTap: onTap,
         validator: validator,
@@ -1015,6 +1012,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
           prefixIcon: Icon(icon, color: Colors.grey),
           suffixIcon: const Icon(Icons.arrow_drop_down, color: primaryColor),
         ),
+        enabled: enabled,
       ),
     );
   }

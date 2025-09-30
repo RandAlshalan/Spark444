@@ -495,7 +495,7 @@ class AuthService {
   ///
   /// This is a destructive operation that requires the user's current password for security.
   /// It re-authenticates the user, then deletes their Firestore document and their auth record.
-  Future<void> deleteStudentAccount(String currentPassword) async {
+ /* Future<void> deleteStudentAccount(String currentPassword) async {
     final user = _auth.currentUser;
     if (user == null || user.email == null) {
       throw Exception('No authenticated user found to delete.');
@@ -537,7 +537,7 @@ class AuthService {
       // Catch any other errors (e.g., from Firestore)
       throw Exception('An unexpected error occurred while deleting your account. Please try again.');
     }
-  }
+  }*/
 
   Future<Company?> getCompany(String uid) async {
     // Ensure you get a snapshot of the correct type.
@@ -594,14 +594,20 @@ class AuthService {
       // This should be the last step.
       await user.delete();
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'wrong-password') {
+      // Handle specific, common authentication errors first.
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential' || e.code == 'user-mismatch') {
         throw Exception('Incorrect password. Please try again.');
       } else if (e.code == 'requires-recent-login') {
         throw Exception(
           'This action requires a recent login. Please sign out and sign in again.',
         );
       }
-      rethrow;
+      // For any other FirebaseAuthException, use the general error mapper.
+      throw Exception(_mapAuthError(e));
+    } catch (e) {
+      // Catch any other non-Firebase errors (e.g., from Firestore or batch commit)
+      // and provide a clear, user-friendly message.
+      throw Exception('An unexpected error occurred. Please try again.');
     }
   }
 
