@@ -968,7 +968,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                                       !calculatedDeadline.isBefore(
                                         _startDate!,
                                       )) {
-                                    return 'Too late';
+                                    return 'Must be before start date!!';
                                   }
                                   return null;
                                 },
