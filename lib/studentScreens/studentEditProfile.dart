@@ -531,6 +531,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       inputFormatters: [LengthLimitingTextInputFormatter(15)],
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) return 'Required';
+                            if (value.contains(' ')) {
+      return 'First name cannot contain spaces';
+    }
                         if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
                           return 'Names cannot contain numbers or symbols';
                         }
@@ -547,6 +550,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       inputFormatters: [LengthLimitingTextInputFormatter(15)],
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) return 'Required';
+                            if (value.contains(' ')) {
+      return 'Last name cannot contain spaces';
+    }
                         if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
                           return 'Names cannot contain numbers or symbols';
                         }
@@ -2047,6 +2053,92 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
                   : const Text('Delete Account Permanently', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- 9. Change Email Screen ---
+
+class ChangeEmailScreen extends StatefulWidget {
+  const ChangeEmailScreen({super.key, required this.currentEmail});
+  final String currentEmail;
+
+  @override
+  State<ChangeEmailScreen> createState() => _ChangeEmailScreenState();
+}
+
+class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.text = widget.currentEmail;
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() => _submitting = true);
+    try {
+      await _authService.updateStudentEmail(
+        password: _passwordController.text,
+        newEmail: _emailController.text,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email updated. Please verify the new address.')));
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(title: const Text('Change Email')),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(labelText: 'New Email'),
+                validator: (value) => (value == null || !value.contains('@')) ? 'Enter a valid email' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
+                validator: (value) => (value == null || value.isEmpty) ? 'Enter your password' : null,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _submitting ? null : _submit,
+                child: _submitting
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Update Email'),
               ),
             ],
           ),

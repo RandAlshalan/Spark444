@@ -381,8 +381,15 @@ class _CompanySignupState extends State<CompanySignup> {
                 : null,
             validator: (value) {
               if (value == null || value.isEmpty) return 'Please enter company name';
+                              if (value.contains(' ')) {
+      return 'Company name cannot contain spaces';
+    }
+            if (RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
+              return 'Names cannot contain numbers or symbols';
+            }
               if (_companyNameError != null) return _companyNameError;
               return null;
+              
             },
           ),
           _buildStyledTextFormField(

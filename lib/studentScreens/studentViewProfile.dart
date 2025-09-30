@@ -390,7 +390,37 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
             },
           ),
           const SizedBox(height: 20),
-          Text(profile.fullName, style: GoogleFonts.lato(fontSize: 22, fontWeight: FontWeight.bold, color: _profileTextColor), textAlign: TextAlign.center),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  profile.fullName,
+                  style: GoogleFonts.lato(fontSize: 22, fontWeight: FontWeight.bold, color: _profileTextColor),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (profile.isAcademic)
+                Tooltip(
+                  message: 'This is a verified academic profile.',
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: 4),
+                      Icon(Icons.verified, color: Colors.blue.shade700, size: 18),
+                    ],
+                  ),
+                )
+              else
+                Tooltip(
+                  message: 'Profile not recognized as academic.\nUse your university email to get verified.',
+                  child: Icon(Icons.warning_amber_rounded, color: _sparkOrange, size: 20),
+                ),
+            ],
+          ),
           if (profile.username != null) ...[
             const SizedBox(height: 4),
             Text('@${profile.username}', style: GoogleFonts.lato(fontSize: 15, color: _profileTextColor.withOpacity(0.6))),
@@ -594,6 +624,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
         items: [
           _MenuItemData(icon: Icons.tune_outlined, title: 'Preferences', subtitle: 'Notifications & privacy', onTap: () => _openScreen(SettingsPreferencesScreen(student: student))),
           _MenuItemData(icon: Icons.lock_outline, title: 'Change Password', subtitle: 'Keep your account secure', onTap: () => _openScreen(const ChangePasswordScreen())),
+          _MenuItemData(icon: Icons.alternate_email, title: 'Change Email', subtitle: 'Update your login email', onTap: () => _openScreen(ChangeEmailScreen(currentEmail: profile.email))),
           _MenuItemData(icon: Icons.delete_forever_outlined, title: 'Delete Account', subtitle: 'Permanently erase your account', iconColor: _sparkRed, titleColor: _sparkRed, onTap: () => _openScreen(const DeleteAccountScreen())),
           _MenuItemData(icon: Icons.logout, title: 'Logout', subtitle: 'Sign out of this device', iconColor: _sparkRed, titleColor: _sparkRed, onTap: _showLogoutDialog),
         ],
@@ -758,6 +789,7 @@ class _ProfileUiModel {
   final String? profilePictureUrl;
   final List<String> followedCompanies;
   final String? location;
+  final bool isAcademic;
 
   const _ProfileUiModel({
     required this.fullName,
@@ -774,10 +806,12 @@ class _ProfileUiModel {
     required this.profilePictureUrl,
     required this.followedCompanies,
     required this.location,
+    required this.isAcademic,
   });
 
   factory _ProfileUiModel.fromStudent(Student student) {
     String? safePhone = student.phoneNumber.trim().isEmpty ? null : student.phoneNumber.trim();
+    final email = student.email.toLowerCase();
     return _ProfileUiModel(
       fullName: '${student.firstName} ${student.lastName}'.trim(),
       email: student.email,
@@ -793,6 +827,7 @@ class _ProfileUiModel {
       profilePictureUrl: _emptyToNull(student.profilePictureUrl),
       followedCompanies: student.followedCompanies.where((company) => company.trim().isNotEmpty).toList(),
       location: _emptyToNull(student.location),
+      isAcademic: email.endsWith('.edu') || email.contains('.edu.') || email.contains('.ac.'),
     );
   }
 
@@ -1021,6 +1056,130 @@ class _StyledInfoTile extends StatelessWidget {
       title: Text(displayValue, style: GoogleFonts.lato(fontSize: 16, color: _profileTextColor)),
       subtitle: Text(label, style: GoogleFonts.lato(fontSize: 13, color: _profileTextColor.withOpacity(0.7))),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+    );
+  }
+}
+
+
+// --- 9. Change Email Screen ---
+
+class ChangeEmailScreen extends StatefulWidget {
+  const ChangeEmailScreen({super.key, required this.currentEmail});
+  final String currentEmail;
+
+  @override
+  State<ChangeEmailScreen> createState() => _ChangeEmailScreenState();
+}
+
+class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.text = widget.currentEmail;
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() => _submitting = true);
+    try {
+      await _authService.updateStudentEmail(
+        password: _passwordController.text,
+        newEmail: _emailController.text,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email updated. Please verify the new address.')));
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(title: const Text('Change Email')),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(labelText: 'New Email'),
+                validator: (value) => (value == null || !value.contains('@')) ? 'Enter a valid email' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
+                validator: (value) => (value == null || value.isEmpty) ? 'Enter your password' : null,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _submitting ? null : _submit,
+                child: _submitting
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Update Email'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- Private Helper Widget for this File ---
+
+/// A dialog used by AcademicInfoScreen to select from a list of options.
+class _SelectionDialog extends StatelessWidget {
+  const _SelectionDialog({
+    required this.title,
+    required this.options,
+    required this.selected,
+  });
+
+  final String title;
+  final List<String> options;
+  final String selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(title),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: options.length,
+          itemBuilder: (_, index) {
+            final option = options[index];
+            return ListTile(
+              title: Text(option),
+              trailing: option == selected ? const Icon(Icons.check) : null,
+              onTap: () => Navigator.of(context).pop(option),
+            );
+          },
+        ),
+      ),
     );
   }
 }
