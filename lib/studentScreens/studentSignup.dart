@@ -722,6 +722,9 @@ class _StudentSignupState extends State<StudentSignup> {
               : const Icon(Icons.warning_amber_rounded, color: Colors.orange),
           validator: (value) {
             if (value == null || value.isEmpty) return 'Please enter university email';
+            if (value.contains(' ')) {
+      return 'email cannot contain spaces';
+    }
             if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Invalid email format';
             return null;
           },
