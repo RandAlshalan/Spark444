@@ -48,9 +48,10 @@ class OpportunityService {
         'timestamp': FieldValue.serverTimestamp(), // Add a timestamp for ordering
         // Add other fields from your Opportunity model
       });*/
-      await _firestore
-          .collection('opportunities')
-          .add(opportunity.toFirestore());
+      final data = opportunity.toFirestore();
+      data['postedDate'] =
+          FieldValue.serverTimestamp(); // Always set on creation
+      await _firestore.collection('opportunities').add(data);
     } catch (e) {
       print('Error adding opportunity: $e');
       rethrow;
@@ -79,6 +80,9 @@ class OpportunityService {
   // Example: Delete an opportunity
   Future<void> deleteOpportunity(String opportunityId) async {
     try {
+      // In PostOpportunityPage, you are calling .add() directly, not this service method.
+      // Let's adjust that page to use this service.
+      // For now, this method is correct as is.
       await _firestore.collection('opportunities').doc(opportunityId).delete();
     } catch (e) {
       print('Error deleting opportunity: $e');
@@ -86,3 +90,16 @@ class OpportunityService {
     }
   }
 }
+
+// In PostOpportunityPage.dart, you are calling Firestore directly.
+// It's better practice to use your service.
+// Let's modify PostOpportunityPage to use OpportunityService.
+
+/*
+  In PostOpportunityPage.dart, inside _postOpportunity():
+
+  Replace:
+    await FirebaseFirestore.instance.collection('opportunities').add(newOpportunity.toFirestore());
+  With:
+    await OpportunityService().addOpportunity(newOpportunity);
+*/

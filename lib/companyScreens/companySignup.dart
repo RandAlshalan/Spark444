@@ -169,13 +169,16 @@ class _CompanySignupState extends State<CompanySignup> {
 
   // ✅ MODIFIED: Navigate to next step only if form is valid
   Future<void> _goToNextStep() async {
-    if (!_formKeyStep1.currentState!.validate()) {
+    // Validate step 1 before proceeding.
+    final isStep1Valid = _formKeyStep1.currentState?.validate() ?? false;
+    if (!isStep1Valid) {
       return;
     }
     // Also check for async errors
     if (_companyNameError != null) {
       return;
     }
+    // If valid, move to the next step.
     setState(() => _currentStep = 1);
   }
 
@@ -200,12 +203,11 @@ class _CompanySignupState extends State<CompanySignup> {
   }
 
   Future<void> _signUpCompany() async {
-    // Validate both steps before proceeding.
-    final isStep1Valid = _formKeyStep1.currentState?.validate() ?? false;
+    // Validate only the current step's form (Step 2).
+    // Step 1 was already validated when the user clicked "Next".
     final isStep2Valid = _formKeyStep2.currentState?.validate() ?? false;
-    if (!isStep1Valid || !isStep2Valid) {
-      if (!isStep1Valid) setState(() => _currentStep = 0);
-      return;
+    if (!isStep2Valid) {
+      return; // Stop execution.
     }
     
     setState(() => _isLoading = true);
@@ -280,6 +282,8 @@ class _CompanySignupState extends State<CompanySignup> {
     ValueChanged<String>? onChanged,
     int? maxLines = 1,
     FocusNode? focusNode,
+    List<TextInputFormatter>? inputFormatters,
+    int? maxLength,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -292,6 +296,8 @@ class _CompanySignupState extends State<CompanySignup> {
         maxLines: maxLines,
         focusNode: focusNode,
         autovalidateMode: AutovalidateMode.onUserInteraction,
+        inputFormatters: inputFormatters,
+        maxLength: maxLength,
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
@@ -374,6 +380,9 @@ class _CompanySignupState extends State<CompanySignup> {
             controller: _companyNameController,
             hintText: 'Company Name',
             icon: Icons.business_outlined,
+            inputFormatters: [
+              LengthLimitingTextInputFormatter(50),
+            ],
             onChanged: _checkCompanyNameUniqueness,
             errorText: _companyNameError,
             suffixIcon: _isCheckingName
@@ -396,6 +405,9 @@ class _CompanySignupState extends State<CompanySignup> {
             controller: _emailController,
             hintText: 'Business Email',
             icon: Icons.mail_outline,
+            inputFormatters: [
+              LengthLimitingTextInputFormatter(100),
+            ],
             keyboardType: TextInputType.emailAddress,
             validator: (value) {
               if (value == null || value.isEmpty) return 'Please enter an email';
@@ -544,12 +556,18 @@ class _CompanySignupState extends State<CompanySignup> {
             _buildStyledTextFormField(
               controller: _sectorController, // Re-use for "Other"
               hintText: 'Please specify your sector',
+              inputFormatters: [
+                LengthLimitingTextInputFormatter(40),
+              ],
               icon: Icons.edit,
               validator: (value) => value == null || value.trim().isEmpty ? 'This field is required' : null,
             ),
           _buildStyledTextFormField(
             controller: _contactPersonController,
             hintText: 'Contact Person Name',
+            inputFormatters: [
+              LengthLimitingTextInputFormatter(50),
+            ],
             icon: Icons.person_outline,
             validator: (value) => value == null || value.isEmpty ? 'Please enter a contact name' : null,
           ),
@@ -557,8 +575,12 @@ class _CompanySignupState extends State<CompanySignup> {
           _buildStyledTextFormField(
               controller: _descriptionController,
               hintText: 'Company Description (Optional)',
+              inputFormatters: [
+                LengthLimitingTextInputFormatter(500),
+              ],
               icon: Icons.description_outlined,
-              maxLines: 4),
+              maxLines: 4,
+              maxLength: 500),
           const SizedBox(height: 30),
           _buildGradientButton(text: 'Create Company Account', onPressed: _signUpCompany),
         ],
