@@ -208,7 +208,7 @@ class _StudentSignupState extends State<StudentSignup> {
         backgroundColor: backgroundColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Unrecognized University Email', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
-        content: const Text('The email domain you provided is not on our recognized list. Would you like to submit it for manual review and proceed?', style: TextStyle(color: Colors.black54)),
+        content: const Text('Your account will be unauthorized, and some features may not be available.', style: TextStyle(color: Colors.black54)),
         actions: [
           TextButton(
             child: const Text('Cancel', style: TextStyle(color: secondaryColor, fontWeight: FontWeight.bold)),
