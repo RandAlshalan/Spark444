@@ -20,6 +20,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   Company? _company;
   List<Opportunity> _opportunities = [];
   bool _isLoading = true;
+  double _headerHeight = 250.0; // Default height
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -28,37 +29,23 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     _fetchCompanyData();
   }
 
-  /*Future<void> _fetchCompanyData() async {
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      final company = await _authService.getCurrentCompany();
-      final opportunities = await _opportunityService.getCompanyOpportunities(
-        company?.uid ?? '',
-      );
-      setState(() {
-        _company = company;
-        _opportunities = opportunities;
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error fetching data: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+  // Helper to calculate the height of the description text
+  double _calculateHeaderHeight(String? text, BuildContext context) {
+    if (text == null || text.isEmpty) {
+      return 250.0; // Return default height if no description
     }
-  }*/
+    final screenWidth = MediaQuery.of(context).size.width;
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.8)),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: screenWidth - 40); // 20 padding on each side
 
-  // In lib/companyScreens/companyHomePage.dart
-
-  // In lib/companyScreens/companyHomePage.dart
+    // Base height (for logo, sector, buttons, padding) + text height
+    return 170.0 + textPainter.height; // Increased base height for more bottom padding
+  }
 
   Future<void> _fetchCompanyData() async {
     setState(() {
@@ -110,6 +97,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       setState(() {
         _company = company;
         _opportunities = opportunities;
+        _headerHeight = _calculateHeaderHeight(_company?.description, context);
       });
     } catch (e) {
       if (mounted) {
@@ -236,8 +224,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
     if (confirmed == true) {
       try {
-        print('DEBUG: _showDeleteConfirmationDialog: User confirmed deletion. Attempting to delete account.');
+        print('DEBUG (CompanyHomePage): [Deletion Flow] User confirmed deletion. Calling AuthService.deleteCompanyAccount.');
         await _authService.deleteCompanyAccount(passwordController.text);
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -245,30 +234,33 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 duration: Duration(seconds: 4),
             ),
           );
-          print('DEBUG: _showDeleteConfirmationDialog: Account deletion successful. Navigating to WelcomeScreen.');
-          // Use pushAndRemoveUntil to clear the navigation stack and go to the welcome screen
+          print('DEBUG (CompanyHomePage): [Deletion Flow] Account deletion reported successful by AuthService.');
+          // CRUCIAL: Check if this line prints, and if navigation still doesn't occur.
+          print('DEBUG (CompanyHomePage): [Navigation Flow] Executing Navigator.of(context).pushAndRemoveUntil to WelcomeScreen.');
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-            (route) => false, // This predicate ensures all previous routes are removed
+            (route) => false,
           );
+          // This print might not show up if navigation happens immediately.
+          print('DEBUG (CompanyHomePage): [Navigation Flow] Navigator.of(context).pushAndRemoveUntil call completed.');
         } else {
-          print('DEBUG: _showDeleteConfirmationDialog: Widget is not mounted after successful deletion, cannot show SnackBar or navigate.');
+          print('DEBUG (CompanyHomePage): [Deletion Flow] Widget not mounted after deletion. Cannot show SnackBar or navigate.');
         }
       } catch (e) {
-        print('DEBUG: _showDeleteConfirmationDialog: Error caught during account deletion: $e');
+        print('ERROR (CompanyHomePage): [Deletion Flow] Caught error during account deletion: $e');
         if (mounted) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(
             SnackBar(
-                content: Text(e.toString().replaceFirst('Exception: ', '')), // Display the descriptive message
+                content: Text(e.toString().replaceFirst('Exception: ', '')),
                 duration: Duration(seconds: 8),
             ),
           );
         }
       }
     } else {
-      print('DEBUG: _showDeleteConfirmationDialog: Delete action cancelled by user or form validation failed.');
+      print('DEBUG (CompanyHomePage): [Deletion Flow] Delete action cancelled by user or form validation failed.');
     }
   } 
 
@@ -295,7 +287,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   Widget _buildSliverAppBar() {
     return SliverAppBar(
       backgroundColor: const Color(0xFFEFE8E2),
-      expandedHeight: 250.0,
+      expandedHeight: _headerHeight,
       pinned: true,
       floating: false,
       leading: IconButton(
@@ -321,70 +313,71 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   Widget _buildProfileHeaderContent() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 80, left: 20, right: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 40,
-                backgroundColor: Colors.white,
-                backgroundImage: _company?.logoUrl != null
-                    ? NetworkImage(_company!.logoUrl!)
-                    : const AssetImage('assets/spark_logo.png') as ImageProvider,
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _company?.sector ?? 'Sector Not Specified',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 40), // Increased bottom padding
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundColor: Colors.white,
+                  backgroundImage: _company?.logoUrl != null
+                      ? NetworkImage(_company!.logoUrl!)
+                      : const AssetImage('assets/spark_logo.png') as ImageProvider,
                 ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context)
-                      .push(
-                        MaterialPageRoute(
-                          builder: (_) => EditCompanyProfilePage(company: _company!),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment
+                        .start, // This is good for keeping the sector text aligned left
+                    children: [
+                      Text(
+                        _company?.sector ?? 'Sector Not Specified',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withOpacity(0.8),
                         ),
-                      )
-                      .then((_) => _fetchCompanyData());
-                },
-                icon: const Icon(Icons.edit, size: 18),
-                label: const Text('Edit'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white.withOpacity(0.2),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+                      ),
+                    ],
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            _company?.description ?? 'No description available.',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withOpacity(0.8),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context)
+                        .push(
+                          MaterialPageRoute(
+                            builder: (_) => EditCompanyProfilePage(company: _company!),
+                          ),
+                        )
+                        .then((_) => _fetchCompanyData());
+                  },
+                  icon: const Icon(Icons.edit, size: 18),
+                  label: const Text('Edit'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white.withOpacity(0.2),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                ),
+              ],
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+            const SizedBox(height: 10),
+            Text(
+              _company?.description ?? 'No description available.',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.8),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
