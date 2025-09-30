@@ -28,8 +28,9 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
       TextEditingController();
   final TextEditingController _applicationDatesController =
       TextEditingController();
-  final TextEditingController _responseDurationController =
+  final TextEditingController _responseWeeksController =
       TextEditingController();
+  final TextEditingController _responseDaysController = TextEditingController();
   final TextEditingController _durationController = TextEditingController();
   final TextEditingController _skillController = TextEditingController();
   final TextEditingController _requirementController = TextEditingController();
@@ -49,28 +50,30 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
   DateTime? _endDate;
   DateTime? _applicationOpenDate;
   DateTime? _applicationDeadline;
-  String _responseDurationUnit = 'Days';
-  final List<String> _responseDurationUnits = ['Days', 'Weeks'];
+  DateTime? _calculatedResponseDate; // To show the calculated date in real-time
 
   final List<String> _selectedSkills = [];
   final List<String> _selectedRequirements = [];
+
+  static const int _maxSkills = 10;
+  static const int _maxRequirements = 10;
 
   // Dropdown options
   final List<String> _workModes = ['In-person', 'Remote', 'Hybrid'];
   final List<String> _saudiCities = [
     'Riyadh',
-    'Jeddah',
-    'Mecca',
+    'Makkah',
     'Medina',
-    'Dammam',
-    'Khobar',
-    'Dhahran',
+    'Qassim',
+    'Eastern Province',
+    'Asir',
     'Tabuk',
-    'Buraidah',
-    'Abha',
-    'Khamis Mushait',
+    'Northern Borders',
+    'Hail',
+    'Bahah',
     'Najran',
     'Jazan',
+    'Al Jouf',
   ];
 
   final List<String> _opportunityTypes = [
@@ -94,6 +97,9 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
   void initState() {
     super.initState();
     _loadMajorsFuture = _loadMajors();
+    // Add listeners to update the calculated response date in real-time
+    _responseWeeksController.addListener(_updateAndDisplayResponseDate);
+    _responseDaysController.addListener(_updateAndDisplayResponseDate);
   }
 
   Future<void> _loadMajors() async {
@@ -122,7 +128,8 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     _descriptionController.dispose();
     _opportunityDatesController.dispose();
     _applicationDatesController.dispose();
-    _responseDurationController.dispose();
+    _responseWeeksController.dispose();
+    _responseDaysController.dispose();
     _durationController.dispose();
     _skillController.dispose();
     _requirementController.dispose();
@@ -232,55 +239,109 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
   }
 
   Timestamp? _calculateResponseDeadline() {
-    if (!_isResponseDateVisible ||
-        _applicationDeadline == null ||
-        _responseDurationController.text.trim().isEmpty) {
+    if (!_isResponseDateVisible || _applicationDeadline == null) {
       return null;
     }
 
-    final durationValue = int.tryParse(_responseDurationController.text.trim());
-    if (durationValue == null) return null;
+    final weeks = int.tryParse(_responseWeeksController.text.trim()) ?? 0;
+    final days = int.tryParse(_responseDaysController.text.trim()) ?? 0;
 
-    final duration = _responseDurationUnit == 'Days'
-        ? Duration(days: durationValue)
-        : Duration(days: durationValue * 7);
+    if (weeks == 0 && days == 0) {
+      return null; // No duration entered, so no deadline.
+    }
 
-    final calculatedDate = _applicationDeadline!.add(duration);
+    final totalDays = (weeks * 7) + days;
+    final calculatedDate = _applicationDeadline!.add(Duration(days: totalDays));
     return Timestamp.fromDate(calculatedDate);
   }
 
+  void _updateAndDisplayResponseDate() {
+    if (!_isResponseDateVisible || _applicationDeadline == null) {
+      setState(() => _calculatedResponseDate = null);
+      return;
+    }
+
+    final weeks = int.tryParse(_responseWeeksController.text.trim()) ?? 0;
+    final days = int.tryParse(_responseDaysController.text.trim()) ?? 0;
+
+    if (weeks == 0 && days == 0) {
+      setState(() => _calculatedResponseDate = null);
+      return;
+    }
+
+    final totalDays = (weeks * 7) + days;
+    final calculatedDate = _applicationDeadline!.add(Duration(days: totalDays));
+
+    // Update the state to rebuild the UI and show the new date
+    setState(() => _calculatedResponseDate = calculatedDate);
+  }
+
   void _addSkill() {
+    if (_selectedSkills.length >= _maxSkills) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('You can add a maximum of $_maxSkills skills.')),
+      );
+      return;
+    }
+
     final skill = _skillController.text.trim();
+    if (skill.isEmpty) return;
+
     // Case-insensitive check for duplicates
     final isDuplicate = _selectedSkills.any(
       (s) => s.toLowerCase() == skill.toLowerCase(),
     );
-    if (skill.isNotEmpty && !isDuplicate && skill.length <= 30) {
-      setState(() {
-        _selectedSkills.add(skill);
-        _skillController.clear();
-      });
-    }
-  }
 
-  void _removeSkill(String skill) {
+    if (isDuplicate) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This skill has already been added.')),
+      );
+      return;
+    }
+
     setState(() {
-      _selectedSkills.remove(skill);
+      _selectedSkills.add(skill);
+      _skillController.clear();
     });
   }
 
+  void _removeSkill(String skill) {
+    setState(() => _selectedSkills.remove(skill));
+  }
+
   void _addRequirement() {
+    if (_selectedRequirements.length >= _maxRequirements) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'You can add a maximum of $_maxRequirements requirements.',
+          ),
+        ),
+      );
+      return;
+    }
+
     final requirement = _requirementController.text.trim();
+    if (requirement.isEmpty) return;
+
     // Case-insensitive check for duplicates
     final isDuplicate = _selectedRequirements.any(
       (r) => r.toLowerCase() == requirement.toLowerCase(),
     );
-    if (requirement.isNotEmpty && !isDuplicate && requirement.length <= 100) {
-      setState(() {
-        _selectedRequirements.add(requirement);
-        _requirementController.clear();
-      });
+
+    if (isDuplicate) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This requirement has already been added.'),
+        ),
+      );
+      return;
     }
+
+    setState(() {
+      _selectedRequirements.add(requirement);
+      _requirementController.clear();
+    });
   }
 
   void _removeRequirement(String requirement) {
@@ -520,6 +581,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
       _applicationOpenDate = pickedRange.start;
       _applicationDeadline = pickedRange.end;
       final format = DateFormat('MMM d, yyyy');
+      _updateAndDisplayResponseDate(); // Recalculate response date
       _applicationDatesController.text =
           '${format.format(_applicationOpenDate!)} - ${format.format(_applicationDeadline!)}';
     });
@@ -875,63 +937,86 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
 
                 // Response Date (Now conditional)
                 if (_isResponseDateVisible)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: TextFormField(
-                            controller: _responseDurationController,
-                            decoration: _buildInputDecoration(
-                              'Respond within',
-                              icon: Icons.notifications_active_outlined,
-                            ),
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Required';
-                              }
-                              final calculatedDeadline =
-                                  _calculateResponseDeadline()?.toDate();
-                              if (calculatedDeadline != null &&
-                                  _startDate != null &&
-                                  !calculatedDeadline.isBefore(_startDate!)) {
-                                return 'Must be before start date';
-                              }
-                              return null;
-                            },
-                            autovalidateMode:
-                                AutovalidateMode.onUserInteraction,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          flex: 3,
-                          child: DropdownButtonFormField<String>(
-                            value: _responseDurationUnit,
-                            items: _responseDurationUnits
-                                .map(
-                                  (unit) => DropdownMenuItem(
-                                    value: unit,
-                                    child: Text(unit),
+                  Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Weeks Input
+                            SizedBox(
+                              width: 70,
+                              child: TextFormField(
+                                controller: _responseWeeksController,
+                                decoration: _buildInputDecoration('').copyWith(
+                                  prefixIcon: const Icon(
+                                    Icons.notifications_active_outlined,
+                                    color: Colors.grey,
                                   ),
-                                )
-                                .toList(),
-                            onChanged: (value) {
-                              setState(() => _responseDurationUnit = value!);
-                            },
-                            decoration: _buildInputDecoration(
-                              'after application deadline',
-                            ).copyWith(prefixIcon: null),
+                                ),
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                textAlign: TextAlign.center,
+                                validator: (value) {
+                                  final calculatedDeadline =
+                                      _calculateResponseDeadline()?.toDate();
+                                  if (calculatedDeadline != null &&
+                                      _startDate != null &&
+                                      !calculatedDeadline.isBefore(
+                                        _startDate!,
+                                      )) {
+                                    return 'Too late';
+                                  }
+                                  return null;
+                                },
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
+                              ),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.only(left: 8.0, right: 12.0),
+                              child: Text('weeks and'),
+                            ),
+                            const SizedBox(width: 10),
+                            // Days Input
+                            SizedBox(
+                              width: 70,
+                              child: TextFormField(
+                                controller: _responseDaysController,
+                                decoration: _buildInputDecoration(''),
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                textAlign: TextAlign.center,
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
+                              ),
+                            ),
+                            const Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.only(left: 8.0),
+                                child: Text('days after deadline'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_calculatedResponseDate != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, bottom: 8),
+                          child: Text(
+                            'Expected Response By: ${DateFormat('MMMM dd, yyyy').format(_calculatedResponseDate!)}',
+                            style: TextStyle(
+                              color: primaryColor.withOpacity(0.8),
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                      ],
-                    ),
+                    ],
                   ),
 
                 const SizedBox(height: 30),

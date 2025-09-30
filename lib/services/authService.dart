@@ -9,6 +9,7 @@ import '../models/company.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+    static const String kOpportunitiesCol = 'opportunities'; // Defined for clarity
 
   static const String kStudentCol = 'student';
   static const String kCompanyCol = 'companies';
@@ -562,54 +563,71 @@ class AuthService {
   Future<void> deleteCompanyAccount(String password) async {
     final user = _auth.currentUser;
     if (user == null || user.email == null) {
-      print('DEBUG: deleteCompanyAccount: No authenticated user found.');
+      print('DEBUG: deleteCompanyAccount [Start]: No authenticated user found. Throwing exception.');
       throw Exception('No authenticated user found to delete.');
     }
 
+    final String userUid = user.uid;
+    final String userEmail = user.email!; // Get user's current email
+
+    print('DEBUG: deleteCompanyAccount [Start]: Attempting to delete account for UID: $userUid, Email: $userEmail');
+
     try {
-      print('DEBUG: deleteCompanyAccount: Attempting to re-authenticate user: ${user.email}');
       // Step 1: Re-authenticate the user for security.
+      print('DEBUG: deleteCompanyAccount [Reauth]: Attempting to re-authenticate with email: $userEmail');
       final credential = EmailAuthProvider.credential(
-        email: user.email!,
+        email: userEmail,
         password: password.trim(),
       );
       await user.reauthenticateWithCredential(credential);
-      print('DEBUG: deleteCompanyAccount: User re-authenticated successfully.');
-
-      final uid = user.uid;
+      print('DEBUG: deleteCompanyAccount [Reauth]: User re-authenticated successfully.');
 
       // Step 2: Delete all opportunities posted by the company.
-      print('DEBUG: deleteCompanyAccount: Deleting opportunities for company UID: $uid');
+      // HYPOTHESIS: 'companyId' in 'opportunities' collection stores company email, not UID.
+      print('DEBUG: deleteCompanyAccount [Opportunities]: Attempting to delete opportunities associated with email: $userEmail');
+
       final opportunitiesSnapshot = await _db
-          .collection('opportunities')
-          .where('companyId', isEqualTo: uid)
+          .collection(kOpportunitiesCol)
+          .where('companyId', isEqualTo: userEmail) // <-- CRITICAL CHANGE: Query by email
           .get();
+
+      if (opportunitiesSnapshot.docs.isEmpty) {
+        print('DEBUG: deleteCompanyAccount [Opportunities]: No opportunities found using email "$userEmail".');
+        // You might want to add a fallback here to check by UID if you're unsure,
+        // or just log this if it's expected behavior for a company without posts.
+        // For now, let's stick with the email as the identifier based on your print statements.
+      } else {
+        print('DEBUG: deleteCompanyAccount [Opportunities]: Found ${opportunitiesSnapshot.docs.length} opportunities for email "$userEmail".');
+      }
 
       final batch = _db.batch();
       for (final doc in opportunitiesSnapshot.docs) {
         batch.delete(doc.reference);
+        print('DEBUG: deleteCompanyAccount [Opportunities]: Adding opportunity "${doc.id}" to batch.');
       }
       await batch.commit();
-      print('DEBUG: deleteCompanyAccount: Opportunities deleted successfully.');
+      print('DEBUG: deleteCompanyAccount [Opportunities]: Opportunities batch committed. Total deleted: ${opportunitiesSnapshot.docs.length}.');
+
 
       // Step 3: Delete the company's document from Firestore.
-      print('DEBUG: deleteCompanyAccount: Deleting company document for UID: $uid');
-      await _db.collection(kCompanyCol).doc(uid).delete();
-      print('DEBUG: deleteCompanyAccount: Company document deleted successfully.');
+      print('DEBUG: deleteCompanyAccount [Firestore Doc]: Deleting company document for UID: $userUid');
+      await _db.collection(kCompanyCol).doc(userUid).delete();
+      print('DEBUG: deleteCompanyAccount [Firestore Doc]: Company document deleted successfully.');
 
-      // Step 4: Delete the user from Firebase Authentication.
-      // This should be the last step.
-      print('DEBUG: deleteCompanyAccount: Deleting Firebase Auth user: ${user.email}');
+      // Step 4: Delete the user from Firebase Authentication. This should be the last step.
+      print('DEBUG: deleteCompanyAccount [Auth User]: Deleting Firebase Auth user: $userEmail (UID: $userUid)');
       await user.delete();
-      print('DEBUG: deleteCompanyAccount: Firebase Auth user deleted successfully.');
+      print('DEBUG: deleteCompanyAccount [Auth User]: Firebase Auth user deleted successfully.');
+
+      print('DEBUG: deleteCompanyAccount [End]: Account deletion process completed successfully.');
 
     } on FirebaseAuthException catch (e) {
-      print('DEBUG: deleteCompanyAccount: FirebaseAuthException caught: ${e.code} - ${e.message}');
+      print('DEBUG: deleteCompanyAccount [FirebaseAuthException]: Caught Firebase Auth Exception: ${e.code} - ${e.message}');
       String errorMessage;
       switch (e.code) {
         case 'wrong-password':
         case 'invalid-credential':
-        case 'user-mismatch': // Firebase can sometimes return 'user-mismatch' for reauth with wrong credentials.
+        case 'user-mismatch':
           errorMessage = 'Incorrect password. Please try again.';
           break;
         case 'requires-recent-login':
@@ -619,7 +637,7 @@ class AuthService {
           errorMessage = 'The user account could not be found.';
           break;
         case 'operation-not-allowed':
-          errorMessage = 'Account deletion is not enabled for this project.';
+          errorMessage = 'Email/Password sign-in is not enabled or account deletion is not allowed.';
           break;
         case 'network-request-failed':
           errorMessage = 'Network error. Please check your internet connection.';
@@ -628,12 +646,15 @@ class AuthService {
           errorMessage = e.message ?? 'An unknown authentication error occurred (Code: ${e.code}).';
           break;
       }
+      print('DEBUG: deleteCompanyAccount [FirebaseAuthException]: Throwing descriptive error: "$errorMessage"');
       throw Exception(errorMessage); // Throw a descriptive exception
     } catch (e) {
-      print('DEBUG: deleteCompanyAccount: General Exception caught: $e');
-      throw Exception('An unexpected error occurred: ${e.toString().replaceFirst('Exception: ', '')}. Please try again.');
+      print('DEBUG: deleteCompanyAccount [General Exception]: Caught general exception: $e');
+      print('DEBUG: deleteCompanyAccount [General Exception]: Throwing descriptive error: "${e.toString()}"');
+      throw Exception('An unexpected error occurred during account deletion: ${e.toString().replaceFirst('Exception: ', '')}.');
     }
   }
+
   Future<void> signOut() async {
     await _auth.signOut();
   }
