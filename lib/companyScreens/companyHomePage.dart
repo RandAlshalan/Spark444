@@ -5,6 +5,7 @@ import '../services/authService.dart';
 import '../services/opportunityService.dart';
 import 'editCompanyProfilePage.dart';
 import 'PostOpportunityPage.dart';
+import '../studentScreens/welcomeScreen.dart';
 
 class CompanyHomePage extends StatefulWidget {
   const CompanyHomePage({super.key});
@@ -137,6 +138,121 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     );
     // After returning from PostOpportunityPage, refresh the list of opportunities
     _fetchCompanyData();
+  }
+
+  Future<void> _deleteOpportunity(String opportunityId) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Opportunity'),
+        content: const Text(
+          'Are you sure you want to permanently delete this opportunity?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _opportunityService.deleteOpportunity(opportunityId);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Opportunity deleted successfully.')),
+        );
+        _fetchCompanyData(); // Refresh the list
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting opportunity: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showDeleteConfirmationDialog() async {
+    final passwordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    // Close the drawer before showing the dialog
+    Navigator.of(context).pop();
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Account Permanently?'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'This action is irreversible. All your data, including posted opportunities, will be deleted. Please enter your password to confirm.',
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Password'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Password is required';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.of(context).pop(true);
+                }
+              },
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      try {
+        await _authService.deleteCompanyAccount(passwordController.text);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Account deleted successfully.')),
+          );
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+            (route) => false,
+          );
+        }
+      } catch (e) {
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
   }
 
   @override
@@ -339,10 +455,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   Widget _buildOpportunityCard(Opportunity opportunity) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 4,
+      elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -360,117 +476,137 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                         color: Color(0xFF422F5D),
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
                     Text(
                       opportunity.role,
                       style: const TextStyle(
                         fontSize: 16,
                         color: Color(0xFFD64483),
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
-                TextButton(
-                  onPressed: () {}, // Dummy onPressed
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.people_alt_outlined,
-                        color: Colors.grey,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      /*Text( Ghaida!1
-                        '${opportunity.applicants} Applicants',
-                        style: const TextStyle(color: Colors.grey),
-                      ),*/
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
+                // Placeholder for applicants count
                 const Icon(
-                  Icons.location_on_outlined,
-                  size: 16,
+                  Icons.people_alt_outlined,
                   color: Colors.grey,
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  opportunity.location ?? 'Remote',
-                  style: const TextStyle(color: Colors.grey),
+                  size: 20,
                 ),
               ],
             ),
+            const Divider(height: 24),
+            // --- New Info Rows ---
+            _buildInfoRow(
+              Icons.business_center_outlined,
+              // Combine workMode and location for a clear display
+              '${opportunity.workMode ?? opportunity.type}'
+              '${(opportunity.workMode != 'Remote' && opportunity.location != null) ? ' - ${opportunity.location}' : ''}',
+            ),
+            if (opportunity.preferredMajor != null)
+              _buildInfoRow(Icons.school_outlined, opportunity.preferredMajor!),
+            _buildInfoRow(
+              opportunity.isPaid
+                  ? Icons.paid_outlined
+                  : Icons.money_off_outlined,
+              opportunity.isPaid ? 'Paid' : 'Unpaid',
+              color: opportunity.isPaid
+                  ? Colors.green.shade700
+                  : Colors.red.shade700,
+            ),
+            // --- Skills Section ---
+            if (opportunity.skills != null &&
+                opportunity.skills!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 4.0,
+                children: opportunity.skills!
+                    .map(
+                      (skill) => Chip(
+                        label: Text(
+                          skill,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF422F5D),
+                          ),
+                        ),
+                        backgroundColor: const Color(
+                          0xFF422F5D,
+                        ).withOpacity(0.1),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        side: BorderSide.none,
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(
-                  opportunity.isPaid
-                      ? Icons.paid_outlined
-                      : Icons.money_off_outlined,
-                  size: 16,
-                  color: opportunity.isPaid ? Colors.green : Colors.red,
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  opportunity.isPaid ? 'Paid' : 'Unpaid',
-                  style: TextStyle(
-                    color: opportunity.isPaid ? Colors.green : Colors.red,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 15),
+            // --- Action Buttons ---
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
+                TextButton.icon(
                   onPressed: () {
-                    // Dummy navigation
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Navigating to applicants for ${opportunity.name}',
+                          'Viewing applicants for ${opportunity.name}',
                         ),
                       ),
                     );
                   },
-                  child: const Text(
-                    'View Applicants',
-                    style: TextStyle(color: Color(0xFF6B4791)),
+                  icon: const Icon(Icons.people_outline, size: 20),
+                  label: const Text('View Applicants'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF6B4791),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blueGrey),
+                  tooltip: 'Edit Opportunity',
                   onPressed: () {
-                    // Dummy edit action
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Editing ${opportunity.name}')),
                     );
+                    // TODO: Navigate to PostOpportunityPage with opportunity data
                   },
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () {
-                    // Dummy delete action
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Deleting ${opportunity.name}')),
-                    );
-                  },
+                  tooltip: 'Delete Opportunity',
+                  onPressed: () => _deleteOpportunity(opportunity.id),
                 ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text, {Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color ?? Colors.grey.shade600),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: color ?? Colors.grey.shade800,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -550,6 +686,12 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   .then((_) => _fetchCompanyData());
             }),
             const Divider(color: Colors.white54),
+            _buildDrawerItem(
+              Icons.delete_forever,
+              'Delete Account',
+              _showDeleteConfirmationDialog,
+              color: Colors.red[300],
+            ),
             _buildDrawerItem(Icons.logout, 'Log Out', () async {
               // Dummy logout action
               await _authService.signOut();
@@ -565,10 +707,16 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     );
   }
 
-  Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap) {
+  Widget _buildDrawerItem(
+    IconData icon,
+    String title,
+    VoidCallback onTap, {
+    Color? color,
+  }) {
+    final itemColor = color ?? Colors.white;
     return ListTile(
-      leading: Icon(icon, color: Colors.white),
-      title: Text(title, style: const TextStyle(color: Colors.white)),
+      leading: Icon(icon, color: itemColor),
+      title: Text(title, style: TextStyle(color: itemColor)),
       onTap: onTap,
     );
   }

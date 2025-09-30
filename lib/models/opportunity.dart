@@ -7,10 +7,13 @@ class Opportunity {
   final String role;
   final bool isPaid;
 
-  // --- NEW FIELDS ADDED BELOW ---
+  // --- FIELDS ADDED BELOW ---
   final String type; // e.g., Internship, Full-time, Part-time
+  final String? workMode; // e.g., In-person, Remote, Hybrid
   final String? description; // Optional description
   final List<String>? requirements; // Optional list of requirements
+  final List<String>? skills; // Optional list of skills
+  final String? preferredMajor; // Optional preferred major
   final String? location; // Optional location string
   final Timestamp? startDate; // Start date of the opportunity
   final Timestamp? endDate; // End date of the opportunity
@@ -29,10 +32,13 @@ class Opportunity {
     required this.name,
     required this.role,
     required this.isPaid,
-    // --- NEW FIELDS IN CONSTRUCTOR ---
+    // --- CONSTRUCTOR UPDATES ---
     required this.type,
+    this.workMode,
     this.description,
     this.requirements,
+    this.skills,
+    this.preferredMajor,
     this.location,
     this.startDate,
     this.endDate,
@@ -41,7 +47,7 @@ class Opportunity {
     this.responseDeadline,
     this.postedDate,
     this.isActive = true, // Default to true if not specified
-    // --- END NEW FIELDS ---
+    // --- END CONSTRUCTOR UPDATES ---
   });
 
   // Factory constructor to create an Opportunity from a Firestore DocumentSnapshot
@@ -53,12 +59,17 @@ class Opportunity {
       name: data['name'] ?? 'No Name',
       role: data['role'] ?? 'No Role',
       isPaid: data['isPaid'] ?? false,
-      // --- MAPPING NEW FIELDS FROM FIRESTORE ---
+      // --- MAPPING UPDATED FIELDS FROM FIRESTORE ---
       type: data['type'] ?? 'Unknown', // Provide a default if type is mandatory
+      workMode: data['workMode'],
       description: data['description'],
       requirements: (data['requirements'] as List<dynamic>?)
           ?.map((e) => e.toString())
           .toList(),
+      skills: (data['skills'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
+      preferredMajor: data['preferredMajor'],
       location: data['location'],
       startDate: data['startDate'] as Timestamp?,
       endDate: data['endDate'] as Timestamp?,
@@ -67,7 +78,7 @@ class Opportunity {
       responseDeadline: data['responseDeadline'] as Timestamp?,
       postedDate: data['postedDate'] as Timestamp?,
       isActive: data['isActive'] ?? true, // Default to true if not present
-      // --- END MAPPING NEW FIELDS ---
+      // --- END MAPPING UPDATED FIELDS ---
     );
   }
 
@@ -78,11 +89,14 @@ class Opportunity {
       'name': name,
       'role': role,
       'isPaid': isPaid,
-      // --- ADDING NEW FIELDS TO FIRESTORE MAP ---
+      // --- ADDING UPDATED FIELDS TO FIRESTORE MAP ---
       'type': type,
+      if (workMode != null) 'workMode': workMode,
       if (description != null) 'description': description,
       if (requirements != null && requirements!.isNotEmpty)
         'requirements': requirements,
+      if (skills != null && skills!.isNotEmpty) 'skills': skills,
+      if (preferredMajor != null) 'preferredMajor': preferredMajor,
       if (location != null) 'location': location,
       if (startDate != null) 'startDate': startDate,
       if (endDate != null) 'endDate': endDate,
@@ -90,12 +104,12 @@ class Opportunity {
         'applicationOpenDate': applicationOpenDate,
       if (applicationDeadline != null)
         'applicationDeadline': applicationDeadline,
+      // Conditionally add responseDeadline based on the toggle in your form
       if (responseDeadline != null) 'responseDeadline': responseDeadline,
       'postedDate':
-          postedDate ??
-          FieldValue.serverTimestamp(), // Set on creation if not already set
+          postedDate, // For updates, keep the existing date. For creation, it will be set by the service.
       'isActive': isActive,
-      // --- END ADDING NEW FIELDS ---
+      // --- END ADDING UPDATED FIELDS ---
     };
   }
 }
