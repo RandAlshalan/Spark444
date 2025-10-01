@@ -541,7 +541,8 @@ class _CompanySignupState extends State<CompanySignup> {
           const SizedBox(height: 24),
           // ✅ REPLACED: Text field with a dropdown for sectors
           DropdownButtonFormField<String>(
-            value: _selectedSector,
+            initialValue: _selectedSector,
+            isExpanded: true, // Fix dropdown width overflow
             onChanged: (String? newValue) {
               setState(() {
                 _selectedSector = newValue;
@@ -564,10 +565,18 @@ class _CompanySignupState extends State<CompanySignup> {
             items: _sectorsList.map<DropdownMenuItem<String>>((String value) {
               return DropdownMenuItem<String>(
                 value: value,
-                child: Text(
-                  value,
-                  style: const TextStyle(color: primaryColor, fontSize: 14),
-                  overflow: TextOverflow.ellipsis,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: Tooltip(
+                    message: value,
+                    child: Text(
+                      value,
+                      style: const TextStyle(color: primaryColor, fontSize: 14),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2, // Allow wrapping to 2 lines for long text
+                    ),
+                  ),
                 ),
               );
             }).toList(),
