@@ -6,6 +6,7 @@ import '../services/opportunityService.dart';
 import 'editCompanyProfilePage.dart';
 import 'PostOpportunityPage.dart';
 import '../studentScreens/welcomeScreen.dart';
+import 'package:intl/intl.dart';
 
 class CompanyHomePage extends StatefulWidget {
   const CompanyHomePage({super.key});
@@ -20,7 +21,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   Company? _company;
   List<Opportunity> _opportunities = [];
   bool _isLoading = true;
-  double _headerHeight = 250.0; // Default height
+  final double _headerHeight = 20.0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -29,102 +30,36 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     _fetchCompanyData();
   }
 
-  // Helper to calculate the height of the description text
-  double _calculateHeaderHeight(String? text, BuildContext context) {
-    if (text == null || text.isEmpty) {
-      return 250.0; // Return default height if no description
-    }
-    final screenWidth = MediaQuery.of(context).size.width;
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.8)),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: screenWidth - 40); // 20 padding on each side
-
-    // Base height (for logo, sector, buttons, padding) + text height
-    return 170.0 + textPainter.height; // Increased base height for more bottom padding
-  }
-
   Future<void> _fetchCompanyData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
     try {
       final company = await _authService.getCurrentCompany();
-
-      print('DEBUG(CompanyHomePage): _fetchCompanyData started.');
-      print(
-        'DEBUG(CompanyHomePage): Fetched Company: ${company?.companyName ?? "N/A"}',
-      );
-      // NOW WE ARE RELYING ON THE EMAIL FROM THE COMPANY OBJECT
-      print(
-        'DEBUG(CompanyHomePage): Company Email (from authService): ${company?.email ?? "N/A - Company Email is null"}',
-      );
-      // For debugging purposes, you can still print UID to see it's there as a field, but not used as identifier
-      print(
-        'DEBUG(CompanyHomePage): Company Firebase Auth UID (from company object as field): ${company?.uid ?? "N/A - Company UID field is null"}',
-      );
-
-      // ************** CRITICAL CHANGE HERE **************
-      // Use the company's UID to fetch opportunities for consistency.
       final opportunities = await _opportunityService.getCompanyOpportunities(
-        company?.uid ?? '', // <-- Use UID to fetch opportunities
+        company?.uid ?? '',
       );
-      // **************************************************
 
-      print(
-        'DEBUG(CompanyHomePage): Number of opportunities received from service: ${opportunities.length}',
-      );
-      if (opportunities.isNotEmpty) {
-        print(
-          'DEBUG(CompanyHomePage): First opportunity name: ${opportunities.first.name}',
-        );
-        print(
-          'DEBUG(CompanyHomePage): First opportunity companyId (should be email): ${opportunities.first.companyId}',
-        );
-        print(
-          'DEBUG(CompanyHomePage): First opportunity ID: ${opportunities.first.id}',
-        );
-        print(
-          'DEBUG(CompanyHomePage): First opportunity postedDate: ${opportunities.first.postedDate}',
-        );
-      } else {
-        print('DEBUG(CompanyHomePage): No opportunities found.');
-      }
-
+      if (!mounted) return;
       setState(() {
         _company = company;
         _opportunities = opportunities;
-        _headerHeight = _calculateHeaderHeight(_company?.description, context);
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error fetching data: $e')));
+        _showSnackBar('Error fetching data: $e');
       }
-      print('DEBUG(CompanyHomePage): Error in _fetchCompanyData: $e');
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
-      print(
-        'DEBUG(CompanyHomePage): _fetchCompanyData finished. _isLoading: $_isLoading',
-      );
     }
   }
 
   void _navigateToPostOpportunityPage() async {
-    print('DEBUG: Post New button pressed!');
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const PostOpportunityPage()),
     );
-    // After returning from PostOpportunityPage, refresh the list of opportunities
+    if (!mounted) return;
     _fetchCompanyData();
   }
 
@@ -153,14 +88,12 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     if (confirm == true) {
       try {
         await _opportunityService.deleteOpportunity(opportunityId);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Opportunity deleted successfully.')),
-        );
-        _fetchCompanyData(); // Refresh the list
+        if (!mounted) return;
+        _showSnackBar('Opportunity deleted successfully.');
+        _fetchCompanyData();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting opportunity: $e')),
-        );
+        if (!mounted) return;
+        _showSnackBar('Error deleting opportunity: $e');
       }
     }
   }
@@ -169,100 +102,72 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     final passwordController = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    // Close the drawer before showing the dialog
     Navigator.of(context).pop();
 
     final bool? confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Delete Account Permanently?'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'This action is irreversible. All your data, including posted opportunities, will be deleted. Please enter your password to confirm.',
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Password is required';
-                    }
-                    return null;
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () {
-                if (formKey.currentState!.validate()) {
-                  Navigator.of(context).pop(true);
-                }
-              },
-              child: const Text(
-                'Delete',
-                style: TextStyle(color: Colors.white),
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Account Permanently?'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'This action is irreversible. All of your data, including posted opportunities, will be deleted. Please enter your password to confirm.',
               ),
-            ),
-          ],
-        );
-      },
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
+                validator: (value) => (value == null || value.isEmpty)
+                    ? 'Password is required'
+                    : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
 
     if (confirmed == true) {
       try {
-        print('DEBUG (CompanyHomePage): [Deletion Flow] User confirmed deletion. Calling AuthService.deleteCompanyAccount.');
-        await _authService.deleteCompanyAccount(passwordController.text);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Account deleted successfully.'),
-                duration: Duration(seconds: 4),
-            ),
-          );
-          print('DEBUG (CompanyHomePage): [Deletion Flow] Account deletion reported successful by AuthService.');
-          // CRUCIAL: Check if this line prints, and if navigation still doesn't occur.
-          print('DEBUG (CompanyHomePage): [Navigation Flow] Executing Navigator.of(context).pushAndRemoveUntil to WelcomeScreen.');
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-            (route) => false,
-          );
-          // This print might not show up if navigation happens immediately.
-          print('DEBUG (CompanyHomePage): [Navigation Flow] Navigator.of(context).pushAndRemoveUntil call completed.');
-        } else {
-          print('DEBUG (CompanyHomePage): [Deletion Flow] Widget not mounted after deletion. Cannot show SnackBar or navigate.');
-        }
+        await _authService.deleteCompanyAccount(passwordController.text.trim());
+        if (!mounted) return;
+        _showSnackBar('Account deleted successfully.');
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+          (route) => false,
+        );
       } catch (e) {
-        print('ERROR (CompanyHomePage): [Deletion Flow] Caught error during account deletion: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(
-            SnackBar(
-                content: Text(e.toString().replaceFirst('Exception: ', '')),
-                duration: Duration(seconds: 8),
-            ),
-          );
-        }
+        if (!mounted) return;
+        _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
       }
-    } else {
-      print('DEBUG (CompanyHomePage): [Deletion Flow] Delete action cancelled by user or form validation failed.');
     }
-  } 
+  }
+
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -297,7 +202,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: false,
         titlePadding: const EdgeInsets.only(left: 16.0, bottom: 16.0),
-        title: _buildCompanyInfoRow(),
+        title: null,
         background: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -314,8 +219,49 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
   Widget _buildProfileHeaderContent() {
     return SafeArea(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Container(
+          margin: const EdgeInsets.only(top: 6),
+          constraints: const BoxConstraints(maxWidth: 90),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white.withOpacity(0.35)),
+          ),
+          child: const Text(
+            'Profile',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompanyInfoCard() {
+    final company = _company;
+    if (company == null) return const SizedBox.shrink();
+
+    final contact = (company.contactInfo).trim();
+    final email = company.email.trim();
+    final description = (company.description ?? '').trim();
+
+    final contactPills = _buildContactChips(contact);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+      color: const Color(0xFFFBFAFF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      elevation: 4,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 40), // Increased bottom padding
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -323,91 +269,108 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
-                  radius: 40,
-                  backgroundColor: Colors.white,
-                  backgroundImage: _company?.logoUrl != null
-                      ? NetworkImage(_company!.logoUrl!)
-                      : const AssetImage('assets/spark_logo.png') as ImageProvider,
+                  radius: 34,
+                  backgroundColor: const Color(0xFFEDE7F6),
+                  backgroundImage:
+                      company.logoUrl != null && company.logoUrl!.isNotEmpty
+                      ? NetworkImage(company.logoUrl!)
+                      : null,
+                  child: (company.logoUrl == null || company.logoUrl!.isEmpty)
+                      ? const Icon(
+                          Icons.apartment_outlined,
+                          color: Color(0xFF6B4791),
+                          size: 30,
+                        )
+                      : null,
                 ),
-                const SizedBox(width: 20),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment
-                        .start, // This is good for keeping the sector text aligned left
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _company?.sector ?? 'Sector Not Specified',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white.withOpacity(0.8),
+                        company.companyName,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF422F5D),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        company.sector.isNotEmpty
+                            ? company.sector
+                            : 'Sector not specified',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF6B4791),
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                 ),
-                ElevatedButton.icon(
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Color(0xFF6B4791)),
+                  tooltip: 'Edit Company Profile',
                   onPressed: () {
                     Navigator.of(context)
                         .push(
                           MaterialPageRoute(
-                            builder: (_) => EditCompanyProfilePage(company: _company!),
+                            builder: (_) =>
+                                EditCompanyProfilePage(company: _company!),
                           ),
                         )
                         .then((_) => _fetchCompanyData());
                   },
-                  icon: const Icon(Icons.edit, size: 18),
-                  label: const Text('Edit'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.2),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Text(
-              _company?.description ?? 'No description available.',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.white.withOpacity(0.8),
-              ),
+            const SizedBox(height: 18),
+            if (contactPills.isNotEmpty) ...[
+              Wrap(spacing: 10, runSpacing: 10, children: contactPills),
+              const SizedBox(height: 12),
+            ],
+            _buildInfoPill(
+              Icons.alternate_email_outlined,
+              email.isNotEmpty ? email : 'Email not provided',
+              background: const Color.fromRGBO(232, 234, 246, 1),
+              iconColor: const Color(0xFF5E35B1),
+              textColor: const Color(0xFF4527A0),
             ),
+            if (description.isNotEmpty) ...[
+              const SizedBox(height: 18),
+              const Text(
+                'About the company',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF422F5D),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                description,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF4A4A4A),
+                  height: 1.5,
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCompanyInfoRow() {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 16,
-          backgroundColor: Colors.white,
-          backgroundImage: _company?.logoUrl != null
-              ? NetworkImage(_company!.logoUrl!)
-              : const AssetImage('assets/spark_logo.png') as ImageProvider,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          _company?.companyName ?? 'Company Name',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildOpportunitySection() {
     return SliverList(
       delegate: SliverChildListDelegate([
+        if (_company != null) _buildCompanyInfoCard(),
+        if (_company != null) const SizedBox(height: 32),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -419,16 +382,6 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 color: Color(0xFF422F5D),
               ),
             ),
-            /*_buildGradientButton(
-                text: 'Post New',
-                onPressed: () {
-                  // Dummy navigation for now
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Navigating to Create Opportunity Page...')),
-                  );
-                },
-                icon: Icons.add,
-              ),*/
             _buildGradientButton(
               text: 'Post New',
               icon: Icons.add,
@@ -446,170 +399,326 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
               textAlign: TextAlign.center,
             ),
           ),
-        ..._opportunities.map((opportunity) {
-          return _buildOpportunityCard(opportunity);
-        }).toList(),
+        ..._opportunities.map(_buildOpportunityCard),
       ]),
     );
   }
 
   Widget _buildOpportunityCard(Opportunity opportunity) {
+    final postedDate = opportunity.postedDate?.toDate();
+    final postedLabel = postedDate != null
+        ? DateFormat('MMM d, yyyy').format(postedDate)
+        : null;
+
+    final metaChips = <Widget>[
+      _buildMetaChip(Icons.badge_outlined, opportunity.type),
+      if (opportunity.workMode != null &&
+          opportunity.workMode!.trim().isNotEmpty)
+        _buildMetaChip(
+          Icons.apartment_outlined,
+          _buildWorkModeLabel(opportunity),
+        ),
+      if (opportunity.preferredMajor != null &&
+          opportunity.preferredMajor!.trim().isNotEmpty)
+        _buildMetaChip(Icons.school_outlined, opportunity.preferredMajor!),
+      _buildMetaChip(
+        opportunity.isPaid
+            ? Icons.payments_outlined
+            : Icons.volunteer_activism_outlined,
+        opportunity.isPaid ? 'Paid' : 'Unpaid',
+        background: opportunity.isPaid
+            ? const Color.fromRGBO(76, 175, 80, 0.14)
+            : const Color.fromRGBO(244, 67, 54, 0.14),
+        iconColor: opportunity.isPaid
+            ? const Color(0xFF2E7D32)
+            : const Color(0xFFC62828),
+        textColor: opportunity.isPaid
+            ? const Color(0xFF2E7D32)
+            : const Color(0xFFC62828),
+      ),
+    ];
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      margin: const EdgeInsets.only(bottom: 20),
+      elevation: 4,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF422F5D), Color(0xFFD64483)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      opportunity.name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF422F5D),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      opportunity.role,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Color(0xFFD64483),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                Text(
+                  opportunity.name,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                // Placeholder for applicants count
-                const Icon(
-                  Icons.people_alt_outlined,
-                  color: Colors.grey,
-                  size: 20,
+                const SizedBox(height: 6),
+                Text(
+                  opportunity.role,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color.fromRGBO(255, 255, 255, 0.85),
+                  ),
                 ),
+                if (postedLabel != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.schedule,
+                        size: 16,
+                        color: Colors.white70,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Posted $postedLabel',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
-            const Divider(height: 24),
-            // --- New Info Rows ---
-            _buildInfoRow(
-              Icons.business_center_outlined,
-              // Combine workMode and location for a clear display
-              '${opportunity.workMode ?? opportunity.type}'
-              '${(opportunity.workMode != 'Remote' && opportunity.location != null) ? ' - ${opportunity.location}' : ''}',
-            ),
-            if (opportunity.preferredMajor != null)
-              _buildInfoRow(Icons.school_outlined, opportunity.preferredMajor!),
-            _buildInfoRow(
-              opportunity.isPaid
-                  ? Icons.paid_outlined
-                  : Icons.money_off_outlined,
-              opportunity.isPaid ? 'Paid' : 'Unpaid',
-              color: opportunity.isPaid
-                  ? Colors.green.shade700
-                  : Colors.red.shade700,
-            ),
-            // --- Skills Section ---
-            if (opportunity.skills != null &&
-                opportunity.skills!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8.0,
-                runSpacing: 4.0,
-                children: opportunity.skills!
-                    .map(
-                      (skill) => Chip(
-                        label: Text(
-                          skill,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF422F5D),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(spacing: 10, runSpacing: 10, children: metaChips),
+                if (opportunity.skills != null &&
+                    opportunity.skills!.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Key Skills',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF422F5D),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8.0,
+                    runSpacing: 4.0,
+                    children: opportunity.skills!
+                        .map(
+                          (skill) => Chip(
+                            label: Text(
+                              skill,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF422F5D),
+                              ),
+                            ),
+                            backgroundColor: const Color.fromRGBO(
+                              66,
+                              47,
+                              93,
+                              0.12,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            side: BorderSide.none,
                           ),
-                        ),
-                        backgroundColor: const Color(
-                          0xFF422F5D,
-                        ).withOpacity(0.1),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        side: BorderSide.none,
-                      ),
-                    )
-                    .toList(),
-              ),
-            ],
-            const SizedBox(height: 10),
-            // --- Action Buttons ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+                        )
+                        .toList(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Row(
               children: [
                 TextButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Viewing applicants for ${opportunity.name}',
-                        ),
-                      ),
-                    );
-                  },
+                  onPressed: () => _showSnackBar(
+                    'Viewing applicants for ${opportunity.name}',
+                  ),
                   icon: const Icon(Icons.people_outline, size: 20),
                   label: const Text('View Applicants'),
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFF6B4791),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
                 ),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blueGrey),
                   tooltip: 'Edit Opportunity',
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Editing ${opportunity.name}')),
-                    );
-                    // TODO: Navigate to PostOpportunityPage with opportunity data
-                  },
+                  onPressed: () => _showSnackBar(
+                    'Editing ${opportunity.name} (coming soon)',
+                  ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
+                  icon: const Icon(Icons.delete, color: Color(0xFFC62828)),
                   tooltip: 'Delete Opportunity',
                   onPressed: () => _deleteOpportunity(opportunity.id),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String text, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+  List<Widget> _buildContactChips(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return [];
+
+    // Check if the format is "Name - +966XXXXXXXXX"
+    if (trimmed.contains(' - +966')) {
+      final parts = trimmed.split(' - ');
+      if (parts.length == 2) {
+        final name = parts[0].trim();
+        final number = parts[1].trim();
+        return _buildContactPills(name.isNotEmpty ? name : null, number.isNotEmpty ? number : null);
+      }
+    }
+
+    // Fallback to original regex parsing
+    final match = RegExp(r'[+]?\d[\d\s-]*').firstMatch(trimmed);
+    String? number = match?.group(0)?.trim();
+    String? name;
+
+    if (match != null) {
+      name = trimmed.substring(0, match.start).trim();
+      final remainder = trimmed.substring(match.end).trim();
+      if (remainder.isNotEmpty) {
+        number = '$number $remainder'.trim();
+      }
+      if (name.isEmpty) name = null;
+    } else {
+      name = trimmed;
+    }
+
+    return _buildContactPills(name, number);
+  }
+
+  List<Widget> _buildContactPills(String? name, String? number) {
+    final pills = <Widget>[];
+    if (name != null && name.isNotEmpty) {
+      pills.add(
+        _buildInfoPill(
+          Icons.person_outline,
+          name,
+          background: const Color.fromRGBO(232, 245, 233, 1),
+          iconColor: const Color(0xFF2E7D32),
+          textColor: const Color(0xFF1B5E20),
+        ),
+      );
+    }
+    if (number != null && number.isNotEmpty) {
+      pills.add(
+        _buildInfoPill(
+          Icons.phone_outlined,
+          number,
+          background: const Color.fromRGBO(227, 242, 253, 1),
+          iconColor: const Color(0xFF1565C0),
+          textColor: const Color(0xFF0D47A1),
+        ),
+      );
+    }
+    return pills;
+  }
+
+  Widget _buildInfoPill(
+    IconData icon,
+    String label, {
+    Color background = const Color(0xFFEDE7F6),
+    Color iconColor = const Color(0xFF6B4791),
+    Color textColor = const Color(0xFF422F5D),
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: color ?? Colors.grey.shade600),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                color: color ?? Colors.grey.shade800,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+          Icon(icon, size: 16, color: iconColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: textColor,
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildMetaChip(
+    IconData icon,
+    String label, {
+    Color background = const Color(0xFFEDE7F6),
+    Color iconColor = const Color(0xFF6B4791),
+    Color textColor = const Color(0xFF422F5D),
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: iconColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _buildWorkModeLabel(Opportunity opportunity) {
+    final mode = (opportunity.workMode ?? opportunity.type).trim();
+    final location = opportunity.location?.trim();
+
+    if (mode.toLowerCase() == 'remote' ||
+        location == null ||
+        location.isEmpty) {
+      return mode;
+    }
+    return '$mode · $location';
   }
 
   Widget _buildDrawer() {
@@ -633,10 +742,20 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   CircleAvatar(
                     radius: 35,
                     backgroundColor: Colors.white,
-                    backgroundImage: _company?.logoUrl != null
+                    backgroundImage:
+                        _company?.logoUrl != null &&
+                            _company!.logoUrl!.isNotEmpty
                         ? NetworkImage(_company!.logoUrl!)
-                        : const AssetImage('assets/spark_logo.png')
-                              as ImageProvider,
+                        : null,
+                    child:
+                        (_company?.logoUrl == null ||
+                            _company!.logoUrl!.isEmpty)
+                        ? const Icon(
+                            Icons.apartment_outlined,
+                            color: Color(0xFF6B4791),
+                            size: 32,
+                          )
+                        : null,
                   ),
                   const SizedBox(height: 10),
                   Text(
@@ -649,8 +768,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   ),
                   Text(
                     _company?.email ?? 'Email Not Found',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
+                    style: const TextStyle(
+                      color: Color.fromRGBO(255, 255, 255, 0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -658,20 +777,15 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
               ),
             ),
             _buildDrawerItem(Icons.group_outlined, 'My Followers', () {
-              // Dummy navigation
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Navigating to Followers Page...'),
-                ),
-              );
+              _showSnackBar('Navigating to Followers Page...');
               Navigator.of(context).pop();
             }),
             _buildDrawerItem(
               Icons.post_add_outlined,
               'Post a New Opportunity',
               () {
-                Navigator.of(context).pop(); // Close drawer first
-                _navigateToPostOpportunityPage(); // <--- DIRECT NAVIGATION HERE
+                Navigator.of(context).pop();
+                _navigateToPostOpportunityPage();
               },
             ),
 
@@ -696,11 +810,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             _buildDrawerItem(Icons.logout, 'Log Out', () async {
               // Dummy logout action
               await _authService.signOut();
-              if (mounted) {
-                Navigator.of(
-                  context,
-                ).pushNamedAndRemoveUntil('/', (route) => false);
-              }
+              if (!mounted) return;
+              Navigator.of(
+                context,
+              ).pushNamedAndRemoveUntil('/', (route) => false);
             }),
           ],
         ),

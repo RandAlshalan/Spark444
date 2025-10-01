@@ -26,7 +26,8 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _opportunityDatesController =
       TextEditingController();
-  final TextEditingController _applicationDatesController = TextEditingController();
+  final TextEditingController _applicationDatesController =
+      TextEditingController();
   final TextEditingController _durationController = TextEditingController();
   final TextEditingController _skillController = TextEditingController();
   final TextEditingController _requirementController = TextEditingController();
@@ -40,6 +41,10 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
   String? _selectedType;
   bool _isPaid = true; // Default to paid
   bool _isLoading = false;
+  bool _nameAtLimit = false;
+  bool _roleAtLimit = false;
+  bool _nameHasInvalidChars = false;
+  bool _roleHasInvalidChars = false;
 
   DateTime? _startDate;
   DateTime? _endDate;
@@ -51,6 +56,9 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
 
   static const int _maxSkills = 10;
   static const int _maxRequirements = 10;
+  static const int _nameMaxLength = 50;
+  static const int _roleMaxLength = 40;
+  static final RegExp _lettersRegExp = RegExp(r'^[A-Za-z ]+$');
 
   // Dropdown options
   final List<String> _workModes = ['In-person', 'Remote', 'Hybrid'];
@@ -124,6 +132,34 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     _requirementController.dispose();
     _otherMajorController.dispose();
     super.dispose();
+  }
+
+  void _handleNameLength() {
+    final text = _nameController.text;
+    final atLimit = text.length >= _nameMaxLength;
+    final hasInvalid =
+        text.trim().isNotEmpty && !_lettersRegExp.hasMatch(text.trim());
+    if (mounted &&
+        (_nameAtLimit != atLimit || _nameHasInvalidChars != hasInvalid)) {
+      setState(() {
+        _nameAtLimit = atLimit;
+        _nameHasInvalidChars = hasInvalid;
+      });
+    }
+  }
+
+  void _handleRoleLength() {
+    final text = _roleController.text;
+    final atLimit = text.length >= _roleMaxLength;
+    final hasInvalid =
+        text.trim().isNotEmpty && !_lettersRegExp.hasMatch(text.trim());
+    if (mounted &&
+        (_roleAtLimit != atLimit || _roleHasInvalidChars != hasInvalid)) {
+      setState(() {
+        _roleAtLimit = atLimit;
+        _roleHasInvalidChars = hasInvalid;
+      });
+    }
   }
 
   void _calculateDuration() {
@@ -422,6 +458,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     bool readOnly = false,
     VoidCallback? onTap,
     ValueChanged<String>? onFieldSubmitted,
+    ValueChanged<String>? onChanged,
     Widget? suffixIcon,
   }) {
     return Padding(
@@ -440,6 +477,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
         readOnly: readOnly,
         onTap: onTap,
         onFieldSubmitted: onFieldSubmitted,
+        onChanged: onChanged,
         autovalidateMode: AutovalidateMode.onUserInteraction,
       ),
     );
@@ -455,8 +493,8 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     return await showDatePicker(
       context: context,
       initialDate: initialDate ?? DateTime.now(),
-      firstDate: firstDate ?? DateTime(2024),
-      lastDate: lastDate ?? DateTime(2030),
+      firstDate: firstDate ?? DateTime(2000),
+      lastDate: lastDate ?? DateTime(2100),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -485,8 +523,8 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     return await showDateRangePicker(
       context: context,
       initialDateRange: initialDateRange,
-      firstDate: firstDate ?? DateTime(2024),
-      lastDate: lastDate ?? DateTime(2030),
+      firstDate: firstDate ?? DateTime(2000),
+      lastDate: lastDate ?? DateTime(2100),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -515,13 +553,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
       _opportunityDatesController.text =
           '${format.format(_startDate!)} - ${format.format(_endDate!)}';
       _calculateDuration();
-
-      // --- CONSTRAINTS CHECK ---
-      // Application period must be before the new start date.
-      if (_applicationDeadline != null &&
-          !_applicationDeadline!.isBefore(_startDate!)) {
-        _applicationOpenDate = null;
-      }
     });
   }
 
@@ -539,7 +570,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
 
   @override
   Widget build(BuildContext context) {
-    final today = DateUtils.dateOnly(DateTime.now());
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
@@ -563,28 +593,110 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                   controller: _nameController,
                   labelText: 'Opportunity Name',
                   icon: Icons.work_outline,
-                  inputFormatters: [LengthLimitingTextInputFormatter(50)],
+                  maxLength: _nameMaxLength,
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(_nameMaxLength),
+                  ],
+                  onChanged: (_) => _handleNameLength(),
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    final trimmed = value?.trim() ?? '';
+                    if (trimmed.isEmpty) {
                       return 'Please enter opportunity name';
-                    if (value.length > 50) return 'Cannot exceed 50 characters';
+                    }
+                    if (!_lettersRegExp.hasMatch(trimmed)) {
+                      return 'Only letters and spaces are allowed';
+                    }
+                    if (trimmed.length > _nameMaxLength) {
+                      return 'Cannot exceed $_nameMaxLength characters';
+                    }
                     return null;
                   },
                 ),
+                if (_nameAtLimit)
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        'Character limit reached',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: accentColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (_nameHasInvalidChars)
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        'Only letters and spaces are allowed',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: accentColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
 
                 // Role
                 _buildStyledTextFormField(
                   controller: _roleController,
                   labelText: 'Role',
                   icon: Icons.badge_outlined,
-                  inputFormatters: [LengthLimitingTextInputFormatter(40)],
+                  maxLength: _roleMaxLength,
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(_roleMaxLength),
+                  ],
+                  onChanged: (_) => _handleRoleLength(),
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    final trimmed = value?.trim() ?? '';
+                    if (trimmed.isEmpty) {
                       return 'Please enter the role';
-                    if (value.length > 40) return 'Cannot exceed 40 characters';
+                    }
+                    if (!_lettersRegExp.hasMatch(trimmed)) {
+                      return 'Only letters and spaces are allowed';
+                    }
+                    if (trimmed.length > _roleMaxLength) {
+                      return 'Cannot exceed $_roleMaxLength characters';
+                    }
                     return null;
                   },
                 ),
+                if (_roleAtLimit)
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        'Character limit reached',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: accentColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (_roleHasInvalidChars)
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        'Only letters and spaces are allowed',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: accentColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
 
                 // Preferred Major
                 _buildSearchableDropdown(
@@ -798,7 +910,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                   onTap: () async {
                     final pickedRange = await _selectDateRange(
                       context,
-                      firstDate: today,
                       initialDateRange: (_startDate != null && _endDate != null)
                           ? DateTimeRange(start: _startDate!, end: _endDate!)
                           : null,
@@ -816,34 +927,19 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                   labelText: 'Application Period (Begins - Deadline)',
                   icon: Icons.calendar_month,
                   readOnly: true,
-                  onTap: _startDate == null
-                      ? () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Please select the opportunity duration first.',
-                              ),
-                            ),
-                          );
-                        }
-                      : () async {
-                          final pickedRange = await _selectDateRange(
-                            context,
-                            firstDate: today,
-                            lastDate: _startDate!.subtract(
-                              const Duration(days: 1),
-                            ),
-                            initialDateRange:
-                                (_applicationOpenDate != null &&
-                                    _applicationDeadline != null)
-                                ? DateTimeRange(
-                                    start: _applicationOpenDate!,
-                                    end: _applicationDeadline!,
-                                  )
-                                : null,
-                          );
-                          _handleApplicationDateSelection(pickedRange);
-                        },
+                  onTap: () async {
+                    final pickedRange = await _selectDateRange(
+                      context,
+                      initialDateRange: (_applicationOpenDate != null &&
+                              _applicationDeadline != null)
+                          ? DateTimeRange(
+                              start: _applicationOpenDate!,
+                              end: _applicationDeadline!,
+                            )
+                          : null,
+                    );
+                    _handleApplicationDateSelection(pickedRange);
+                  },
                   validator: (value) => value == null || value.isEmpty
                       ? 'Please select the application period'
                       : null,
