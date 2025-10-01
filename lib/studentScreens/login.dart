@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/authService.dart';
 import '../studentScreens/studentViewProfile.dart';
@@ -121,18 +122,18 @@ class _LoginScreenState extends State<LoginScreen>
 
   String? _validateIdentifier(String raw) {
     final trimmed = raw.trim();
-    if (trimmed.trim().isEmpty ) return "Please enter username/email";
+    if (trimmed.isEmpty) return "Please enter username/email";
+    if (raw.contains(' ')) return "Username/email cannot contain spaces";
     if (trimmed.contains('@') && !_emailRegex.hasMatch(trimmed)) {
       return "Invalid email format";
     }
-    // The "Username too short" validation has been removed.
     return null;
   }
 
   String? _validatePassword(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return "Please enter password";
-    // The "Password too short" validation has been removed.
+    if (raw.contains(' ')) return "Password cannot contain spaces";
     return null;
   }
 
@@ -267,6 +268,9 @@ class _LoginScreenState extends State<LoginScreen>
               // Identifier
               TextField(
                 controller: _idController,
+                inputFormatters: [
+                  FilteringTextInputFormatter.deny(RegExp(r'\s')), // Prevent spaces
+                ],
                 decoration: InputDecoration(
                   hintText: "Username or Email",
                   prefixIcon: const Icon(Icons.person_outline, color: Colors.grey),
@@ -299,6 +303,9 @@ class _LoginScreenState extends State<LoginScreen>
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
+                inputFormatters: [
+                  FilteringTextInputFormatter.deny(RegExp(r'\s')), // Prevent spaces
+                ],
                 decoration: InputDecoration(
                   hintText: "Password",
                   prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
@@ -340,26 +347,37 @@ class _LoginScreenState extends State<LoginScreen>
               // Log In Button
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _login,
-                  style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30)),
-                      backgroundColor: const Color(0xFFD64483)),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ))
-                      : const Text('Log In',
-                          style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white)),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFF99D46), Color(0xFFD64483)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _login,
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30))),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ))
+                        : const Text('Log In',
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white)),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
