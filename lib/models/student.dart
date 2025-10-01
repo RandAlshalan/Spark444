@@ -67,6 +67,13 @@ class Student {
     String? documentsVisibility,
     List<String>? followedCompanies,
     String? location,
+    // Explicit null flags to differentiate between not provided and explicitly null
+    bool levelSetToNull = false,
+    bool expectedGraduationDateSetToNull = false,
+    bool gpaSetToNull = false,
+    bool profilePictureUrlSetToNull = false,
+    bool shortSummarySetToNull = false,
+    bool locationSetToNull = false,
   }) {
     return Student(
       email: email ?? this.email,
@@ -76,13 +83,12 @@ class Student {
       university: university ?? this.university,
       major: major ?? this.major,
       phoneNumber: phoneNumber ?? this.phoneNumber,
-      level: level ?? this.level,
-      expectedGraduationDate:
-          expectedGraduationDate ?? this.expectedGraduationDate,
-      gpa: gpa ?? this.gpa,
+      level: levelSetToNull ? null : (level ?? this.level),
+      expectedGraduationDate: expectedGraduationDateSetToNull ? null : (expectedGraduationDate ?? this.expectedGraduationDate),
+      gpa: gpaSetToNull ? null : (gpa ?? this.gpa),
       skills: skills ?? List<String>.from(this.skills),
-      profilePictureUrl: profilePictureUrl ?? this.profilePictureUrl,
-      shortSummary: shortSummary ?? this.shortSummary,
+      profilePictureUrl: profilePictureUrlSetToNull ? null : (profilePictureUrl ?? this.profilePictureUrl),
+      shortSummary: shortSummarySetToNull ? null : (shortSummary ?? this.shortSummary),
       userType: userType,
       createdAt: createdAt,
       isVerified: isVerified ?? this.isVerified,
@@ -91,7 +97,7 @@ class Student {
       documentsVisibility: documentsVisibility ?? this.documentsVisibility,
       followedCompanies:
           followedCompanies ?? List<String>.from(this.followedCompanies),
-      location: location ?? this.location,
+      location: locationSetToNull ? null : (location ?? this.location),
     );
   }
 

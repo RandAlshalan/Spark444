@@ -215,7 +215,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildHeaderSection(profile, student, headerContentTopPadding),
-              const SizedBox(height: 100),
+              const SizedBox(height: 213), // Increased by 113 pixels to accommodate moved card
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
@@ -252,7 +252,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
     final progressPrompt = _buildProgressPrompt(completion);
 
     return SizedBox(
-      height: backgroundHeight + 120,
+      height: backgroundHeight + 233, // Increased by 113 pixels to accommodate moved card
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -298,7 +298,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
           Positioned(
             left: 20,
             right: 20,
-            bottom: -36,
+            bottom: -149, // Moved down by 113 pixels (3 cm)
             child: _buildProfileSummaryCard(profile, student, completion),
           ),
         ],

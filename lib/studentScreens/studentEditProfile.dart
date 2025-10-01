@@ -280,6 +280,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     required String? selectedValue,
     required VoidCallback onTap,
     String? Function(String?)? validator,
+    VoidCallback? onClear,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -290,7 +291,18 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         validator: validator,
         decoration: InputDecoration(
           labelText: labelText,
-          suffixIcon: const Icon(Icons.arrow_drop_down, color: _profilePrimaryColor),
+          suffixIcon: selectedValue != null && onClear != null
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.clear, color: Colors.grey),
+                      onPressed: onClear,
+                    ),
+                    const Icon(Icons.arrow_drop_down, color: _profilePrimaryColor),
+                  ],
+                )
+              : const Icon(Icons.arrow_drop_down, color: _profilePrimaryColor),
         ),
       ),
     );
@@ -473,18 +485,25 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         profileUrl = null;
       }
 
-      final String finalLocation = _selectedLocation == 'Other'
-          ? _otherLocationController.text.trim()
-          : _selectedLocation!;
+      String? finalLocation;
+      if (_selectedLocation == 'Other') {
+        final otherLocation = _otherLocationController.text.trim();
+        finalLocation = otherLocation.isEmpty ? null : otherLocation;
+      } else {
+        finalLocation = _selectedLocation;
+      }
 
       final updated = widget.student.copyWith(
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
         username: trimmedUsername,
         phoneNumber: "+966${_phoneController.text.trim().replaceAll(' ', '')}",
-        location: finalLocation.isEmpty ? null : finalLocation,
+        location: finalLocation,
+        locationSetToNull: finalLocation == null,
         shortSummary: _summaryController.text.trim().isEmpty ? null : _summaryController.text.trim(),
+        shortSummarySetToNull: _summaryController.text.trim().isEmpty,
         profilePictureUrl: profileUrl,
+        profilePictureUrlSetToNull: profileUrl == null,
       );
 
       await _authService.updateStudent(user.uid, updated);
@@ -659,9 +678,13 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
               ),
               const SizedBox(height: 16),
               _buildSearchableDropdown(
-                labelText: 'City',
+                labelText: 'City (Optional)',
                 selectedValue: _selectedLocation,
                 validator: null,
+                onClear: () => setState(() {
+                  _selectedLocation = null;
+                  _otherLocationController.clear();
+                }),
                 onTap: () async {
                   await _showSearchDialog(
                     context: context,
@@ -788,6 +811,7 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
     required String? selectedValue,
     required VoidCallback onTap,
     String? Function(String?)? validator,
+    VoidCallback? onClear,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -798,7 +822,18 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
         validator: validator,
         decoration: InputDecoration(
           labelText: labelText,
-          suffixIcon: const Icon(Icons.arrow_drop_down, color: _profilePrimaryColor),
+          suffixIcon: selectedValue != null && onClear != null
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.clear, color: Colors.grey),
+                      onPressed: onClear,
+                    ),
+                    const Icon(Icons.arrow_drop_down, color: _profilePrimaryColor),
+                  ],
+                )
+              : const Icon(Icons.arrow_drop_down, color: _profilePrimaryColor),
         ),
       ),
     );
@@ -923,8 +958,11 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
         university: finalUniversity,
         major: finalMajor,
         level: _selectedLevel,
+        levelSetToNull: _selectedLevel == null,
         expectedGraduationDate: _graduationController.text.trim().isEmpty ? null : _graduationController.text.trim(),
+        expectedGraduationDateSetToNull: _graduationController.text.trim().isEmpty,
         gpa: _gpaController.text.trim().isEmpty ? null : double.tryParse(_gpaController.text.trim()),
+        gpaSetToNull: _gpaController.text.trim().isEmpty,
       );
 
       await _authService.updateStudent(user.uid, updated);
