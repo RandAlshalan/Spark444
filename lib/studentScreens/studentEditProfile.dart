@@ -661,13 +661,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
               _buildSearchableDropdown(
                 labelText: 'City',
                 selectedValue: _selectedLocation,
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please select your city';
-                  if (value == 'Other' && _otherLocationController.text.trim().isEmpty) {
-                    return 'Please specify your city';
-                  }
-                  return null;
-                },
+                validator: null,
                 onTap: () async {
                   await _showSearchDialog(
                     context: context,
@@ -688,16 +682,13 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                     decoration: const InputDecoration(labelText: 'Please specify your location'),
                     // --- MODIFIED --- Character limit changed from 30 to 15
                     inputFormatters: [LengthLimitingTextInputFormatter(15)],
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) return 'This field is required';
-                      return null;
-                    },
+                    validator: null,
                   ),
                 ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _summaryController,
-                decoration: const InputDecoration(labelText: 'Short Summary'),
+                decoration: const InputDecoration(labelText: 'Short Summary (Optional)'),
                 maxLines: 4,
                 maxLength: 250,
               ),
@@ -1023,7 +1014,7 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                 value: _selectedLevel,
                 onChanged: (value) => setState(() => _selectedLevel = value),
                 decoration: InputDecoration(
-                  labelText: 'Academic Level',
+                  labelText: 'Academic Level (Optional)',
                   // ADDED: Clear button for the academic level
                   suffixIcon: _selectedLevel != null
                       ? IconButton(
@@ -1043,7 +1034,7 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
               TextFormField(
                 controller: _graduationController,
                 decoration: InputDecoration(
-                  labelText: 'Expected Graduation Date',
+                  labelText: 'Expected Graduation Date (Optional)',
                   // ADDED: Clear button for the graduation date
                   suffixIcon: _graduationController.text.isNotEmpty
                       ? IconButton(
@@ -1065,7 +1056,7 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                   });
                 },
                 decoration: InputDecoration(
-                  labelText: 'GPA Scale',
+                  labelText: 'GPA Scale (Optional)',
                   // ADDED: Clear button for the GPA scale
                   suffixIcon: _gpaScale != null
                       ? IconButton(
@@ -1084,7 +1075,7 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
               if (_gpaScale != null)
                 TextFormField(
                   controller: _gpaController,
-                  decoration: const InputDecoration(labelText: 'GPA (e.g., 3.8)'),
+                  decoration: const InputDecoration(labelText: 'GPA (Optional, e.g., 3.8)'),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   validator: (value) {
                     if (value == null || value.isEmpty) return null;
