@@ -682,10 +682,8 @@ class _StudentSignupState extends State<StudentSignup> {
             LengthLimitingTextInputFormatter(15),
           ],
           validator: (value) {
-            if (value == null || value.isEmpty) return 'Please enter first name';
-            if (value.contains(' ')) {
-      return 'First name cannot contain spaces';
-    }
+            if (value == null || value.trim().isEmpty) return 'Please enter first name';
+
             if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
               return 'Names cannot contain numbers or symbols';
             }
@@ -700,10 +698,8 @@ class _StudentSignupState extends State<StudentSignup> {
             LengthLimitingTextInputFormatter(15),
           ],
           validator: (value) {
-            if (value == null || value.isEmpty) return 'Please enter last name';
-                if (value.contains(' ')) {
-      return 'Last name cannot contain spaces';
-    }
+            if (value == null || value.trim().isEmpty) return 'Please enter last name';
+
             if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
               return 'Names cannot contain numbers or symbols';
             }

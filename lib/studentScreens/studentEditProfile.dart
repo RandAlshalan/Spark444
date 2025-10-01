@@ -131,7 +131,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
     );
   }
-  
+
   /// Builds a section with a header and a list of navigation tiles.
   Widget _buildSection({required String header, required List<Widget> tiles}) {
     return Column(
@@ -179,7 +179,7 @@ class PhoneNumberFormatter extends TextInputFormatter {
     if (newText.isEmpty) {
       return const TextEditingValue();
     }
-    
+
     final buffer = StringBuffer();
     for (int i = 0; i < newText.length; i++) {
       if (i == 2 || i == 5) {
@@ -239,10 +239,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     _firstNameController = TextEditingController(text: student.firstName);
     _lastNameController = TextEditingController(text: student.lastName);
     _usernameController = TextEditingController(text: student.username);
-    
+
     String phoneNumber = student.phoneNumber ?? '';
     if (phoneNumber.startsWith('+966')) {
-        phoneNumber = phoneNumber.substring(4);
+      phoneNumber = phoneNumber.substring(4);
     }
     _phoneController = TextEditingController(text: phoneNumber.replaceAll(' ', ''));
 
@@ -250,10 +250,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     _otherLocationController = TextEditingController();
     // Set initial location. If it's not in our predefined list, set it as 'Other'.
     if (student.location != null && _locationsList.contains(student.location)) {
-        _selectedLocation = student.location;
+      _selectedLocation = student.location;
     } else if (student.location != null) {
-        _selectedLocation = 'Other';
-        _otherLocationController.text = student.location!;
+      _selectedLocation = 'Other';
+      _otherLocationController.text = student.location!;
     }
 
     _usernameController.addListener(() {
@@ -274,7 +274,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     _debounce?.cancel();
     super.dispose();
   }
-  
+
   Widget _buildSearchableDropdown({
     required String labelText,
     required String? selectedValue,
@@ -364,7 +364,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       },
     );
   }
-  
+
   // --- MODIFIED --- Character limit changed from 12 to 15
   String? _usernameManualValidator(String? value) {
     if (value == null || value.isEmpty) {
@@ -418,6 +418,14 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     }
   }
 
+  // ADDED: Function to remove the profile picture.
+  Future<void> _removeImage() async {
+    setState(() {
+      _pickedImage = null;
+      _previewBytes = null;
+    });
+  }
+
   Future<String?> _uploadProfilePicture(String uid, XFile file) async {
     final firebase_storage.Reference ref = firebase_storage.FirebaseStorage.instance.ref().child(
       'students/$uid/profile/profile_${DateTime.now().millisecondsSinceEpoch}_${file.name}',
@@ -431,15 +439,15 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_usernameError != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_usernameError!)));
-        return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_usernameError!)));
+      return;
     }
     setState(() => _saving = true);
 
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('No authenticated user found.');
-      
+
       final trimmedUsername = _usernameController.text.trim();
       if (trimmedUsername.isEmpty) throw Exception('Username cannot be empty.');
 
@@ -448,9 +456,21 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         if (!unique) throw Exception('This username is already taken.');
       }
 
+      // MODIFIED: Logic to handle removing the profile picture
       String? profileUrl = widget.student.profilePictureUrl;
+      bool shouldRemoveImage = _pickedImage == null && _previewBytes == null;
+
       if (_pickedImage != null) {
         profileUrl = await _uploadProfilePicture(user.uid, _pickedImage!);
+      } else if (shouldRemoveImage) {
+        if (widget.student.profilePictureUrl != null) {
+          try {
+            await firebase_storage.FirebaseStorage.instance.refFromURL(widget.student.profilePictureUrl!).delete();
+          } catch (e) {
+            debugPrint("Failed to delete old profile picture: $e");
+          }
+        }
+        profileUrl = null;
       }
 
       final String finalLocation = _selectedLocation == 'Other'
@@ -475,7 +495,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
-        if (mounted) setState(() => _saving = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -517,6 +537,20 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                         fixedSize: const Size(36, 36),
                       ),
                     ),
+                    // ADDED: "Remove Photo" button appears if a photo is set
+                    if (_previewBytes != null || widget.student.profilePictureUrl != null)
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        child: IconButton(
+                          onPressed: _removeImage,
+                          icon: const Icon(Icons.delete_outline, color: Colors.white, size: 18),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.red.withOpacity(0.8),
+                            fixedSize: const Size(32, 32),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -531,10 +565,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       inputFormatters: [LengthLimitingTextInputFormatter(15)],
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) return 'Required';
-                            if (value.contains(' ')) {
-      return 'First name cannot contain spaces';
-    }
-                        if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                        if (value.contains(' ')) {
+                          return 'First name cannot contain spaces';
+                        }
+                        if (RegExp(r'[0-9!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
                           return 'Names cannot contain numbers or symbols';
                         }
                         return null;
@@ -550,10 +584,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       inputFormatters: [LengthLimitingTextInputFormatter(15)],
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) return 'Required';
-                            if (value.contains(' ')) {
-      return 'Last name cannot contain spaces';
-    }
-                        if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                        if (value.contains(' ')) {
+                          return 'Last name cannot contain spaces';
+                        }
+                        if (RegExp(r'[0-9!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
                           return 'Names cannot contain numbers or symbols';
                         }
                         return null;
@@ -568,9 +602,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                 decoration: InputDecoration(
                   labelText: 'Username',
                   errorText: _usernameError,
-                  suffixIcon: _isCheckingUsername 
-                    ? const Padding(padding: EdgeInsets.all(12.0), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.0)))
-                    : null,
+                  suffixIcon: _isCheckingUsername
+                      ? const Padding(padding: EdgeInsets.all(12.0), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.0)))
+                      : null,
                 ),
                 // --- MODIFIED --- Character limit changed from 12 to 15
                 inputFormatters: [LengthLimitingTextInputFormatter(15)],
@@ -579,49 +613,49 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
               const SizedBox(height: 16),
               InputDecorator(
                 decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    contentPadding: EdgeInsets.zero,
-                    border: InputBorder.none,
+                  labelText: 'Phone Number',
+                  contentPadding: EdgeInsets.zero,
+                  border: InputBorder.none,
                 ),
                 child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: const Text(
-                          '+966',
-                          style: TextStyle(fontSize: 16, color: Colors.black54),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: const Text(
+                        '+966',
+                        style: TextStyle(fontSize: 16, color: Colors.black54),
+                      ),
+                    ),
+                    Container(height: 20, width: 1, color: Colors.grey.shade400),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(9),
+                          PhoneNumberFormatter(),
+                        ],
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Please enter phone number';
+                          final digitsOnly = value.replaceAll(' ', '');
+                          if (digitsOnly.length != 9) return 'Must be 9 digits';
+                          if (!digitsOnly.startsWith('5')) return 'Must start with 5';
+                          return null;
+                        },
+                        decoration: const InputDecoration(
+                          hintText: '5X XXX XXXX',
+                          border: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          focusedErrorBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         ),
                       ),
-                      Container(height: 20, width: 1, color: Colors.grey.shade400),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(9),
-                            PhoneNumberFormatter(),
-                          ],
-                          validator: (value) {
-                            if (value == null || value.isEmpty) return 'Please enter phone number';
-                            final digitsOnly = value.replaceAll(' ', '');
-                            if (digitsOnly.length != 9) return 'Must be 9 digits';
-                            if (!digitsOnly.startsWith('5')) return 'Must start with 5';
-                            return null;
-                          },
-                          decoration: const InputDecoration(
-                            hintText: '5X XXX XXXX',
-                            border: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            errorBorder: InputBorder.none,
-                            focusedErrorBorder: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
               _buildSearchableDropdown(
@@ -701,20 +735,20 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
   late TextEditingController _otherMajorController;
   late TextEditingController _gpaController;
   late TextEditingController _graduationController;
-  
+
   String? _selectedUniversity;
   String? _selectedMajor;
   String? _selectedLevel;
   String? _gpaScale;
   bool _saving = false;
-  
+
   final List<String> _universitiesList = [
     'King Saud University', 'King Fahd University of Petroleum and Minerals', 'Alfaisal University', 'Princess Nourah bint Abdulrahman University', 'Imam Abdulrahman bin Faisal University', 'Other'
   ];
   final List<String> _majorsList = [
     'Computer Science', 'Software Engineering', 'Information Technology', 'Cybersecurity', 'Electrical Engineering', 'Mechanical Engineering', 'Business Administration', 'Finance', 'Other'
   ];
-  
+
   final List<String> _academicLevels = [
     'Freshman (Level 1-2)', 'Sophomore (Level 3-4)', 'Junior (Level 5-6)',
     'Senior (Level 7-8)', 'Senior (Level +9)', 'Graduate Student'
@@ -743,7 +777,7 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
     _selectedLevel = student.level;
     _gpaController = TextEditingController(text: student.gpa?.toString() ?? '');
     _graduationController = TextEditingController(text: student.expectedGraduationDate ?? '');
-    
+
     if (student.gpa != null) {
       _gpaScale = student.gpa! > 4.0 ? '5.0' : '4.0';
     }
@@ -847,7 +881,7 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
       },
     );
   }
-  
+
   Future<void> _selectGraduationDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -855,7 +889,7 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
       firstDate: DateTime(2024),
       lastDate: DateTime(DateTime.now().year + 10),
       initialDatePickerMode: DatePickerMode.year,
-        builder: (context, child) {
+      builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
@@ -973,7 +1007,7 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                   );
                 },
               ),
-                if (_selectedMajor == 'Other')
+              if (_selectedMajor == 'Other')
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
                   child: TextFormField(
@@ -988,7 +1022,16 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
               DropdownButtonFormField<String>(
                 value: _selectedLevel,
                 onChanged: (value) => setState(() => _selectedLevel = value),
-                decoration: const InputDecoration(labelText: 'Academic Level'),
+                decoration: InputDecoration(
+                  labelText: 'Academic Level',
+                  // ADDED: Clear button for the academic level
+                  suffixIcon: _selectedLevel != null
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.grey),
+                          onPressed: () => setState(() => _selectedLevel = null),
+                        )
+                      : null,
+                ),
                 items: _academicLevels.map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
@@ -999,7 +1042,16 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _graduationController,
-                decoration: const InputDecoration(labelText: 'Expected Graduation Date'),
+                decoration: InputDecoration(
+                  labelText: 'Expected Graduation Date',
+                  // ADDED: Clear button for the graduation date
+                  suffixIcon: _graduationController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.grey),
+                          onPressed: () => setState(() => _graduationController.clear()),
+                        )
+                      : const Icon(Icons.calendar_today, color: Colors.grey),
+                ),
                 readOnly: true,
                 onTap: () => _selectGraduationDate(context),
               ),
@@ -1012,7 +1064,19 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                     _gpaController.clear();
                   });
                 },
-                decoration: const InputDecoration(labelText: 'GPA Scale'),
+                decoration: InputDecoration(
+                  labelText: 'GPA Scale',
+                  // ADDED: Clear button for the GPA scale
+                  suffixIcon: _gpaScale != null
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.grey),
+                          onPressed: () => setState(() {
+                            _gpaScale = null;
+                            _gpaController.clear();
+                          }),
+                        )
+                      : null,
+                ),
                 items: ['4.0', '5.0'].map((scale) => DropdownMenuItem(value: scale, child: Text(scale))).toList(),
               ),
               if (_gpaScale != null)
@@ -1095,23 +1159,23 @@ class _SkillsScreenState extends State<SkillsScreen> {
         content: Form(
           key: formKey,
           child: TextFormField(
-            controller: controller,
-            decoration: const InputDecoration(labelText: 'Skill name'),
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            // --- MODIFIED --- Character limit changed from 30 to 15
-            inputFormatters: [LengthLimitingTextInputFormatter(15)],
-            validator: (value) {
+              controller: controller,
+              decoration: const InputDecoration(labelText: 'Skill name'),
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              // --- MODIFIED --- Character limit changed from 30 to 15
+              inputFormatters: [LengthLimitingTextInputFormatter(15)],
+              validator: (value) {
                 if (value == null || value.trim().isEmpty) return 'Cannot be empty';
                 if (value.length > 15) return 'Cannot exceed 15 characters';
                 return null;
-            }
+              }
           ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
           ElevatedButton(onPressed: () {
             if (formKey.currentState!.validate()) {
-                Navigator.of(context).pop(controller.text.trim());
+              Navigator.of(context).pop(controller.text.trim());
             }
           }, child: const Text('Add')),
         ],
@@ -1132,23 +1196,23 @@ class _SkillsScreenState extends State<SkillsScreen> {
         content: Form(
             key: formKey,
             child: TextFormField(
-            controller: controller,
-            decoration: const InputDecoration(labelText: 'Skill name'),
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            // --- MODIFIED --- Character limit changed from 30 to 15
-            inputFormatters: [LengthLimitingTextInputFormatter(15)],
-            validator: (value) {
-                if (value == null || value.trim().isEmpty) return 'Cannot be empty';
-                if (value.length > 15) return 'Cannot exceed 15 characters';
-                return null;
-            }
-          ),
+                controller: controller,
+                decoration: const InputDecoration(labelText: 'Skill name'),
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                // --- MODIFIED --- Character limit changed from 30 to 15
+                inputFormatters: [LengthLimitingTextInputFormatter(15)],
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) return 'Cannot be empty';
+                  if (value.length > 15) return 'Cannot exceed 15 characters';
+                  return null;
+                }
+            ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
           ElevatedButton(onPressed: () {
             if (formKey.currentState!.validate()) {
-                Navigator.of(context).pop(controller.text.trim());
+              Navigator.of(context).pop(controller.text.trim());
             }
           }, child: const Text('Save')),
         ],
@@ -1195,27 +1259,27 @@ class _SkillsScreenState extends State<SkillsScreen> {
       body: _skills.isEmpty
           ? const Center(child: Text('No skills added yet.'))
           : ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: _skills.length,
-              itemBuilder: (context, index) {
-                final skill = _skills[index];
-                return Card(
-                  child: ListTile(
-                    title: Text(skill),
-                    trailing: PopupMenuButton<String>(
-                      onSelected: (value) {
-                        if (value == 'edit') _editSkill(index);
-                        else if (value == 'remove') _removeSkill(index);
-                      },
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(value: 'edit', child: Text('Edit')),
-                        PopupMenuItem(value: 'remove', child: Text('Remove')),
-                      ],
-                    ),
-                  ),
-                );
-              },
+        padding: const EdgeInsets.all(20),
+        itemCount: _skills.length,
+        itemBuilder: (context, index) {
+          final skill = _skills[index];
+          return Card(
+            child: ListTile(
+              title: Text(skill),
+              trailing: PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'edit') _editSkill(index);
+                  else if (value == 'remove') _removeSkill(index);
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  PopupMenuItem(value: 'remove', child: Text('Remove')),
+                ],
+              ),
             ),
+          );
+        },
+      ),
     );
   }
 }
@@ -1292,18 +1356,18 @@ class _FollowedCompaniesScreenState extends State<FollowedCompaniesScreen> {
       body: _companies.isEmpty
           ? const Center(child: Text('You are not following any companies yet.'))
           : ListView.separated(
-              padding: const EdgeInsets.all(20),
-              itemCount: _companies.length,
-              itemBuilder: (context, index) {
-                final company = _companies[index];
-                return ListTile(
-                  leading: CircleAvatar(backgroundColor: Colors.blueGrey.shade100, child: Text(company[0].toUpperCase())),
-                  title: Text(company),
-                  trailing: IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => _removeCompany(index)),
-                );
-              },
-              separatorBuilder: (_, __) => const Divider(),
-            ),
+        padding: const EdgeInsets.all(20),
+        itemCount: _companies.length,
+        itemBuilder: (context, index) {
+          final company = _companies[index];
+          return ListTile(
+            leading: CircleAvatar(backgroundColor: Colors.blueGrey.shade100, child: Text(company[0].toUpperCase())),
+            title: Text(company),
+            trailing: IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => _removeCompany(index)),
+          );
+        },
+        separatorBuilder: (_, __) => const Divider(),
+      ),
     );
   }
 }
@@ -1420,37 +1484,37 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _documents.isEmpty
-                  ? const Center(child: Text('No documents uploaded yet.'))
-                  : GridView.builder(
-                      padding: const EdgeInsets.all(20),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.1,
-                      ),
-                      itemCount: _documents.length,
-                      itemBuilder: (context, index) {
-                        final document = _documents[index];
-                        return Card(
-                          elevation: 3,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.insert_drive_file, size: 40, color: Colors.grey),
-                                const SizedBox(height: 12),
-                                Text(document.name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13), maxLines: 3, overflow: TextOverflow.ellipsis),
-                                const SizedBox(height: 16),
-                                TextButton.icon(onPressed: () => _deleteDocument(document), icon: const Icon(Icons.delete_outline), label: const Text('Remove')),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+              ? const Center(child: Text('No documents uploaded yet.'))
+              : GridView.builder(
+            padding: const EdgeInsets.all(20),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.1,
+            ),
+            itemCount: _documents.length,
+            itemBuilder: (context, index) {
+              final document = _documents[index];
+              return Card(
+                elevation: 3,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.insert_drive_file, size: 40, color: Colors.grey),
+                      const SizedBox(height: 12),
+                      Text(document.name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13), maxLines: 3, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 16),
+                      TextButton.icon(onPressed: () => _deleteDocument(document), icon: const Icon(Icons.delete_outline), label: const Text('Remove')),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -1552,7 +1616,7 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
       messenger.showSnackBar(SnackBar(content: Text('Deletion failed: $e')));
     }
   }
-  
+
   void _openLink(String url) {
     // In a real app, you would use the url_launcher package.
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Open $url in browser.')));
@@ -1574,25 +1638,25 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _resumes.isEmpty
-                  ? const Center(child: Text('No resumes uploaded yet.'))
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: _resumes.length,
-                      itemBuilder: (context, index) {
-                        final resume = _resumes[index];
-                        return ListTile(
-                          leading: const CircleAvatar(
-                            backgroundColor: Color(0xFFF1F3F4),
-                            child: Icon(Icons.description, color: Colors.black87),
-                          ),
-                          title: Text(resume.name),
-                          subtitle: Text(resume.uploadedAt != null ? 'Uploaded ${resume.uploadedAt!.toLocal()}' : 'Awaiting timestamp'),
-                          trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => _deleteResume(resume)),
-                          onTap: () => _openLink(resume.url),
-                        );
-                      },
-                      separatorBuilder: (_, __) => const Divider(),
-                    ),
+              ? const Center(child: Text('No resumes uploaded yet.'))
+              : ListView.separated(
+            padding: const EdgeInsets.all(20),
+            itemCount: _resumes.length,
+            itemBuilder: (context, index) {
+              final resume = _resumes[index];
+              return ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFF1F3F4),
+                  child: Icon(Icons.description, color: Colors.black87),
+                ),
+                title: Text(resume.name),
+                subtitle: Text(resume.uploadedAt != null ? 'Uploaded ${resume.uploadedAt!.toLocal()}' : 'Awaiting timestamp'),
+                trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => _deleteResume(resume)),
+                onTap: () => _openLink(resume.url),
+              );
+            },
+            separatorBuilder: (_, __) => const Divider(),
+          ),
         ),
       ),
     );
@@ -1693,7 +1757,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final TextEditingController _confirmPasswordController = TextEditingController();
   bool _submitting = false;
   bool _sendingReset = false;
-  
+
   final FocusNode _passwordFocusNode = FocusNode();
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
@@ -1733,7 +1797,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       _hasUppercase = password.contains(RegExp(r'[A-Z]'));
       _hasLowercase = password.contains(RegExp(r'[a-z]'));
       _hasNumber = password.contains(RegExp(r'[0-9]'));
-      _hasSymbol = password.contains(RegExp(r'[!@#\$&*~]'));
+      _hasSymbol = password.contains(RegExp(r'[!@#$&*~]'));
       _hasNoSpaces = !password.contains(' ');
     });
   }
@@ -1864,15 +1928,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       _buildPasswordCriteriaRow('Does not contain spaces', _hasNoSpaces),
                       const SizedBox(height: 8),
                       if(!_isPasswordValid)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: LinearProgressIndicator(
-                          value: passwordStrength,
-                          minHeight: 5,
-                          backgroundColor: Colors.grey.shade300,
-                          color: _getPasswordStrengthColor(passwordStrength),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            value: passwordStrength,
+                            minHeight: 5,
+                            backgroundColor: Colors.grey.shade300,
+                            color: _getPasswordStrengthColor(passwordStrength),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -1882,7 +1946,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 obscureText: _obscureConfirmPassword,
                 decoration: InputDecoration(
                   labelText: 'Confirm New Password',
-                    suffixIcon: IconButton(
+                  suffixIcon: IconButton(
                     icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
                     onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                   ),
@@ -1976,7 +2040,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         content: Text('Your account has been permanently deleted.'),
         backgroundColor: Colors.green,
       ));
-      
+
       // Pop all routes and push a new root route (e.g., a login or splash screen).
       // Replace '/login' with your actual initial route name.
       navigator.pushNamedAndRemoveUntil('/login', (route) => false);
@@ -2047,12 +2111,12 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: _deleting
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Text('Delete Account Permanently', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+                    : const Text('Delete Account Permanently', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),

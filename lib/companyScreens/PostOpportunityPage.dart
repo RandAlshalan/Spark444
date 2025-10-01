@@ -201,8 +201,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
 
       final String companyAuthUid = currentUser.uid;
 
-      // If 'Other' was selected, use the text from the manual input field.
-      // Otherwise, use the major selected from the list.
       final String? finalMajor = _selectedMajor == 'Other'
           ? _otherMajorController.text.trim()
           : _displayMajor;
@@ -210,7 +208,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
       final Opportunity newOpportunity = Opportunity(
         id: '',
         companyId: companyAuthUid,
-        name: _nameController.text.trim(), //
+        name: _nameController.text.trim(),
         preferredMajor: finalMajor,
         role: _roleController.text.trim(),
         isPaid: _isPaid,
@@ -226,7 +224,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
         location:
             (_selectedWorkMode == 'In-person' || _selectedWorkMode == 'Hybrid')
             ? _selectedLocation
-            : _selectedWorkMode, // Store 'Remote' or 'Hybrid'
+            : _selectedWorkMode,
         startDate: _startDate != null ? Timestamp.fromDate(_startDate!) : null,
         endDate: _endDate != null ? Timestamp.fromDate(_endDate!) : null,
         applicationOpenDate: _applicationOpenDate != null
@@ -235,9 +233,9 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
         applicationDeadline: _applicationDeadline != null
             ? Timestamp.fromDate(_applicationDeadline!)
             : null,
-        responseDeadline: null, // This functionality is removed.
+        responseDeadline: null,
         postedDate:
-            null, // This is null because the service sets the server timestamp.
+            null,
         isActive: true,
       );
 
@@ -274,7 +272,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     final skill = _skillController.text.trim();
     if (skill.isEmpty) return;
 
-    // Case-insensitive check for duplicates
     final isDuplicate = _selectedSkills.any(
       (s) => s.toLowerCase() == skill.toLowerCase(),
     );
@@ -311,7 +308,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     final requirement = _requirementController.text.trim();
     if (requirement.isEmpty) return;
 
-    // Case-insensitive check for duplicates
     final isDuplicate = _selectedRequirements.any(
       (r) => r.toLowerCase() == requirement.toLowerCase(),
     );
@@ -445,17 +441,18 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     );
   }
 
-  // Helper for consistent styled text form fields
   Widget _buildStyledTextFormField({
     required TextEditingController controller,
     required String labelText,
     String? Function(String?)? validator,
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
+    TextInputAction? textInputAction,
     IconData? icon,
     int? maxLength,
     List<TextInputFormatter>? inputFormatters,
     bool readOnly = false,
+    bool enabled = true,
     VoidCallback? onTap,
     ValueChanged<String>? onFieldSubmitted,
     ValueChanged<String>? onChanged,
@@ -465,13 +462,16 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
         controller: controller,
+        enabled: enabled,
         decoration: _buildInputDecoration(
           labelText,
           icon: icon,
+          enabled: enabled,
         ).copyWith(suffixIcon: suffixIcon),
         validator: validator,
         maxLines: maxLines,
         keyboardType: keyboardType,
+        textInputAction: textInputAction,
         inputFormatters: inputFormatters,
         maxLength: maxLength,
         readOnly: readOnly,
@@ -483,7 +483,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     );
   }
 
-  // Helper function to show a single date picker
   Future<DateTime?> _selectDate(
     BuildContext context, {
     DateTime? initialDate,
@@ -500,7 +499,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
               primary: primaryColor,
-              onPrimary: Colors.white, // Header text color
+              onPrimary: Colors.white,
               onSurface: Colors.black,
             ),
             textButtonTheme: TextButtonThemeData(
@@ -513,7 +512,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     );
   }
 
-  // Helper function to show a date range picker
   Future<DateTimeRange?> _selectDateRange(
     BuildContext context, {
     DateTimeRange? initialDateRange,
@@ -554,6 +552,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
           '${format.format(_startDate!)} - ${format.format(_endDate!)}';
       _calculateDuration();
     });
+    _formKey.currentState?.validate();
   }
 
   void _handleApplicationDateSelection(DateTimeRange? pickedRange) {
@@ -566,6 +565,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
       _applicationDatesController.text =
           '${format.format(_applicationOpenDate!)} - ${format.format(_applicationDeadline!)}';
     });
+    _formKey.currentState?.validate();
   }
 
   @override
@@ -588,7 +588,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
             key: _formKey,
             child: Column(
               children: [
-                // Opportunity Name
                 _buildStyledTextFormField(
                   controller: _nameController,
                   labelText: 'Opportunity Name',
@@ -643,7 +642,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                     ),
                   ),
 
-                // Role
                 _buildStyledTextFormField(
                   controller: _roleController,
                   labelText: 'Role',
@@ -698,10 +696,8 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                     ),
                   ),
 
-                // Preferred Major
                 _buildSearchableDropdown(
                   labelText: 'Preferred Major',
-                  // Use the displayMajor for the UI
                   selectedValue: _displayMajor,
                   icon: Icons.book_outlined,
                   validator: _majorsLoading
@@ -718,19 +714,18 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                           return null;
                         },
                   onTap: _majorsLoading
-                      ? null // Disable tap while loading
+                      ? null
                       : () async {
                           await _showSearchDialog(
                             context: context,
-                            items: _majorsList, // This now includes "Other"
+                            items: _majorsList,
                             title: 'Major',
                             onItemSelected: (value) {
                               setState(() {
-                                _selectedMajor =
-                                    value; // This tracks the actual selection
+                                _selectedMajor = value;
                                 _displayMajor = (value == 'Other')
                                     ? null
-                                    : value; // This is for display
+                                    : value;
                                 if (value != 'Other') {
                                   _otherMajorController.clear();
                                 }
@@ -754,23 +749,8 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                     },
                   ),
 
-                // Description
-                _buildStyledTextFormField(
-                  controller: _descriptionController,
-                  labelText: 'Description',
-                  icon: Icons.description_outlined,
-                  maxLength: 500,
-                  maxLines: 4,
-                  keyboardType: TextInputType.multiline,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a description';
-                    }
-                    return null;
-                  },
-                ),
+                _buildDescriptionField(),
 
-                // Work Mode
                 _buildDropdownFormField(
                   labelText: 'Work Mode',
                   items: _workModes,
@@ -786,7 +766,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                       value == null ? 'Please select work mode' : null,
                 ),
 
-                // Location (only for In-person or Hybrid)
                 if (_selectedWorkMode == 'In-person' ||
                     _selectedWorkMode == 'Hybrid')
                   _buildDropdownFormField(
@@ -800,7 +779,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                         value == null ? 'Please select a location' : null,
                   ),
 
-                // Skills
                 _buildStyledTextFormField(
                   controller: _skillController,
                   labelText: 'Add Required Skills',
@@ -830,7 +808,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
 
                 const SizedBox(height: 8),
 
-                // Requirements
                 _buildStyledTextFormField(
                   controller: _requirementController,
                   labelText: 'Add Requirements',
@@ -860,7 +837,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
 
                 const SizedBox(height: 8),
 
-                // Opportunity Type
                 _buildDropdownFormField(
                   labelText: 'Opportunity Type',
                   items: _opportunityTypes,
@@ -874,7 +850,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                       : null,
                 ),
 
-                // Is Paid Toggle
                 Container(
                   margin: const EdgeInsets.symmetric(vertical: 8.0),
                   padding: const EdgeInsets.all(16),
@@ -901,7 +876,6 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                   ),
                 ),
 
-                // Opportunity Dates (Start & End)
                 _buildStyledTextFormField(
                   controller: _opportunityDatesController,
                   labelText: 'Opportunity Duration (Start - End)',
@@ -913,15 +887,18 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                       initialDateRange: (_startDate != null && _endDate != null)
                           ? DateTimeRange(start: _startDate!, end: _endDate!)
                           : null,
+                      firstDate: DateTime.now(),
                     );
                     _handleOpportunityDateSelection(pickedRange);
                   },
-                  validator: (value) => value == null || value.isEmpty
-                      ? 'Please select opportunity start and end dates'
-                      : null,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select opportunity start and end dates';
+                    }
+                    return null;
+                  },
                 ),
 
-                // Application Dates (Begins & Deadline)
                 _buildStyledTextFormField(
                   controller: _applicationDatesController,
                   labelText: 'Application Period (Begins - Deadline)',
@@ -937,25 +914,33 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                               end: _applicationDeadline!,
                             )
                           : null,
+                      firstDate: DateTime.now(),
                     );
                     _handleApplicationDateSelection(pickedRange);
                   },
-                  validator: (value) => value == null || value.isEmpty
-                      ? 'Please select the application period'
-                      : null,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select the application period';
+                    }
+                    if (_applicationDeadline != null && _startDate != null) {
+                      if (!_applicationDeadline!.isBefore(_startDate!)) {
+                        return 'Application deadline must be before the opportunity starts';
+                      }
+                    }
+                    return null;
+                  },
                 ),
 
-                // Duration (Auto-calculated)
                 _buildStyledTextFormField(
                   controller: _durationController,
                   labelText: 'Duration (Auto-calculated)',
                   icon: Icons.timelapse,
                   readOnly: true,
+                  enabled: false,
                 ),
 
                 const SizedBox(height: 30),
 
-                // Post Opportunity Button
                 _buildGradientButton(
                   text: 'Post Opportunity',
                   onPressed: _postOpportunity,
@@ -968,7 +953,56 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     );
   }
 
-  // Helper for consistent InputDecorations
+  // MODIFIED: Helper widget for the description field with a bottom-right button
+  Widget _buildDescriptionField() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Stack(
+        children: [
+          TextFormField(
+            controller: _descriptionController,
+            decoration: _buildInputDecoration(
+              'Description',
+              icon: Icons.description_outlined,
+            ),
+            maxLength: 500,
+            maxLines: 4,
+            keyboardType: TextInputType.multiline,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter a description';
+              }
+              return null;
+            },
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+          ),
+          Positioned(
+            bottom: 28.0, // Positioned just above the counter text
+            right: 8.0,
+            child: ElevatedButton(
+              onPressed: () {
+                FocusScope.of(context).unfocus(); // Dismiss the keyboard
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor.withOpacity(0.8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                minimumSize: Size.zero, // Make it compact
+              ),
+              child: const Text(
+                'Done',
+                style: TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   InputDecoration _buildInputDecoration(
     String labelText, {
     IconData? icon,
@@ -1006,7 +1040,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     required VoidCallback? onTap,
     bool enabled = true,
     String? Function(String?)?
-    validator, // This validator will check the text field's value
+        validator,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -1017,7 +1051,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
         readOnly: true,
         onTap: onTap,
         validator: validator,
-        decoration: _buildInputDecoration(labelText).copyWith(
+        decoration: _buildInputDecoration(labelText, enabled: enabled).copyWith(
           prefixIcon: Icon(icon, color: Colors.grey),
           suffixIcon: const Icon(Icons.arrow_drop_down, color: primaryColor),
         ),

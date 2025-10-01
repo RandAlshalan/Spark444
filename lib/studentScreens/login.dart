@@ -121,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   String? _validateIdentifier(String raw) {
     final trimmed = raw.trim();
-    if (trimmed.isEmpty) return "Please enter username/email";
+    if (trimmed.trim().isEmpty ) return "Please enter username/email";
     if (trimmed.contains('@') && !_emailRegex.hasMatch(trimmed)) {
       return "Invalid email format";
     }

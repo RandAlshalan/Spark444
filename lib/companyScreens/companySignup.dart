@@ -176,6 +176,7 @@ class _CompanySignupState extends State<CompanySignup> {
       if (_companyNameError != null) {
         setState(() { _companyNameError = null; });
       }
+      
       if (value.isNotEmpty) {
         // We use the same isUsernameUnique function for this check
         final isUnique = await _authService.isUsernameUnique(value);
@@ -411,11 +412,9 @@ class _CompanySignupState extends State<CompanySignup> {
                 ? const Padding(padding: EdgeInsets.all(12.0), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.0)))
                 : null,
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Please enter company name';
+              if (value == null || value.trim().isEmpty) return 'Please enter company name';
               // ✅ MODIFIED: Allow spaces and common symbols like '&' in company names.
-              if (RegExp(r'[@#\$%^*{}|<>]').hasMatch(value)) {
-                return 'Company name contains invalid symbols';
-              }
+
               if (_companyNameError != null) return _companyNameError;
               return null;
               
@@ -597,8 +596,17 @@ class _CompanySignupState extends State<CompanySignup> {
             inputFormatters: [
               LengthLimitingTextInputFormatter(50),
             ],
+            validator: (value) {
+            if (value == null || value.trim().isEmpty) return 'Please enter a contact name';
+
+            if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
+              return 'Names cannot contain numbers or symbols';
+            }
+            return null;
+          },
             icon: Icons.person_outline,
-            validator: (value) => value == null || value.isEmpty ? 'Please enter a contact name' : null,
+            //validator: (value) => value == null || value.isEmpty ? 'Please enter a contact name' : null,
+            
           ),
           _buildPhoneFormField(), // ✅ REPLACED: Using the new robust phone field
           _buildStyledTextFormField(

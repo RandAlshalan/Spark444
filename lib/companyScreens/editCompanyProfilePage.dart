@@ -53,7 +53,7 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
     'Other',
   ];
 
-  static const int _maxDescriptionLength = 5000;
+  static const int _maxDescriptionLength = 500;
   int _descriptionCharCount = 0;
   bool _isUploadingLogo = false;
 
@@ -71,7 +71,6 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
     );
     _logoUrl = widget.company.logoUrl;
 
-    // Initialize sector dropdown
     if (_sectorsList.contains(widget.company.sector)) {
       _selectedSector = widget.company.sector;
     } else {
@@ -79,29 +78,22 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
       _sectorController.text = widget.company.sector;
     }
 
-    // Parse existing contact info
     _parseContactInfo(widget.company.contactInfo);
-
-    // Initialize description character count
     _descriptionCharCount = (widget.company.description ?? '').length;
-
-    // Add listener for description changes
     _descriptionController.addListener(_updateDescriptionCharCount);
   }
 
   void _parseContactInfo(String contactInfo) {
-    // Try to parse "Name - +966XXXXXXXXX" format
     final parts = contactInfo.split(' - ');
     if (parts.length == 2) {
       _contactNameController.text = parts[0].trim();
       final phoneNumber = parts[1].trim();
       if (phoneNumber.startsWith('+966')) {
-        _contactNumberController.text = phoneNumber.substring(4); // Remove +966
+        _contactNumberController.text = phoneNumber.substring(4);
       } else {
         _contactNumberController.text = phoneNumber;
       }
     } else {
-      // If format doesn't match, put everything in name field
       _contactNameController.text = contactInfo;
     }
   }
@@ -126,7 +118,6 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
   }
 
   Future<void> _pickLogo() async {
-    // Show options for gallery or camera
     final ImageSource? source = await showModalBottomSheet<ImageSource>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -182,7 +173,6 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
           _isUploadingLogo = true;
         });
 
-        // Check file size (max 5MB)
         final fileSize = await pickedFile.length();
         if (fileSize > 5 * 1024 * 1024) {
           if (mounted) {
@@ -193,13 +183,10 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
               ),
             );
           }
-          setState(() {
-            _isUploadingLogo = false;
-          });
+          setState(() => _isUploadingLogo = false);
           return;
         }
 
-        // Delete old logo if it exists
         if (_logoUrl != null && _logoUrl!.contains('firebase')) {
           try {
             final oldRef = FirebaseStorage.instance.refFromURL(_logoUrl!);
@@ -209,18 +196,12 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
           }
         }
 
-        // Upload to Firebase Storage
         final extension = pickedFile.name.split('.').last.toLowerCase();
-
-        // Create storage reference
         final storageRef = FirebaseStorage.instance
             .ref()
             .child('company_logos')
-            .child(
-              '${widget.company.uid}_${DateTime.now().millisecondsSinceEpoch}.$extension',
-            );
+            .child('${widget.company.uid}_${DateTime.now().millisecondsSinceEpoch}.$extension');
 
-        // Determine proper content type
         String contentType = 'image/jpeg';
         if (extension == 'png') {
           contentType = 'image/png';
@@ -228,17 +209,13 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
           contentType = 'image/jpeg';
         }
 
-        // Upload file based on platform
         UploadTask uploadTask;
+        final metadata = SettableMetadata(contentType: contentType);
         if (kIsWeb) {
-          // Web upload using bytes
           final Uint8List bytes = await pickedFile.readAsBytes();
-          final metadata = SettableMetadata(contentType: contentType);
           uploadTask = storageRef.putData(bytes, metadata);
         } else {
-          // Mobile upload using file
           final file = File(pickedFile.path);
-          final metadata = SettableMetadata(contentType: contentType);
           uploadTask = storageRef.putFile(file, metadata);
         }
 
@@ -270,21 +247,11 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
         }
       }
     } catch (e) {
-      setState(() {
-        _isUploadingLogo = false;
-      });
+      setState(() => _isUploadingLogo = false);
       if (mounted) {
-        String errorMessage = 'Error uploading logo';
-        if (e.toString().contains('permission')) {
-          errorMessage = 'Permission denied. Please allow access to photos/camera.';
-        } else if (e.toString().contains('network')) {
-          errorMessage = 'Network error. Please check your connection.';
-        } else if (e.toString().contains('camera')) {
-          errorMessage = 'Camera access denied or unavailable.';
-        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$errorMessage: $e'),
+            content: Text('Error uploading logo: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -294,27 +261,20 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
 
   Future<void> _deleteLogo() async {
     try {
-      setState(() {
-        _isUploadingLogo = true;
-      });
-
-      // Delete from Firebase Storage if it's a Firebase URL
+      setState(() => _isUploadingLogo = true);
       if (_logoUrl != null && _logoUrl!.contains('firebase')) {
         try {
           final ref = FirebaseStorage.instance.refFromURL(_logoUrl!);
           await ref.delete();
         } catch (e) {
-          // If deletion fails, continue anyway
           debugPrint('Error deleting old logo: $e');
         }
       }
-
       setState(() {
         _logoPath = null;
-        _logoUrl = null; // This will make it use the default logo
+        _logoUrl = null;
         _isUploadingLogo = false;
       });
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -324,9 +284,7 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
         );
       }
     } catch (e) {
-      setState(() {
-        _isUploadingLogo = false;
-      });
+      setState(() => _isUploadingLogo = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -340,23 +298,17 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
 
   Future<void> _updateProfile() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
 
-      // Combine contact name and number
       final String combinedContactInfo =
           _contactNumberController.text.trim().isNotEmpty
-          ? '${_contactNameController.text.trim()} - +966${_contactNumberController.text.trim()}'
-          : _contactNameController.text.trim();
+              ? '${_contactNameController.text.trim()} - +966${_contactNumberController.text.trim()}'
+              : _contactNameController.text.trim();
 
-      // Get final sector
       final String finalSector = _selectedSector == 'Other'
           ? _sectorController.text.trim()
           : _selectedSector ?? 'Other';
 
-      // We need to pass all properties from the original company object
-      // to ensure no data is lost during the update.
       final updatedCompany = Company(
         uid: widget.company.uid,
         companyName: _companyNameController.text.trim(),
@@ -373,9 +325,7 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
       );
 
       try {
-        // Corrected line: Use the 'updateCompany' method and pass the uid
         await _authService.updateCompany(widget.company.uid!, updatedCompany);
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Profile updated successfully!')),
@@ -384,16 +334,12 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error updating profile: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error updating profile: $e')),
+          );
         }
       } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
@@ -427,14 +373,17 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
                 controller: _companyNameController,
                 hintText: 'Company Name',
                 icon: Icons.business_outlined,
+                // MODIFIED: Removed character filter to allow numbers and special characters
                 inputFormatters: [
                   LengthLimitingTextInputFormatter(40),
-                  FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s&\-\.]')),
                 ],
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return 'Company name is required.';
                   }
+                  if (value.startsWith(' ')) {
+  return 'Name cannot start with a space';
+}
                   if (value.length > 40) {
                     return 'Company name cannot exceed 40 characters.';
                   }
@@ -450,27 +399,15 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
                   LengthLimitingTextInputFormatter(50),
                   FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
                 ],
-                validator: (value) => value == null || value.isEmpty
-                    ? 'Contact name is required.'
-                    : null,
+                
+                          validator: (value) {
+            if (value == null || value.trim().isEmpty) return 'Please enter a contact name';
+              if (value.startsWith(' ')) {
+  return 'Name cannot start with a space';
+} }
               ),
               _buildPhoneFormField(),
-              _buildStyledTextFormField(
-                controller: _descriptionController,
-                hintText: 'Company Description',
-                icon: Icons.description_outlined,
-                maxLines: 5,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Company description is required.';
-                  }
-                  if (value.length > _maxDescriptionLength) {
-                    return 'Description cannot exceed $_maxDescriptionLength characters.';
-                  }
-                  return null;
-                },
-              ),
-              // Character counter for description
+              _buildDescriptionField(),
               Padding(
                 padding: const EdgeInsets.only(right: 8.0, top: 4.0),
                 child: Align(
@@ -481,12 +418,10 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
                       fontSize: 12,
                       color: _descriptionCharCount > _maxDescriptionLength
                           ? Colors.red
-                          : _descriptionCharCount >
-                                (_maxDescriptionLength * 0.9)
-                          ? const Color(0xFFF99D46) // Orange warning
-                          : Colors.grey,
-                      fontWeight:
-                          _descriptionCharCount > (_maxDescriptionLength * 0.9)
+                          : _descriptionCharCount > (_maxDescriptionLength * 0.9)
+                              ? const Color(0xFFF99D46)
+                              : Colors.grey,
+                      fontWeight: _descriptionCharCount > (_maxDescriptionLength * 0.9)
                           ? FontWeight.w600
                           : FontWeight.normal,
                     ),
@@ -506,9 +441,73 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
     );
   }
 
+  Widget _buildDescriptionField() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          TextFormField(
+            controller: _descriptionController,
+            maxLines: 5,
+            maxLength: _maxDescriptionLength,
+            buildCounter: (BuildContext context, {
+            required int currentLength,
+            required bool isFocused,
+            required int? maxLength,
+          }) =>
+                const SizedBox.shrink(),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Company description is required.';
+              }
+              if (value.length > _maxDescriptionLength) {
+                return 'Description cannot exceed $_maxDescriptionLength characters.';
+              }
+              return null;
+            },
+            decoration: const InputDecoration(
+              hintText: 'Company Description',
+              prefixIcon: Icon(Icons.description_outlined, color: Colors.grey),
+              contentPadding: EdgeInsets.fromLTRB(20, 15, 20, 15),
+              border: InputBorder.none,
+            ),
+          ),
+          Positioned(
+            bottom: 8.0,
+            right: 8.0,
+            child: ElevatedButton(
+              onPressed: () => FocusScope.of(context).unfocus(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF422F5D).withOpacity(0.8),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                minimumSize: Size.zero,
+              ),
+              child: const Text('Done',
+                  style: TextStyle(color: Colors.white, fontSize: 12)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLogoSection() {
     final bool hasCustomLogo = _logoUrl != null && _logoUrl!.isNotEmpty;
-
     return Column(
       children: [
         Stack(
@@ -519,10 +518,9 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
               backgroundImage: _logoPath != null
                   ? FileImage(File(_logoPath!))
                   : _logoUrl != null && _logoUrl!.isNotEmpty
-                  ? NetworkImage(_logoUrl!)
-                  : null,
-              child:
-                  (_logoPath == null && (_logoUrl == null || _logoUrl!.isEmpty))
+                      ? NetworkImage(_logoUrl!)
+                      : null,
+              child: (_logoPath == null && (_logoUrl == null || _logoUrl!.isEmpty))
                   ? const Icon(
                       Icons.apartment_outlined,
                       color: Color(0xFF6B4791),
@@ -535,7 +533,7 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
+                  color: Colors.black.withOpacity(0.5),
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
@@ -599,7 +597,7 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.2),
+            color: Colors.grey.withOpacity(0.2),
             spreadRadius: 2,
             blurRadius: 5,
             offset: const Offset(0, 3),
@@ -609,7 +607,7 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
       child: Column(
         children: [
           DropdownButtonFormField<String>(
-            initialValue: _selectedSector,
+            value: _selectedSector,
             isExpanded: true,
             onChanged: (String? newValue) {
               setState(() {
@@ -621,13 +619,13 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
             dropdownColor: const Color(0xFFF7F4F0),
             menuMaxHeight: 300,
             icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF422F5D)),
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               hintText: 'Sector',
-              prefixIcon: const Icon(
+              prefixIcon: Icon(
                 Icons.category_outlined,
                 color: Colors.grey,
               ),
-              contentPadding: const EdgeInsets.symmetric(
+              contentPadding: EdgeInsets.symmetric(
                 horizontal: 20,
                 vertical: 15,
               ),
@@ -655,10 +653,10 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
               padding: const EdgeInsets.only(bottom: 8.0),
               child: TextFormField(
                 controller: _sectorController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Please specify your sector',
-                  prefixIcon: const Icon(Icons.edit, color: Colors.grey),
-                  contentPadding: const EdgeInsets.symmetric(
+                  prefixIcon: Icon(Icons.edit, color: Colors.grey),
+                  contentPadding: EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 15,
                   ),
@@ -683,7 +681,7 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.2),
+            color: Colors.grey.withOpacity(0.2),
             spreadRadius: 2,
             blurRadius: 5,
             offset: const Offset(0, 3),
@@ -705,15 +703,15 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
           if (!value.startsWith('5')) return 'Must start with 5';
           return null;
         },
-        decoration: InputDecoration(
+        decoration: const InputDecoration(
           hintText: '5X XXX XXXX',
-          prefixIcon: const Icon(Icons.phone_outlined, color: Colors.grey),
+          prefixIcon: Icon(Icons.phone_outlined, color: Colors.grey),
           prefixText: '+966 ',
-          prefixStyle: const TextStyle(
+          prefixStyle: TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.w500,
           ),
-          contentPadding: const EdgeInsets.symmetric(
+          contentPadding: EdgeInsets.symmetric(
             horizontal: 20,
             vertical: 15,
           ),
@@ -738,7 +736,7 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.2),
+            color: Colors.grey.withOpacity(0.2),
             spreadRadius: 2,
             blurRadius: 5,
             offset: const Offset(0, 3),
