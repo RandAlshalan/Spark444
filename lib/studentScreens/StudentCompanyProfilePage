@@ -1,0 +1,436 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../models/company.dart';
+
+const _purple = Color(0xFF422F5D);
+const _pink = Color(0xFFD64483);
+const _chipBg = Color(0xFFEDE7F3);
+
+class StudentCompanyProfilePage extends StatelessWidget {
+  const StudentCompanyProfilePage({super.key, required this.companyId});
+  final String companyId;
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>> _companyDocStream() {
+    return FirebaseFirestore.instance.collection('companies').doc(companyId).snapshots();
+  }
+
+  Stream<int> _oppsCountStream() {
+    return FirebaseFirestore.instance
+        .collection('opportunities')
+        .where('companyId', isEqualTo: companyId)
+        .snapshots()
+        .map((s) => s.size);
+  }
+
+  Stream<bool> _isFollowingStream(String studentId) {
+    return FirebaseFirestore.instance.collection('students').doc(studentId).snapshots().map((d) {
+      final data = d.data();
+      final list = List<String>.from(data?['followedCompanies'] ?? []);
+      return list.contains(companyId);
+    });
+  }
+
+  Future<void> _toggleFollow({required String studentId, required bool following}) async {
+    final ref = FirebaseFirestore.instance.collection('students').doc(studentId);
+    await ref.set({
+      'followedCompanies': following ? FieldValue.arrayRemove([companyId]) : FieldValue.arrayUnion([companyId]),
+    }, SetOptions(merge: true));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final studentId = FirebaseAuth.instance.currentUser?.uid;
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: _companyDocStream(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (!snap.hasData || !snap.data!.exists || snap.data!.data() == null) {
+          return Scaffold(appBar: AppBar(title: const Text('Company')), body: const Center(child: Text('Company not found')));
+        }
+
+        final data = snap.data!.data()!;
+        final company = Company.fromMap(snap.data!.id, data);
+
+        return DefaultTabController(
+          length: 3,
+          child: Scaffold(
+            extendBodyBehindAppBar: true,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              foregroundColor: Colors.white,
+            ),
+            body: SingleChildScrollView(
+              child: Column(
+                children: [
+                  // -------- Header (taller + big avatar + raised follow btn)
+                  Stack(
+                    children: [
+                      Container(
+                        height: 260, // أعلى للهيدر
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [_purple, _pink],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                      ),
+                      // Avatar XL (radius 60) مع إطار أبيض وظل خفيف
+                      Positioned.fill(
+                        child: Align(
+                          alignment: const Alignment(0, 0.22),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 16, offset: const Offset(0, 8))],
+                            ),
+                            child: CircleAvatar(
+                              radius: 64,
+                              backgroundColor: Colors.white,
+                              child: (company.logoUrl != null && company.logoUrl!.isNotEmpty)
+                                  ? CircleAvatar(radius: 58, backgroundImage: NetworkImage(company.logoUrl!))
+                                  : CircleAvatar(
+                                      radius: 58,
+                                      backgroundColor: Colors.white,
+                                      child: Text(
+                                        (company.companyName.trim().isEmpty
+                                                ? ''
+                                                : company.companyName.trim().split(RegExp(r'\s+')).take(2).map((w) => w[0]).join())
+                                            .toUpperCase(),
+                                        style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: _purple),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (studentId != null)
+                        Positioned(
+                          right: 16,
+                          bottom: 72, // رفعت الزر فوق حتى ما يغطي الكارد
+                          child: StreamBuilder<bool>(
+                            stream: _isFollowingStream(studentId),
+                            builder: (context, s) {
+                              final following = s.data ?? false;
+                              return OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  side: const BorderSide(color: Colors.white),
+                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                                ),
+                                onPressed: () async {
+                                  try {
+                                    await _toggleFollow(studentId: studentId, following: following);
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                                    }
+                                  }
+                                },
+                                child: Text(following ? 'Following' : 'Follow'),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  // -------- Card (centered tabs)
+                  Container(
+                    transform: Matrix4.translationValues(0, -36, 0),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Material(
+                      elevation: 0,
+                      borderRadius: BorderRadius.circular(18),
+                      color: Colors.white,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(company.companyName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 4),
+                            if (company.sector.isNotEmpty)
+                              Text(company.sector, style: TextStyle(color: Colors.black.withOpacity(0.6), fontSize: 14)),
+                            const SizedBox(height: 10),
+                            if ((company.description ?? '').isNotEmpty)
+                              Text(company.description!, style: TextStyle(color: Colors.black.withOpacity(0.75), height: 1.4)),
+                            const SizedBox(height: 16),
+
+                            StreamBuilder<int>(
+                              stream: _oppsCountStream(),
+                              builder: (context, oppCountSnap) {
+                                final oppCount = oppCountSnap.data ?? 0;
+                                final reviewsCount = company.studentReviews.length;
+                                return Center(
+                                  child: TabBar(
+                                    isScrollable: false,
+                                    labelColor: Colors.black,
+                                    unselectedLabelColor: Colors.black.withOpacity(0.5),
+                                    indicatorColor: _purple,
+                                    indicatorWeight: 3,
+                                    dividerColor: Colors.transparent,
+                                    tabs: [
+                                      const Tab(text: 'Details'),
+                                      Tab(text: 'Opportunities ($oppCount)'),
+                                      Tab(text: 'Reviews ($reviewsCount)'),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // -------- Tabs
+                  Container(
+                    height: 700,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TabBarView(
+                      children: [
+                        _DetailsTab(company: company, data: data),
+                        _OpportunitiesTab(companyId: companyId),
+                        _ReviewsTab(reviewCount: company.studentReviews.length),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// =================== Details Tab ===================
+
+class _DetailsTab extends StatelessWidget {
+  const _DetailsTab({required this.company, required this.data});
+  final Company company;
+  final Map<String, dynamic> data;
+
+  Future<void> _launchEmail(String email) async {
+    if (email.trim().isEmpty) return;
+    final uri = Uri(scheme: 'mailto', path: email);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _launchPhone(String phone) async {
+    if (phone.trim().isEmpty) return;
+    final uri = Uri(scheme: 'tel', path: phone);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  String _extractEmail(String text) {
+    final m = RegExp(r'[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}').firstMatch(text);
+    return (m?.group(0) ?? '').trim();
+  }
+
+  String _extractPhone(String text) {
+    final m = RegExp(r'(\+?\d[\d\s\-\(\)]{7,})').firstMatch(text);
+    return (m?.group(1) ?? '').trim();
+  }
+
+  List<String> _detectServices(String description, String sector) {
+    final text = (description + ' ' + sector).toLowerCase();
+    final map = <String, String>{
+      'cloud': 'Cloud & Data Center',
+      'data center': 'Cloud & Data Center',
+      'security': 'Cybersecurity',
+      'cyber': 'Cybersecurity',
+      'cybersecurity': 'Cybersecurity',
+      'network': 'Networking',
+      'networking': 'Networking',
+      'iot': 'IoT / Edge Computing',
+      'edge': 'IoT / Edge Computing',
+      'managed services': 'Managed Services',
+      'consult': 'Consulting',
+      'ai': 'AI',
+      'machine learning': 'ML',
+      'analytics': 'Analytics',
+      'infrastructure': 'Infrastructure',
+      'software': 'Software',
+      'mobile': 'Mobile',
+      'web': 'Web',
+      'devops': 'DevOps',
+      'support': 'Support',
+    };
+    final out = <String>[];
+    for (final k in map.keys) {
+      if (text.contains(k)) {
+        final label = map[k]!;
+        if (!out.contains(label)) out.add(label);
+      }
+    }
+    if (out.isEmpty && sector.trim().isNotEmpty) out.add(sector.trim());
+    return out.take(8).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final about = (company.description ?? '').trim();
+    final rawContact = company.contactInfo.trim();
+
+    // EMAIL
+    final emailFromFields = (data['contactEmail'] ?? data['email'] ?? company.email).toString().trim();
+    final emailFromText = _extractEmail('$rawContact $about');
+    final email = emailFromFields.isNotEmpty ? emailFromFields : emailFromText;
+
+    // PHONE
+    String phone = (data['phone'] ?? data['contactPhone'] ?? '').toString().trim();
+    if (phone.isEmpty) phone = _extractPhone('$rawContact $about');
+
+    // Contact name بدون رقم/إيميل
+    var contactName = rawContact;
+    if (phone.isNotEmpty) {
+      contactName = contactName.replaceAll(phone, '').replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+    }
+    if (emailFromText.isNotEmpty) {
+      contactName = contactName.replaceAll(emailFromText, '').replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+    }
+    contactName = contactName.replaceAll(RegExp(r'^[\-\•\|,;:()\s]+|[\-\•\|,;:()\s]+$'), '').trim();
+
+    // CORE SERVICES
+    List<String> services;
+    final raw = data['coreServices'] ?? data['services'] ?? data['core_services'];
+    if (raw is Iterable) {
+      services = raw.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
+    } else if (raw is String) {
+      services = raw.split(RegExp(r'[;,]')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    } else {
+      services = _detectServices(about, company.sector);
+    }
+
+    Widget sectionTitle(String t) => Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 8),
+          child: Text(t, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        );
+
+    return ListView(
+      padding: const EdgeInsets.only(top: 8, bottom: 16),
+      children: [
+        sectionTitle('About Us'),
+        Text(about.isNotEmpty ? about : 'No description provided.', style: TextStyle(color: Colors.black.withOpacity(0.75), height: 1.45)),
+        const Divider(height: 28),
+
+        sectionTitle('Core Services'),
+        if (services.isEmpty)
+          Text('No services listed.', style: TextStyle(color: Colors.black.withOpacity(0.6)))
+        else
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: services
+                .map((s) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(color: _chipBg, borderRadius: BorderRadius.circular(28)),
+                      child: Text(s, style: const TextStyle(color: _purple, fontWeight: FontWeight.w600)),
+                    ))
+                .toList(),
+          ),
+        const Divider(height: 28),
+
+        sectionTitle('Contact Details'),
+        Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.email_outlined, color: _purple), // رجّعنا الأيقونة
+                title: Text(email.isNotEmpty ? 'Email: $email' : 'Email: Not provided'),
+                subtitle: contactName.isNotEmpty ? Text(contactName) : null,
+                trailing: ElevatedButton(onPressed: email.isEmpty ? null : () => _launchEmail(email), child: const Text('Email')),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.phone_outlined, color: _purple), // رجّعنا الأيقونة
+                title: Text(phone.isNotEmpty ? 'Phone: $phone' : 'Phone: Not provided'),
+                trailing: ElevatedButton(onPressed: phone.isEmpty ? null : () => _launchPhone(phone), child: const Text('Call')),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// =================== Opportunities Tab ===================
+
+class _OpportunitiesTab extends StatelessWidget {
+  const _OpportunitiesTab({required this.companyId});
+  final String companyId;
+
+  @override
+  Widget build(BuildContext context) {
+    final q = FirebaseFirestore.instance.collection('opportunities').where('companyId', isEqualTo: companyId);
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: q.snapshots(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+        final docs = snap.data?.docs ?? [];
+        if (docs.isEmpty) return const Center(child: Text('No opportunities yet.'));
+
+        return ListView.separated(
+          padding: const EdgeInsets.only(top: 8, bottom: 16),
+          itemCount: docs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (_, i) {
+            final m = docs[i].data();
+            final title = (m['title'] ?? m['positionTitle'] ?? 'Opportunity').toString();
+            final location = (m['location'] ?? '').toString();
+            final deadlineTs = m['deadline'] is Timestamp ? m['deadline'] as Timestamp : null;
+            final deadline = deadlineTs?.toDate();
+
+            return Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: ListTile(
+                leading: const Icon(Icons.work_outline, color: _purple),
+                title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle: Text([
+                  if (location.isNotEmpty) location,
+                  if (deadline != null) 'Deadline: ${deadline.year}-${deadline.month.toString().padLeft(2, '0')}-${deadline.day.toString().padLeft(2, '0')}',
+                ].join(' • ')),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  // TODO: open opportunity details page
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// =================== Reviews Tab ===================
+
+class _ReviewsTab extends StatelessWidget {
+  const _ReviewsTab({required this.reviewCount});
+  final int reviewCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        reviewCount > 0 ? 'There are $reviewCount reviews (design placeholder).' : 'No reviews yet.',
+        style: const TextStyle(fontSize: 16),
+      ),
+    );
+  }
+}

@@ -1,4 +1,3 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Company {
@@ -6,13 +5,15 @@ class Company {
   final String email;
   final String companyName;
   final String sector;
-  final String contactInfo; // Could be a contact person's name or a general contact email/phone
+  final String
+  contactInfo; // Could be a contact person's name or a general contact email/phone
   final String? logoUrl;
   final String? description;
   final String userType;
   final DateTime? createdAt;
   final bool isVerified; // For business email domain verification
-  final List<String> opportunitiesPosted; // To keep track of posted opportunities IDs
+  final List<String>
+  opportunitiesPosted; // To keep track of posted opportunities IDs
   final List<String> studentReviews; // To store IDs of reviews left by students
 
   Company({
@@ -39,18 +40,20 @@ class Company {
       'logoUrl': logoUrl,
       'description': description,
       'userType': userType,
-      'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
+      'createdAt': createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp(),
       'isVerified': isVerified,
       'opportunitiesPosted': opportunitiesPosted,
       'studentReviews': studentReviews,
     };
   }
 
-  // Corrected factory constructor that takes a DocumentSnapshot
+  // Factory constructor for reading from Firestore
   factory Company.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final map = doc.data()!;
     return Company(
-      uid: doc.id, // Use the document ID as the UID
+      uid: doc.id,
       email: map['email'] ?? '',
       companyName: map['companyName'] ?? '',
       sector: map['sector'] ?? '',
@@ -65,6 +68,23 @@ class Company {
     );
   }
 
-  // fromMap is kept for compatibility but fromFirestore is preferred.
-  factory Company.fromMap(Map<String, dynamic> map) => Company.fromFirestore(map as dynamic);
+  // Simpler fromMap for generic Firestore .data() use
+  factory Company.fromMap(String id, Map<String, dynamic> map) {
+    return Company(
+      uid: id,
+      email: map['email'] ?? '',
+      companyName: map['companyName'] ?? '',
+      sector: map['sector'] ?? '',
+      contactInfo: map['contactInfo'] ?? '',
+      logoUrl: map['logoUrl'] as String?,
+      description: map['description'] as String?,
+      userType: map['userType'] ?? 'company',
+      createdAt: (map['createdAt'] is Timestamp)
+          ? (map['createdAt'] as Timestamp).toDate()
+          : null,
+      isVerified: map['isVerified'] ?? false,
+      opportunitiesPosted: List<String>.from(map['opportunitiesPosted'] ?? []),
+      studentReviews: List<String>.from(map['studentReviews'] ?? []),
+    );
+  }
 }

@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../studentScreens/studentCompaniesPage.dart';
 
 import '../../../models/student.dart';
 import '../../../services/authService.dart';
@@ -20,23 +21,27 @@ class LoginScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // FIX: Return a real widget, like a Scaffold, to prevent a crash.
     return const Scaffold(
-      body: Center(
-        child: Text('You have been logged out.'),
-      ),
+      body: Center(child: Text('You have been logged out.')),
     );
   }
 }
 
 // --- Color Constants inspired by Spark Logo ---
-const Color _sparkPrimaryPurple = Color(0xFF422F5D); // Deep Purple from Spark text
+const Color _sparkPrimaryPurple = Color(
+  0xFF422F5D,
+); // Deep Purple from Spark text
 const Color _sparkOrange = Color(0xFFF99D46); // Orange from Spark flame
 const Color _sparkPink = Color(0xFFD64483); // Pink/Fuchsia from Spark flame
 const Color _sparkRed = Color(0xFFCC3333); // Reddish tone from Spark flame
 
-const Color _profileBackgroundColor = Color(0xFFF8F9FA); // Light background for contrast
+const Color _profileBackgroundColor = Color(
+  0xFFF8F9FA,
+); // Light background for contrast
 const Color _profileTextColor = Color(0xFF1E1E1E); // Dark text for readability
 const Color _profileCardColor = Color(0xFFFFFFFF); // White cards
-const Color _profileSurfaceColor = Color(0xFFEEEAEF); // A very light purple/grey for surfaces
+const Color _profileSurfaceColor = Color(
+  0xFFEEEAEF,
+); // A very light purple/grey for surfaces
 
 /// The main profile page that displays student information.
 class StudentViewProfile extends StatefulWidget {
@@ -78,9 +83,12 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
   }
 
   String _buildProgressPrompt(double completion) {
-    if (completion >= 0.9) return 'You are almost career ready. Keep inspiring!';
-    if (completion >= 0.7) return 'A few final touches will make your profile shine.';
-    if (completion >= 0.4) return 'Let\'s add more accomplishments to boost your visibility.';
+    if (completion >= 0.9)
+      return 'You are almost career ready. Keep inspiring!';
+    if (completion >= 0.7)
+      return 'A few final touches will make your profile shine.';
+    if (completion >= 0.4)
+      return 'Let\'s add more accomplishments to boost your visibility.';
     return 'Start building your journey - complete your profile today.';
   }
 
@@ -138,10 +146,16 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Logout', style: GoogleFonts.lato()),
-        content: Text('Are you sure you want to logout?', style: GoogleFonts.lato()),
+        content: Text(
+          'Are you sure you want to logout?',
+          style: GoogleFonts.lato(),
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
@@ -149,7 +163,9 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: _sparkRed,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             child: const Text('Logout', style: TextStyle(color: Colors.white)),
           ),
@@ -170,7 +186,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
     );
   }
 
- void _onNavigationTap(int index) {
+  void _onNavigationTap(int index) {
     if (!mounted) return;
     if (_currentIndex == index) {
       // Profile is still at index 3
@@ -179,33 +195,41 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
       }
       return;
     }
-switch (index) {
-    case 0: // Home
-      _showInfoMessage('Home page coming soon!');
-      // When ready:
-      // Navigator.push(context, MaterialPageRoute(builder: (context) => const HomePage()));
-      break;
-    case 1: // Companies
-      _showInfoMessage('Companies page coming soon!');
-      // When ready:
-      // Navigator.push(context, MaterialPageRoute(builder: (context) => const CompaniesPage()));
-      break;
-    case 2: // Opportunities
-      // Navigate to your existing OpportunitiesPage
-      // Fix: 'S' is uppercase
-     Navigator.push(context, MaterialPageRoute(builder: (context) => studentOppPgae()));
-      break;
-    case 3: // Profile
-      // This is the current page, so we don't need to do anything.
-      // The check at the top of the function already handles this.
-      break;
+    switch (index) {
+      case 0: // Home
+        _showInfoMessage('Home page coming soon!');
+        // When ready:
+        // Navigator.push(context, MaterialPageRoute(builder: (context) => const HomePage()));
+        break;
+      case 1: // Companies
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const StudentCompaniesPage()),
+        );
+        break;
+
+      case 2: // Opportunities
+        // Navigate to your existing OpportunitiesPage
+        // Fix: 'S' is uppercase
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => studentOppPgae()),
+        );
+        break;
+      case 3: // Profile
+        // This is the current page, so we don't need to do anything.
+        // The check at the top of the function already handles this.
+        break;
+    }
   }
-}
 
   Future<void> _openScreen(Widget page) async {
-    final result = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => page));
+    final result = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => page));
 
-    if (!mounted) return; // Fix: Check if widget is still mounted after navigation
+    if (!mounted)
+      return; // Fix: Check if widget is still mounted after navigation
 
     if (result == true) {
       await _loadProfile(showSpinner: false);
@@ -222,7 +246,8 @@ switch (index) {
 
     final profile = _ProfileUiModel.fromStudent(student);
     final mediaQuery = MediaQuery.of(context);
-    final double headerContentTopPadding = mediaQuery.padding.top + (kToolbarHeight / 2.5) + 24;
+    final double headerContentTopPadding =
+        mediaQuery.padding.top + (kToolbarHeight / 2.5) + 24;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -239,12 +264,17 @@ switch (index) {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildHeaderSection(profile, student, headerContentTopPadding),
-              const SizedBox(height: 213), // Increased by 113 pixels to accommodate moved card
+              const SizedBox(
+                height: 213,
+              ), // Increased by 113 pixels to accommodate moved card
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: [..._buildMenuContent(student, profile), const SizedBox(height: 32)],
+                  children: [
+                    ..._buildMenuContent(student, profile),
+                    const SizedBox(height: 32),
+                  ],
                 ),
               ),
             ],
@@ -260,24 +290,40 @@ switch (index) {
   PreferredSizeWidget _buildAppBar({bool onGradient = false}) {
     return AppBar(
       automaticallyImplyLeading: false,
-      backgroundColor: onGradient ? Colors.transparent : _profileBackgroundColor,
+      backgroundColor: onGradient
+          ? Colors.transparent
+          : _profileBackgroundColor,
       elevation: 0,
       foregroundColor: onGradient ? Colors.white : _profileTextColor,
-      systemOverlayStyle: onGradient ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
-      title: Text('My Profile', style: GoogleFonts.lato(fontWeight: FontWeight.bold)),
+      systemOverlayStyle: onGradient
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
+      title: Text(
+        'My Profile',
+        style: GoogleFonts.lato(fontWeight: FontWeight.bold),
+      ),
       centerTitle: true,
     );
   }
 
-  Widget _buildHeaderSection(_ProfileUiModel profile, Student student, double topPadding) {
+  Widget _buildHeaderSection(
+    _ProfileUiModel profile,
+    Student student,
+    double topPadding,
+  ) {
     final completion = _calculateProfileCompletion(profile).clamp(0.0, 1.0);
     final mediaSize = MediaQuery.of(context).size;
-    final double backgroundHeight = (mediaSize.height * 0.2 + topPadding).clamp(topPadding + 180, topPadding + 260);
+    final double backgroundHeight = (mediaSize.height * 0.2 + topPadding).clamp(
+      topPadding + 180,
+      topPadding + 260,
+    );
     final greeting = _buildGreeting(profile.fullName);
     final progressPrompt = _buildProgressPrompt(completion);
 
     return SizedBox(
-      height: backgroundHeight + 233, // Increased by 113 pixels to accommodate moved card
+      height:
+          backgroundHeight +
+          233, // Increased by 113 pixels to accommodate moved card
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -331,14 +377,22 @@ switch (index) {
     );
   }
 
-  Widget _buildProfileSummaryCard(_ProfileUiModel profile, Student student, double completion) {
+  Widget _buildProfileSummaryCard(
+    _ProfileUiModel profile,
+    Student student,
+    double completion,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
       decoration: BoxDecoration(
         color: _profileCardColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 30, offset: const Offset(0, 10)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+          ),
         ],
       ),
       child: Column(
@@ -358,7 +412,9 @@ switch (index) {
                     CircularProgressIndicator(
                       value: 1.0,
                       strokeWidth: 8,
-                      valueColor: AlwaysStoppedAnimation<Color>(_sparkPrimaryPurple.withOpacity(0.1)),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        _sparkPrimaryPurple.withOpacity(0.1),
+                      ),
                     ),
                     ShaderMask(
                       shaderCallback: (rect) {
@@ -373,7 +429,9 @@ switch (index) {
                         value: value,
                         strokeWidth: 8,
                         strokeCap: StrokeCap.round,
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Colors.white,
+                        ),
                       ),
                     ),
                     Container(
@@ -383,14 +441,26 @@ switch (index) {
                         shape: BoxShape.circle,
                         color: _profileCardColor,
                         boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2)),
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
                         ],
                       ),
                       child: CircleAvatar(
                         radius: 43,
                         backgroundColor: _profileSurfaceColor,
-                        backgroundImage: profile.profilePictureUrl != null ? NetworkImage(profile.profilePictureUrl!) : null,
-                        child: profile.profilePictureUrl == null ? const Icon(Icons.person_rounded, size: 40, color: _sparkPrimaryPurple) : null,
+                        backgroundImage: profile.profilePictureUrl != null
+                            ? NetworkImage(profile.profilePictureUrl!)
+                            : null,
+                        child: profile.profilePictureUrl == null
+                            ? const Icon(
+                                Icons.person_rounded,
+                                size: 40,
+                                color: _sparkPrimaryPurple,
+                              )
+                            : null,
                       ),
                     ),
                     Positioned(
@@ -402,10 +472,19 @@ switch (index) {
                         elevation: 3,
                         child: IconButton(
                           tooltip: 'Edit photo',
-                          onPressed: () => _openScreen(PersonalInformationScreen(student: student)),
-                          icon: const Icon(Icons.edit, size: 14, color: Colors.white),
+                          onPressed: () => _openScreen(
+                            PersonalInformationScreen(student: student),
+                          ),
+                          icon: const Icon(
+                            Icons.edit,
+                            size: 14,
+                            color: Colors.white,
+                          ),
                           padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+                          constraints: const BoxConstraints.tightFor(
+                            width: 28,
+                            height: 28,
+                          ),
                         ),
                       ),
                     ),
@@ -422,7 +501,11 @@ switch (index) {
               Flexible(
                 child: Text(
                   profile.fullName,
-                  style: GoogleFonts.lato(fontSize: 22, fontWeight: FontWeight.bold, color: _profileTextColor),
+                  style: GoogleFonts.lato(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: _profileTextColor,
+                  ),
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -435,33 +518,66 @@ switch (index) {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const SizedBox(width: 4),
-                      Icon(Icons.verified, color: Colors.blue.shade700, size: 18),
+                      Icon(
+                        Icons.verified,
+                        color: Colors.blue.shade700,
+                        size: 18,
+                      ),
                     ],
                   ),
                 )
               else
                 Tooltip(
-                  message: 'Profile not recognized as academic.\nUse your university email to get verified.',
-                  child: Icon(Icons.warning_amber_rounded, color: _sparkOrange, size: 20),
+                  message:
+                      'Profile not recognized as academic.\nUse your university email to get verified.',
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    color: _sparkOrange,
+                    size: 20,
+                  ),
                 ),
             ],
           ),
           if (profile.username != null) ...[
             const SizedBox(height: 4),
-            Text('@${profile.username}', style: GoogleFonts.lato(fontSize: 15, color: _profileTextColor.withOpacity(0.6))),
+            Text(
+              '@${profile.username}',
+              style: GoogleFonts.lato(
+                fontSize: 15,
+                color: _profileTextColor.withOpacity(0.6),
+              ),
+            ),
           ],
           if (profile.shortSummary != null) ...[
             const SizedBox(height: 12),
-            Text(profile.shortSummary!, style: GoogleFonts.lato(color: _profileTextColor.withOpacity(0.8), height: 1.4, fontSize: 14), textAlign: TextAlign.center),
+            Text(
+              profile.shortSummary!,
+              style: GoogleFonts.lato(
+                color: _profileTextColor.withOpacity(0.8),
+                height: 1.4,
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ],
           if (profile.location != null) ...[
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.location_on_outlined, size: 16, color: _sparkPrimaryPurple.withOpacity(0.8)),
+                Icon(
+                  Icons.location_on_outlined,
+                  size: 16,
+                  color: _sparkPrimaryPurple.withOpacity(0.8),
+                ),
                 const SizedBox(width: 4),
-                Text(profile.location!, style: GoogleFonts.lato(color: _sparkPrimaryPurple.withOpacity(0.9), fontWeight: FontWeight.w500)),
+                Text(
+                  profile.location!,
+                  style: GoogleFonts.lato(
+                    color: _sparkPrimaryPurple.withOpacity(0.9),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ],
@@ -471,9 +587,18 @@ switch (index) {
             spacing: 8,
             runSpacing: 8,
             children: [
-              if (profile.phoneNumber != null) _InfoPill(icon: Icons.phone_outlined, label: profile.phoneNumber!),
-              if (profile.university.isNotEmpty) _InfoPill(icon: Icons.school_outlined, label: profile.university),
-              if (profile.major.isNotEmpty) _InfoPill(icon: Icons.book_outlined, label: profile.major),
+              if (profile.phoneNumber != null)
+                _InfoPill(
+                  icon: Icons.phone_outlined,
+                  label: profile.phoneNumber!,
+                ),
+              if (profile.university.isNotEmpty)
+                _InfoPill(
+                  icon: Icons.school_outlined,
+                  label: profile.university,
+                ),
+              if (profile.major.isNotEmpty)
+                _InfoPill(icon: Icons.book_outlined, label: profile.major),
             ],
           ),
         ],
@@ -486,12 +611,36 @@ switch (index) {
     return _InfoCard(
       title: 'Personal Information',
       children: [
-        _StyledInfoTile(icon: Icons.person_outline, label: 'Full Name', value: profile.fullName),
-        _StyledInfoTile(icon: Icons.alternate_email_outlined, label: 'Email Address', value: profile.email),
-        _StyledInfoTile(icon: Icons.tag, label: 'Username', value: profile.username != null ? '@${profile.username}' : null),
-        _StyledInfoTile(icon: Icons.phone_outlined, label: 'Phone Number', value: profile.phoneNumber),
-        _StyledInfoTile(icon: Icons.location_on_outlined, label: 'Location', value: profile.location),
-        _StyledInfoTile(icon: Icons.notes_outlined, label: 'Short Summary', value: profile.shortSummary),
+        _StyledInfoTile(
+          icon: Icons.person_outline,
+          label: 'Full Name',
+          value: profile.fullName,
+        ),
+        _StyledInfoTile(
+          icon: Icons.alternate_email_outlined,
+          label: 'Email Address',
+          value: profile.email,
+        ),
+        _StyledInfoTile(
+          icon: Icons.tag,
+          label: 'Username',
+          value: profile.username != null ? '@${profile.username}' : null,
+        ),
+        _StyledInfoTile(
+          icon: Icons.phone_outlined,
+          label: 'Phone Number',
+          value: profile.phoneNumber,
+        ),
+        _StyledInfoTile(
+          icon: Icons.location_on_outlined,
+          label: 'Location',
+          value: profile.location,
+        ),
+        _StyledInfoTile(
+          icon: Icons.notes_outlined,
+          label: 'Short Summary',
+          value: profile.shortSummary,
+        ),
       ],
     );
   }
@@ -500,11 +649,31 @@ switch (index) {
     return _InfoCard(
       title: 'Academic Background',
       children: [
-        _StyledInfoTile(icon: Icons.school_outlined, label: 'University', value: profile.university),
-        _StyledInfoTile(icon: Icons.book_outlined, label: 'Major', value: profile.major),
-        _StyledInfoTile(icon: Icons.layers_outlined, label: 'Level', value: profile.level),
-        _StyledInfoTile(icon: Icons.star_border_outlined, label: 'GPA', value: profile.gpa),
-        _StyledInfoTile(icon: Icons.calendar_today_outlined, label: 'Expected Graduation', value: profile.graduationDate),
+        _StyledInfoTile(
+          icon: Icons.school_outlined,
+          label: 'University',
+          value: profile.university,
+        ),
+        _StyledInfoTile(
+          icon: Icons.book_outlined,
+          label: 'Major',
+          value: profile.major,
+        ),
+        _StyledInfoTile(
+          icon: Icons.layers_outlined,
+          label: 'Level',
+          value: profile.level,
+        ),
+        _StyledInfoTile(
+          icon: Icons.star_border_outlined,
+          label: 'GPA',
+          value: profile.gpa,
+        ),
+        _StyledInfoTile(
+          icon: Icons.calendar_today_outlined,
+          label: 'Expected Graduation',
+          value: profile.graduationDate,
+        ),
       ],
     );
   }
@@ -524,34 +693,60 @@ switch (index) {
             child: Wrap(
               spacing: 8.0,
               runSpacing: 8.0,
-              children: profile.skills.map((skill) => Chip(
-                label: Text(skill),
-                backgroundColor: _sparkPrimaryPurple.withOpacity(0.1),
-                labelStyle: const TextStyle(color: _sparkPrimaryPurple, fontWeight: FontWeight.w500),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              )).toList(),
+              children: profile.skills
+                  .map(
+                    (skill) => Chip(
+                      label: Text(skill),
+                      backgroundColor: _sparkPrimaryPurple.withOpacity(0.1),
+                      labelStyle: const TextStyle(
+                        color: _sparkPrimaryPurple,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
-          )
+          ),
       ],
     );
   }
 
   Widget _buildDocumentsView() {
-    return _InfoCard(title: 'Documents', children: [
-      ListTile(
-        leading: Icon(Icons.info_outline, color: _profileTextColor.withOpacity(0.6)),
-        title: const Text('This section is for managing your uploaded documents like transcripts and certificates.'),
-      )
-    ]);
+    return _InfoCard(
+      title: 'Documents',
+      children: [
+        ListTile(
+          leading: Icon(
+            Icons.info_outline,
+            color: _profileTextColor.withOpacity(0.6),
+          ),
+          title: const Text(
+            'This section is for managing your uploaded documents like transcripts and certificates.',
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildGeneratedResumesView() {
-    return _InfoCard(title: 'Generated Resumes', children: [
-      ListTile(
-        leading: Icon(Icons.info_outline, color: _profileTextColor.withOpacity(0.6)),
-        title: const Text('Your tailored resumes for different job applications will appear here.'),
-      )
-    ]);
+    return _InfoCard(
+      title: 'Generated Resumes',
+      children: [
+        ListTile(
+          leading: Icon(
+            Icons.info_outline,
+            color: _profileTextColor.withOpacity(0.6),
+          ),
+          title: const Text(
+            'Your tailored resumes for different job applications will appear here.',
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildFollowedCompaniesView(_ProfileUiModel profile) {
@@ -564,10 +759,12 @@ switch (index) {
             child: Center(child: Text('You are not following any companies.')),
           )
         else
-          ...profile.followedCompanies.map((company) => ListTile(
-                leading: const Icon(Icons.business_outlined),
-                title: Text(company),
-              )),
+          ...profile.followedCompanies.map(
+            (company) => ListTile(
+              leading: const Icon(Icons.business_outlined),
+              title: Text(company),
+            ),
+          ),
       ],
     );
   }
@@ -581,32 +778,41 @@ switch (index) {
             icon: Icons.person_outline,
             title: 'Personal Details',
             subtitle: 'Name, contact, photo',
-            onTap: () => _openScreen(StaticInfoViewerPage(
-              title: 'Personal Details',
-              content: _buildPersonalDetailsView(profile),
-              editingPage: PersonalInformationScreen(student: student),
-            )),
+            onTap: () => _openScreen(
+              StaticInfoViewerPage(
+                title: 'Personal Details',
+                content: _buildPersonalDetailsView(profile),
+                editingPage: PersonalInformationScreen(student: student),
+              ),
+            ),
           ),
           _MenuItemData(
             icon: Icons.school_outlined,
             title: 'Academic Info',
             subtitle: 'University, major, GPA',
-            onTap: () => _openScreen(StaticInfoViewerPage(
-              title: 'Academic Info',
-              content: _buildAcademicInfoView(profile),
-              editingPage: AcademicInfoScreen(student: student),
-            )),
+            onTap: () => _openScreen(
+              StaticInfoViewerPage(
+                title: 'Academic Info',
+                content: _buildAcademicInfoView(profile),
+                editingPage: AcademicInfoScreen(student: student),
+              ),
+            ),
           ),
           _MenuItemData(
-              icon: Icons.psychology_outlined,
-              title: 'Skills',
-              subtitle: 'You have ${profile.skills.length} skills',
-              trailing: profile.skills.isEmpty ? null : _BadgeChip(label: profile.skills.length.toString()),
-              onTap: () => _openScreen(StaticInfoViewerPage(
-                    title: 'Skills',
-                    content: _buildSkillsView(profile),
-                    editingPage: SkillsScreen(student: student),
-                  ))),
+            icon: Icons.psychology_outlined,
+            title: 'Skills',
+            subtitle: 'You have ${profile.skills.length} skills',
+            trailing: profile.skills.isEmpty
+                ? null
+                : _BadgeChip(label: profile.skills.length.toString()),
+            onTap: () => _openScreen(
+              StaticInfoViewerPage(
+                title: 'Skills',
+                content: _buildSkillsView(profile),
+                editingPage: SkillsScreen(student: student),
+              ),
+            ),
+          ),
         ],
       ),
       _MenuSection(
@@ -616,42 +822,84 @@ switch (index) {
             icon: Icons.folder_open_outlined,
             title: 'Documents',
             subtitle: 'Upload transcripts & certificates',
-            onTap: () => _openScreen(StaticInfoViewerPage(
-              title: 'Documents',
-              content: _buildDocumentsView(),
-              editingPage: DocumentsScreen(student: student),
-            )),
+            onTap: () => _openScreen(
+              StaticInfoViewerPage(
+                title: 'Documents',
+                content: _buildDocumentsView(),
+                editingPage: DocumentsScreen(student: student),
+              ),
+            ),
           ),
           _MenuItemData(
             icon: Icons.description_outlined,
             title: 'Generated Resumes',
             subtitle: 'Tailored resumes for employers',
-            onTap: () => _openScreen(StaticInfoViewerPage(
-              title: 'Generated Resumes',
-              content: _buildGeneratedResumesView(),
-              editingPage: GeneratedResumesScreen(student: student),
-            )),
+            onTap: () => _openScreen(
+              StaticInfoViewerPage(
+                title: 'Generated Resumes',
+                content: _buildGeneratedResumesView(),
+                editingPage: GeneratedResumesScreen(student: student),
+              ),
+            ),
           ),
           _MenuItemData(
-              icon: Icons.bookmark_border_outlined,
-              title: 'Followed Companies',
-              subtitle: 'Following ${profile.followedCompanies.length} companies',
-              trailing: profile.followedCompanies.isEmpty ? null : _BadgeChip(label: profile.followedCompanies.length.toString()),
-              onTap: () => _openScreen(StaticInfoViewerPage(
-                    title: 'Followed Companies',
-                    content: _buildFollowedCompaniesView(profile),
-                    editingPage: FollowedCompaniesScreen(student: student),
-                  ))),
+            icon: Icons.bookmark_border_outlined,
+            title: 'Followed Companies',
+            subtitle: 'Following ${profile.followedCompanies.length} companies',
+            trailing: profile.followedCompanies.isEmpty
+                ? null
+                : _BadgeChip(
+                    label: profile.followedCompanies.length.toString(),
+                  ),
+            onTap: () => _openScreen(
+              StaticInfoViewerPage(
+                title: 'Followed Companies',
+                content: _buildFollowedCompaniesView(profile),
+                editingPage: FollowedCompaniesScreen(student: student),
+              ),
+            ),
+          ),
         ],
       ),
       _MenuSection(
         title: 'Account',
         items: [
-          _MenuItemData(icon: Icons.tune_outlined, title: 'Preferences', subtitle: 'Notifications & privacy', onTap: () => _openScreen(SettingsPreferencesScreen(student: student))),
-          _MenuItemData(icon: Icons.lock_outline, title: 'Change Password', subtitle: 'Keep your account secure', onTap: () => _openScreen(const ChangePasswordScreen())),
-          _MenuItemData(icon: Icons.alternate_email, title: 'Change Email', subtitle: 'Update your login email', onTap: () => _openScreen(ChangeEmailScreen(currentEmail: profile.email))),
-          _MenuItemData(icon: Icons.delete_forever_outlined, title: 'Delete Account', subtitle: 'Permanently erase your account', iconColor: _sparkRed, titleColor: _sparkRed, onTap: () => _openScreen(const DeleteAccountScreen())),
-          _MenuItemData(icon: Icons.logout, title: 'Logout', subtitle: 'Sign out of this device', iconColor: _sparkRed, titleColor: _sparkRed, onTap: _showLogoutDialog),
+          _MenuItemData(
+            icon: Icons.tune_outlined,
+            title: 'Preferences',
+            subtitle: 'Notifications & privacy',
+            onTap: () =>
+                _openScreen(SettingsPreferencesScreen(student: student)),
+          ),
+          _MenuItemData(
+            icon: Icons.lock_outline,
+            title: 'Change Password',
+            subtitle: 'Keep your account secure',
+            onTap: () => _openScreen(const ChangePasswordScreen()),
+          ),
+          _MenuItemData(
+            icon: Icons.alternate_email,
+            title: 'Change Email',
+            subtitle: 'Update your login email',
+            onTap: () =>
+                _openScreen(ChangeEmailScreen(currentEmail: profile.email)),
+          ),
+          _MenuItemData(
+            icon: Icons.delete_forever_outlined,
+            title: 'Delete Account',
+            subtitle: 'Permanently erase your account',
+            iconColor: _sparkRed,
+            titleColor: _sparkRed,
+            onTap: () => _openScreen(const DeleteAccountScreen()),
+          ),
+          _MenuItemData(
+            icon: Icons.logout,
+            title: 'Logout',
+            subtitle: 'Sign out of this device',
+            iconColor: _sparkRed,
+            titleColor: _sparkRed,
+            onTap: _showLogoutDialog,
+          ),
         ],
       ),
     ];
@@ -676,15 +924,18 @@ switch (index) {
               const SizedBox(height: 8),
               Container(
                 decoration: BoxDecoration(
-                    color: _profileCardColor,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 5)),
-                    ]),
-                child: Column(
-                  children: buildSectionTiles(sections[i]),
+                  color: _profileCardColor,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
                 ),
-              )
+                child: Column(children: buildSectionTiles(sections[i])),
+              ),
             ],
           ],
         ),
@@ -702,17 +953,38 @@ switch (index) {
           color: (item.iconColor ?? _sparkPrimaryPurple).withOpacity(0.1),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(item.icon, color: item.iconColor ?? _sparkPrimaryPurple, size: 22),
+        child: Icon(
+          item.icon,
+          color: item.iconColor ?? _sparkPrimaryPurple,
+          size: 22,
+        ),
       ),
-      title: Text(item.title, style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w600, color: item.titleColor ?? _profileTextColor)),
-      subtitle: item.subtitle != null ? Text(item.subtitle!, style: GoogleFonts.lato(color: _profileTextColor.withOpacity(0.7), fontSize: 13)) : null,
-      trailing: item.trailing ?? const Icon(Icons.chevron_right, size: 20, color: Colors.grey),
+      title: Text(
+        item.title,
+        style: GoogleFonts.lato(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: item.titleColor ?? _profileTextColor,
+        ),
+      ),
+      subtitle: item.subtitle != null
+          ? Text(
+              item.subtitle!,
+              style: GoogleFonts.lato(
+                color: _profileTextColor.withOpacity(0.7),
+                fontSize: 13,
+              ),
+            )
+          : null,
+      trailing:
+          item.trailing ??
+          const Icon(Icons.chevron_right, size: 20, color: Colors.grey),
       onTap: item.onTap,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 
-Widget _buildBottomNavigationBar() {
+  Widget _buildBottomNavigationBar() {
     return CustomBottomNavBar(
       currentIndex: _currentIndex,
       onTap: _onNavigationTap,
@@ -730,10 +1002,20 @@ Widget _buildBottomNavigationBar() {
             SizedBox(
               width: 32,
               height: 32,
-              child: CircularProgressIndicator(strokeWidth: 3, color: _sparkPrimaryPurple),
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                color: _sparkPrimaryPurple,
+              ),
             ),
             SizedBox(height: 16),
-            Text('Loading profile...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: _profileTextColor)),
+            Text(
+              'Loading profile...',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: _profileTextColor,
+              ),
+            ),
           ],
         ),
       ),
@@ -748,17 +1030,36 @@ Widget _buildBottomNavigationBar() {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 64, color: _withAlpha(_profileTextColor, 0.3)),
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: _withAlpha(_profileTextColor, 0.3),
+            ),
             const SizedBox(height: 16),
-            const Text('Profile data not found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: _profileTextColor)),
+            const Text(
+              'Profile data not found',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: _profileTextColor,
+              ),
+            ),
             const SizedBox(height: 8),
-            Text('Please try refreshing or contact support', style: TextStyle(fontSize: 14, color: _withAlpha(_profileTextColor, 0.6))),
+            Text(
+              'Please try refreshing or contact support',
+              style: TextStyle(
+                fontSize: 14,
+                color: _withAlpha(_profileTextColor, 0.6),
+              ),
+            ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () => _loadProfile(showSpinner: true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _sparkPrimaryPurple,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               child: const Text('Retry', style: TextStyle(color: Colors.white)),
             ),
@@ -807,12 +1108,16 @@ class _ProfileUiModel {
   });
 
   factory _ProfileUiModel.fromStudent(Student student) {
-    String? safePhone = student.phoneNumber.trim().isEmpty ? null : student.phoneNumber.trim();
+    String? safePhone = student.phoneNumber.trim().isEmpty
+        ? null
+        : student.phoneNumber.trim();
     final email = student.email.toLowerCase();
     return _ProfileUiModel(
       fullName: '${student.firstName} ${student.lastName}'.trim(),
       email: student.email,
-      username: student.username.trim().isEmpty ? null : student.username.trim(),
+      username: student.username.trim().isEmpty
+          ? null
+          : student.username.trim(),
       phoneNumber: safePhone,
       university: student.university,
       major: student.major,
@@ -822,9 +1127,14 @@ class _ProfileUiModel {
       skills: student.skills.where((skill) => skill.trim().isNotEmpty).toList(),
       shortSummary: _emptyToNull(student.shortSummary),
       profilePictureUrl: _emptyToNull(student.profilePictureUrl),
-      followedCompanies: student.followedCompanies.where((company) => company.trim().isNotEmpty).toList(),
+      followedCompanies: student.followedCompanies
+          .where((company) => company.trim().isNotEmpty)
+          .toList(),
       location: _emptyToNull(student.location),
-      isAcademic: email.endsWith('.edu') || email.contains('.edu.') || email.contains('.ac.'),
+      isAcademic:
+          email.endsWith('.edu') ||
+          email.contains('.edu.') ||
+          email.contains('.ac.'),
     );
   }
 
@@ -958,9 +1268,9 @@ class StaticInfoViewerPage extends StatelessWidget {
   });
 
   Future<void> _navigateToEdit(BuildContext context) async {
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => editingPage),
-    );
+    final result = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => editingPage));
 
     if (result == true && context.mounted) {
       Navigator.of(context).pop(true);
@@ -976,7 +1286,10 @@ class StaticInfoViewerPage extends StatelessWidget {
         elevation: 0,
         foregroundColor: _profileTextColor,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
-        title: Text(title, style: GoogleFonts.lato(fontWeight: FontWeight.bold)),
+        title: Text(
+          title,
+          style: GoogleFonts.lato(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         actions: [
           Padding(
@@ -1050,13 +1363,21 @@ class _StyledInfoTile extends StatelessWidget {
 
     return ListTile(
       leading: Icon(icon, color: _profileTextColor.withOpacity(0.6)),
-      title: Text(displayValue, style: GoogleFonts.lato(fontSize: 16, color: _profileTextColor)),
-      subtitle: Text(label, style: GoogleFonts.lato(fontSize: 13, color: _profileTextColor.withOpacity(0.7))),
+      title: Text(
+        displayValue,
+        style: GoogleFonts.lato(fontSize: 16, color: _profileTextColor),
+      ),
+      subtitle: Text(
+        label,
+        style: GoogleFonts.lato(
+          fontSize: 13,
+          color: _profileTextColor.withOpacity(0.7),
+        ),
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
     );
   }
 }
-
 
 // --- 9. Change Email Screen ---
 
@@ -1097,12 +1418,18 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
         newEmail: _emailController.text,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email updated. Please verify the new address.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Email updated. Please verify the new address.'),
+        ),
+      );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -1120,20 +1447,28 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(labelText: 'New Email'),
-                validator: (value) => (value == null || !value.contains('@')) ? 'Enter a valid email' : null,
+                validator: (value) => (value == null || !value.contains('@'))
+                    ? 'Enter a valid email'
+                    : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Password'),
-                validator: (value) => (value == null || value.isEmpty) ? 'Enter your password' : null,
+                validator: (value) => (value == null || value.isEmpty)
+                    ? 'Enter your password'
+                    : null,
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Update Email'),
               ),
             ],
