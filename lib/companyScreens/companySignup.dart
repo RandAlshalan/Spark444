@@ -734,10 +734,7 @@ class _CompanySignupState extends State<CompanySignup> {
                   const Text("Want to go back?"),
                   TextButton(
                     onPressed: () {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-                        (Route<dynamic> route) => false,
-                      );
+                      Navigator.of(context).pop();
                     },
                     child: const Text('Welcome Page', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF422F5D))),
                   ),

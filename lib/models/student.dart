@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Student {
+  // The document ID from Firestore.
+  final String id;
+
   final String email;
   String username;
   String firstName;
@@ -24,6 +27,7 @@ class Student {
   String? location;
 
   Student({
+    required this.id, // ID is now required
     required this.email,
     required this.username,
     required this.firstName,
@@ -76,6 +80,7 @@ class Student {
     bool locationSetToNull = false,
   }) {
     return Student(
+      id: id, // The ID does not change when copying
       email: email ?? this.email,
       username: username ?? this.username,
       firstName: firstName ?? this.firstName,
@@ -101,7 +106,7 @@ class Student {
     );
   }
 
-  /// لتحويل Student إلى Map (تخزين في Firestore)
+  /// Converts the Student object to a Map for storing in Firestore.
   Map<String, dynamic> toMap({bool includeMetadata = true}) {
     final map = <String, dynamic>{
       'email': email,
@@ -135,29 +140,33 @@ class Student {
     return map;
   }
 
-  factory Student.fromMap(Map<String, dynamic> map) {
+  /// Creates a Student object from a Firestore document.
+  factory Student.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return Student(
-      email: map['email'],
-      username: map['username'],
-      firstName: map['firstName'],
-      lastName: map['lastName'],
-      university: map['university'],
-      major: map['major'],
-      phoneNumber: map['phoneNumber'],
-      level: map['level'],
-      expectedGraduationDate: map['expectedGraduationDate'],
-      gpa: map['gpa'] != null ? double.tryParse(map['gpa'].toString()) : null,
-      skills: List<String>.from(map['skills'] ?? []),
-      profilePictureUrl: map['profilePictureUrl'],
-      shortSummary: map['shortSummary'],
-      userType: map['userType'],
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
-      isVerified: map['isVerified'] ?? false,
-      isAcademic: map['isAcademic'] ?? false,
-      resumeVisibility: map['resumeVisibility'] ?? "private",
-      documentsVisibility: map['documentsVisibility'] ?? "private",
-      followedCompanies: List<String>.from(map['followedCompanies'] ?? []),
-      location: map['location'],
+      id: doc.id, // Assign the document ID
+      email: data['email'] ?? '',
+      username: data['username'] ?? '',
+      firstName: data['firstName'] ?? '',
+      lastName: data['lastName'] ?? '',
+      university: data['university'] ?? '',
+      major: data['major'] ?? '',
+      phoneNumber: data['phoneNumber'] ?? '',
+      level: data['level'],
+      expectedGraduationDate: data['expectedGraduationDate'],
+      gpa: data['gpa'] != null ? double.tryParse(data['gpa'].toString()) : null,
+      skills: List<String>.from(data['skills'] ?? []),
+      profilePictureUrl: data['profilePictureUrl'],
+      shortSummary: data['shortSummary'],
+      userType: data['userType'] ?? 'student',
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+      isVerified: data['isVerified'] ?? false,
+      isAcademic: data['isAcademic'] ?? false,
+      resumeVisibility: data['resumeVisibility'] ?? "private",
+      documentsVisibility: data['documentsVisibility'] ?? "private",
+      followedCompanies: List<String>.from(data['followedCompanies'] ?? []),
+      location: data['location'],
     );
   }
 }
+

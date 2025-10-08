@@ -1,105 +1,109 @@
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/opportunity.dart';
-import 'dart:async'; // Keep this if you use other async operations, though not strictly needed for this specific change.
 
 class OpportunityService {
-  // Initialize Firestore instance
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // أنت تستخدم `withConverter` هنا بشكل ممتاز، وهذا يجعل الكود أفضل
+  final CollectionReference<Opportunity> _opportunitiesRef = FirebaseFirestore
+      .instance
+      .collection('opportunities')
+      .withConverter<Opportunity>(
+        fromFirestore: (snapshot, _) => Opportunity.fromFirestore(snapshot),
+        toFirestore: (opportunity, _) => opportunity.toFirestore(),
+      );
 
-  Future<List<Opportunity>> getCompanyOpportunities(String companyId) async {
-    if (companyId.isEmpty) {
-      // Handle cases where companyId might be empty (e.g., no company logged in)
-      print('Company ID is empty, cannot fetch opportunities.');
-      return [];
+  // ... (دالة getOpportunities تبقى كما هي لأنها صحيحة)
+  Future<List<Opportunity>> getOpportunities({
+    String? searchQuery,
+    String? type,
+    String? city,
+    String? duration,
+    String? locationType,
+    bool? isPaid,
+  }) async {
+    Query<Opportunity> query = _opportunitiesRef;
+
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      query = query
+          .where('role', isGreaterThanOrEqualTo: searchQuery)
+          .where('role', isLessThanOrEqualTo: '$searchQuery\uf8ff');
+    }
+    if (type != null && type != 'all') {
+      query = query.where('type', isEqualTo: type);
+    }
+    if (city != null && city.isNotEmpty) {
+      query = query.where('location', isEqualTo: city);
+    }
+    if (locationType != null && locationType.isNotEmpty) {
+      query = query.where('workMode', isEqualTo: locationType);
+    }
+    if (isPaid != null) {
+      query = query.where('isPaid', isEqualTo: isPaid);
     }
 
+    query = query.orderBy('postedDate', descending: true);
+
+    final snapshot = await query.get();
+    return snapshot.docs.map((doc) => doc.data()).toList();
+  }
+
+  // ... (دالة getCompanyOpportunities تبقى كما هي لأنها صحيحة)
+  Future<List<Opportunity>> getCompanyOpportunities(String companyId) async {
+    if (companyId.isEmpty) {
+      return [];
+    }
     try {
-      // Query the 'opportunities' collection in Firestore
-      // Assuming each opportunity document has a 'companyId' field
-      // that links it to the company that posted it.
-      QuerySnapshot querySnapshot = await _firestore
-          .collection('opportunities') // Your opportunities collection name
-          .where('companyId', isEqualTo: companyId) // Filter by company ID
-          // .orderBy('timestamp', descending: true) // Optional: order by creation date
+      final querySnapshot = await _opportunitiesRef
+          .where('companyId', isEqualTo: companyId)
           .orderBy('postedDate', descending: true)
           .get();
-
-      // Convert the documents to a list of Opportunity objects
-      return querySnapshot.docs
-          .map((doc) => Opportunity.fromFirestore(doc))
-          .toList();
+      return querySnapshot.docs.map((doc) => doc.data()).toList();
     } catch (e) {
       print('Error fetching opportunities: $e');
-      // Re-throw the exception so the UI can catch and display an error
       rethrow;
     }
   }
 
-  // --- Add methods for adding, updating, and deleting opportunities ---
-
-  // Example: Add a new opportunity
+  // ✨======= هذا هو الكود المصحح لدالة الإضافة =======✨
   Future<void> addOpportunity(Opportunity opportunity) async {
     try {
-      /*await _firestore.collection('opportunities').add({
-        'companyId': opportunity.companyId,
-        'name': opportunity.name,
-        'role': opportunity.role,
-        'isPaid': opportunity.isPaid,
-        'timestamp': FieldValue.serverTimestamp(), // Add a timestamp for ordering
-        // Add other fields from your Opportunity model
-      });*/
+      // بما أن `_opportunitiesRef` معرفة بـ `withConverter`,
+      // يمكننا تمرير كائن `Opportunity` مباشرةً وهو سيقوم بالتحويل تلقائيًا.
+      // لكن بما أننا نريد إضافة وقت النشر من السيرفر، سنقوم بتعديل بسيط.
+      
+      // 1. حوّل الكائن إلى Map باستخدام دالتك
       final data = opportunity.toFirestore();
-      data['postedDate'] =
-          FieldValue.serverTimestamp(); // Always set on creation
-      await _firestore.collection('opportunities').add(data);
+      
+      // 2. أضف وقت النشر من السيرفر (Server Timestamp)
+      data['postedDate'] = FieldValue.serverTimestamp(); 
+      
+      // 3. أضف الـ Map مباشرةً إلى Firestore (بدون تحويلات معقدة)
+      await FirebaseFirestore.instance.collection('opportunities').add(data);
+
     } catch (e) {
       print('Error adding opportunity: $e');
       rethrow;
     }
   }
+  // ✨================ نهاية الكود المصحح ================✨
 
-  // Example: Update an existing opportunity
+
+  // ... (دالة updateOpportunity تبقى كما هي لأنها صحيحة)
   Future<void> updateOpportunity(Opportunity opportunity) async {
     try {
-      /* await _firestore.collection('opportunities').doc(opportunity.id).update({
-        'name': opportunity.name,
-        'role': opportunity.role,
-        'isPaid': opportunity.isPaid,
-        // Update other fields
-      });*/
-      await _firestore
-          .collection('opportunities')
-          .doc(opportunity.id)
-          .update(opportunity.toFirestore());
+      await _opportunitiesRef.doc(opportunity.id).update(opportunity.toFirestore());
     } catch (e) {
       print('Error updating opportunity: $e');
       rethrow;
     }
   }
 
-  // Example: Delete an opportunity
+  // ... (دالة deleteOpportunity تبقى كما هي لأنها صحيحة)
   Future<void> deleteOpportunity(String opportunityId) async {
     try {
-      // In PostOpportunityPage, you are calling .add() directly, not this service method.
-      // Let's adjust that page to use this service.
-      // For now, this method is correct as is.
-      await _firestore.collection('opportunities').doc(opportunityId).delete();
+      await _opportunitiesRef.doc(opportunityId).delete();
     } catch (e) {
       print('Error deleting opportunity: $e');
       rethrow;
     }
   }
 }
-
-// In PostOpportunityPage.dart, you are calling Firestore directly.
-// It's better practice to use your service.
-// Let's modify PostOpportunityPage to use OpportunityService.
-
-/*
-  In PostOpportunityPage.dart, inside _postOpportunity():
-
-  Replace:
-    await FirebaseFirestore.instance.collection('opportunities').add(newOpportunity.toFirestore());
-  With:
-    await OpportunityService().addOpportunity(newOpportunity);
-*/

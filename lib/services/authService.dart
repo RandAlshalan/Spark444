@@ -398,7 +398,7 @@ class AuthService {
   Future<Student?> getStudent(String uid) async {
     final doc = await _db.collection(kStudentCol).doc(uid).get();
     if (!doc.exists) return null;
-    return Student.fromMap(doc.data()!);
+    return Student.fromFirestore(doc);
   }
 
   Future<void> updateStudent(String uid, Student student) async {

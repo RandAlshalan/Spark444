@@ -308,7 +308,7 @@ class _StudentSignupState extends State<StudentSignup> {
         expectedGraduationDate: _graduationController.text.isNotEmpty ? _graduationController.text.trim() : null,
         gpa: _gpaController.text.isNotEmpty ? double.tryParse(_gpaController.text.trim()) : null,
         skills: _selectedSkills,
-        location: finalLocation,
+        location: finalLocation, id: '',
       );
 
       await _authService.signUpStudent(student, _passwordController.text.trim());

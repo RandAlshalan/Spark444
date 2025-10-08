@@ -10,6 +10,8 @@ import '../../../services/authService.dart';
 import '../models/profile_ui_model.dart'; // Ensure this file exists
 import '/studentScreens/studentEditProfile.dart'; // Ensure this file exists
 import '../studentScreens/welcomeScreen.dart';
+import '../widgets/CustomBottomNavBar.dart';
+import '../studentScreens/studentOppPage.dart';
 
 // A placeholder for the login screen to navigate to after logout
 class LoginScreen extends StatelessWidget {
@@ -168,15 +170,37 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
     );
   }
 
-  void _onNavigationTap(int index) {
-    if (!mounted) return; // Fix: Check if widget is still mounted
-    if (_currentIndex == index) return;
-
-    setState(() => _currentIndex = index);
-    const placeholders = ['Home page', 'Companies page', 'Jobs page', null, 'Settings page'];
-    final message = placeholders[index];
-    if (message != null) _showInfoMessage('$message coming soon!');
+ void _onNavigationTap(int index) {
+    if (!mounted) return;
+    if (_currentIndex == index) {
+      // Profile is still at index 3
+      if (index == 3) {
+        _showInfoMessage('Already on profile page');
+      }
+      return;
+    }
+switch (index) {
+    case 0: // Home
+      _showInfoMessage('Home page coming soon!');
+      // When ready:
+      // Navigator.push(context, MaterialPageRoute(builder: (context) => const HomePage()));
+      break;
+    case 1: // Companies
+      _showInfoMessage('Companies page coming soon!');
+      // When ready:
+      // Navigator.push(context, MaterialPageRoute(builder: (context) => const CompaniesPage()));
+      break;
+    case 2: // Opportunities
+      // Navigate to your existing OpportunitiesPage
+      // Fix: 'S' is uppercase
+     Navigator.push(context, MaterialPageRoute(builder: (context) => studentOppPgae()));
+      break;
+    case 3: // Profile
+      // This is the current page, so we don't need to do anything.
+      // The check at the top of the function already handles this.
+      break;
   }
+}
 
   Future<void> _openScreen(Widget page) async {
     final result = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => page));
@@ -235,6 +259,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
 
   PreferredSizeWidget _buildAppBar({bool onGradient = false}) {
     return AppBar(
+      automaticallyImplyLeading: false,
       backgroundColor: onGradient ? Colors.transparent : _profileBackgroundColor,
       elevation: 0,
       foregroundColor: onGradient ? Colors.white : _profileTextColor,
@@ -247,7 +272,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
   Widget _buildHeaderSection(_ProfileUiModel profile, Student student, double topPadding) {
     final completion = _calculateProfileCompletion(profile).clamp(0.0, 1.0);
     final mediaSize = MediaQuery.of(context).size;
-    final double backgroundHeight = (mediaSize.height * 0.36 + topPadding).clamp(topPadding + 200, topPadding + 260);
+    final double backgroundHeight = (mediaSize.height * 0.2 + topPadding).clamp(topPadding + 180, topPadding + 260);
     final greeting = _buildGreeting(profile.fullName);
     final progressPrompt = _buildProgressPrompt(completion);
 
@@ -687,38 +712,10 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
     );
   }
 
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: _profileCardColor,
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20, offset: const Offset(0, -5)),
-        ],
-        borderRadius: const BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: _onNavigationTap,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: _profileCardColor,
-          selectedItemColor: _sparkPrimaryPurple,
-          unselectedItemColor: _profileTextColor.withOpacity(0.5),
-          selectedLabelStyle: GoogleFonts.lato(fontWeight: FontWeight.bold),
-          unselectedLabelStyle: GoogleFonts.lato(),
-          selectedFontSize: 12,
-          unselectedFontSize: 12,
-          iconSize: 24,
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.business_outlined), activeIcon: Icon(Icons.business), label: 'Companies'),
-            BottomNavigationBarItem(icon: Icon(Icons.work_outline), activeIcon: Icon(Icons.work), label: 'Jobs'),
-            BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
-          ],
-        ),
-      ),
+Widget _buildBottomNavigationBar() {
+    return CustomBottomNavBar(
+      currentIndex: _currentIndex,
+      onTap: _onNavigationTap,
     );
   }
 
