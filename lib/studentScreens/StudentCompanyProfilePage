@@ -25,7 +25,7 @@ class StudentCompanyProfilePage extends StatelessWidget {
   }
 
   Stream<bool> _isFollowingStream(String studentId) {
-    return FirebaseFirestore.instance.collection('students').doc(studentId).snapshots().map((d) {
+    return FirebaseFirestore.instance.collection('student').doc(studentId).snapshots().map((d) {
       final data = d.data();
       final list = List<String>.from(data?['followedCompanies'] ?? []);
       return list.contains(companyId);
@@ -33,7 +33,7 @@ class StudentCompanyProfilePage extends StatelessWidget {
   }
 
   Future<void> _toggleFollow({required String studentId, required bool following}) async {
-    final ref = FirebaseFirestore.instance.collection('students').doc(studentId);
+    final ref = FirebaseFirestore.instance.collection('student').doc(studentId);
     await ref.set({
       'followedCompanies': following ? FieldValue.arrayRemove([companyId]) : FieldValue.arrayUnion([companyId]),
     }, SetOptions(merge: true));
@@ -368,48 +368,207 @@ class _DetailsTab extends StatelessWidget {
   }
 }
 
-// =================== Opportunities Tab ===================
+// =================== Opportunities Tab (new) ===================
 
 class _OpportunitiesTab extends StatelessWidget {
   const _OpportunitiesTab({required this.companyId});
   final String companyId;
 
+  Stream<QuerySnapshot<Map<String, dynamic>>> _oppsStream() {
+    return FirebaseFirestore.instance
+        .collection('opportunities')
+        .where('companyId', isEqualTo: companyId)
+        .snapshots();
+  }
+
+  /// نخزّن الإشارات المرجعية (Bookmarks) في كولكشن عام اسمه "bookmarks"
+  /// كل وثيقة ID = uid_opportunityId  وتحتوي userId و opportunityId.
+  Stream<Set<String>> _bookmarkedIdsStream(String uid) {
+    return FirebaseFirestore.instance
+        .collection('bookmarks')
+        .where('userId', isEqualTo: uid)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => (d.data()['opportunityId'] ?? '').toString())
+            .where((id) => id.isNotEmpty)
+            .toSet());
+  }
+
+  Future<void> _toggleBookmark({
+    required String uid,
+    required String opportunityId,
+    required bool isBookmarked,
+    required BuildContext context,
+  }) async {
+    final docId = '${uid}_$opportunityId';
+    final ref = FirebaseFirestore.instance.collection('bookmarks').doc(docId);
+    try {
+      if (isBookmarked) {
+        await ref.delete();
+      } else {
+        await ref.set({
+          'userId': uid,
+          'opportunityId': opportunityId,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update bookmark: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final q = FirebaseFirestore.instance.collection('opportunities').where('companyId', isEqualTo: companyId);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      return const Center(child: Text('Please sign in to view opportunities.'));
+    }
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: q.snapshots(),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        final docs = snap.data?.docs ?? [];
-        if (docs.isEmpty) return const Center(child: Text('No opportunities yet.'));
+      stream: _oppsStream(),
+      builder: (context, oppSnap) {
+        if (oppSnap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final oppDocs = oppSnap.data?.docs ?? [];
+        if (oppDocs.isEmpty) {
+          return const Center(child: Text('No opportunities yet.'));
+        }
 
-        return ListView.separated(
-          padding: const EdgeInsets.only(top: 8, bottom: 16),
-          itemCount: docs.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (_, i) {
-            final m = docs[i].data();
-            final title = (m['title'] ?? m['positionTitle'] ?? 'Opportunity').toString();
-            final location = (m['location'] ?? '').toString();
-            final deadlineTs = m['deadline'] is Timestamp ? m['deadline'] as Timestamp : null;
-            final deadline = deadlineTs?.toDate();
+        // نقرأ إشارات المستخدم المرجعية كستريم ثاني
+        return StreamBuilder<Set<String>>(
+          stream: _bookmarkedIdsStream(uid),
+          builder: (context, bmSnap) {
+            final bookmarked = bmSnap.data ?? <String>{};
 
-            return Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: ListTile(
-                leading: const Icon(Icons.work_outline, color: _purple),
-                title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                subtitle: Text([
-                  if (location.isNotEmpty) location,
-                  if (deadline != null) 'Deadline: ${deadline.year}-${deadline.month.toString().padLeft(2, '0')}-${deadline.day.toString().padLeft(2, '0')}',
-                ].join(' • ')),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  // TODO: open opportunity details page
-                },
-              ),
+            return ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              itemCount: oppDocs.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, i) {
+                final m = oppDocs[i].data();
+                final oppId = oppDocs[i].id;
+                final title =
+                    (m['title'] ?? m['positionTitle'] ?? 'Opportunity').toString();
+                final companyName = (m['companyName'] ?? '').toString();
+                final location = (m['location'] ?? '').toString();
+                final modality = (m['modality'] ?? m['workType'] ?? '').toString(); // Remote / In-person ..
+                final paid = (m['paid'] ?? m['isPaid'] ?? false) == true;
+                final desc = (m['shortDescription'] ?? m['description'] ?? '')
+                    .toString();
+
+                final isBookmarked = bookmarked.contains(oppId);
+
+                return Card(
+                  elevation: 0,
+                  color: const Color(0xFFF7F1FB),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // عنوان + Bookmark
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // لوجو بسيط مكان الصورة
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(22),
+                              ),
+                              child: const Icon(Icons.work_outline, color: _purple),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(title,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                  if (companyName.isNotEmpty)
+                                    Text(companyName,
+                                        style: TextStyle(
+                                          color: Colors.black.withOpacity(0.6),
+                                        )),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                isBookmarked
+                                    ? Icons.bookmark
+                                    : Icons.bookmark_border,
+                                color: _purple,
+                              ),
+                              onPressed: () => _toggleBookmark(
+                                uid: uid,
+                                opportunityId: oppId,
+                                isBookmarked: isBookmarked,
+                                context: context,
+                              ),
+                              tooltip: isBookmarked ? 'Remove' : 'Save',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // وصف مختصر
+                        if (desc.isNotEmpty)
+                          Text(
+                            desc,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.black.withOpacity(0.8),
+                              height: 1.35,
+                            ),
+                          ),
+
+                        const SizedBox(height: 12),
+                        // Chips (location / modality / paid)
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 8,
+                          children: [
+                            if (location.isNotEmpty)
+                              _TagChip(icon: Icons.location_on_outlined, label: location),
+                            if (modality.isNotEmpty)
+                              _TagChip(icon: Icons.business_center_outlined, label: modality),
+                            _TagChip(
+                              icon: Icons.attach_money,
+                              label: paid ? 'Paid' : 'Unpaid',
+                            ),
+                          ],
+                        ),
+
+                        // زر “View More” اختياري
+                        // Align(
+                        //   alignment: Alignment.centerRight,
+                        //   child: TextButton(
+                        //     onPressed: () {/* open details page */},
+                        //     child: const Text('View More'),
+                        //   ),
+                        // ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             );
           },
         );
@@ -417,6 +576,39 @@ class _OpportunitiesTab extends StatelessWidget {
     );
   }
 }
+
+// Chip بسيط شبيه بالتصميم
+class _TagChip extends StatelessWidget {
+  const _TagChip({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: _purple),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: _purple,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 
 // =================== Reviews Tab ===================
 
