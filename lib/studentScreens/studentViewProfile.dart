@@ -14,6 +14,10 @@ import '../studentScreens/welcomeScreen.dart';
 import '../widgets/CustomBottomNavBar.dart';
 import '../studentScreens/studentOppPage.dart';
 
+// === ADD THIS IMPORT FOR THE NEW APPLICATIONS SCREEN ===
+// Make sure the path is correct for your project structure.
+import '../studentScreens/studentApplications.dart';
+
 // A placeholder for the login screen to navigate to after logout
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -818,6 +822,24 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
       _MenuSection(
         title: 'Career',
         items: [
+          // =================== NEW MENU ITEM ADDED HERE ===================
+          _MenuItemData(
+            icon: Icons.article_outlined, // A fitting icon for applications
+            title: 'My Applications',
+            subtitle: 'Track your submissions and status',
+            onTap: () {
+              // Ensure your Student model has an 'id' field containing the Firestore document ID.
+              if (_student?.id != null) {
+                _openScreen(
+                  StudentApplicationsScreen(studentId: _student!.id),
+                );
+              } else {
+                // Fallback in case the student ID is not available
+                _showInfoMessage('Could not retrieve student profile ID.');
+              }
+            },
+          ),
+          // ================================================================
           _MenuItemData(
             icon: Icons.folder_open_outlined,
             title: 'Documents',
