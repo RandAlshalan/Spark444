@@ -11,7 +11,6 @@ import 'package:my_app/services/applicationService.dart';
 import 'package:my_app/services/authService.dart';
 import 'package:my_app/services/bookmarkService.dart';
 import 'package:my_app/services/opportunityService.dart';
-import 'package:my_app/studentScreens/studentCompaniesPage.dart';
 import '../studentScreens/studentViewProfile.dart';
 import '../widgets/CustomBottomNavBar.dart';
 import '../studentScreens/studentSavedOpp.dart';
@@ -39,9 +38,9 @@ class _studentOppPgaeState extends State<studentOppPgae> {
   String? _studentId;
   int _currentIndex = 2;
 
-  // --- UPDATED State for in-page detail view ---
+  // State for in-page detail view
   Opportunity? _selectedOpportunity;
-  Application? _currentApplication; // Holds the full application object, including status
+  Application? _currentApplication;
   bool _isApplying = false;
 
   // Controllers
@@ -164,10 +163,9 @@ class _studentOppPgaeState extends State<studentOppPgae> {
   void _viewOpportunityDetails(Opportunity opportunity) async {
     setState(() {
       _selectedOpportunity = opportunity;
-      _currentApplication = null; // Reset while loading new data
+      _currentApplication = null;
       _isApplying = false;
     });
-    // Fetch the application details for this specific opportunity
     final app = await _applicationService.getApplicationForOpportunity(
       studentId: _studentId!,
       opportunityId: opportunity.id,
@@ -224,7 +222,6 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Application submitted successfully!'), backgroundColor: Colors.green));
-        // Refresh the application status after applying
         _viewOpportunityDetails(_selectedOpportunity!);
       }
     } catch (e) {
@@ -258,7 +255,6 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         await _applicationService.withdrawApplication(applicationId: _currentApplication!.id);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Application withdrawn.'), backgroundColor: Colors.green));
-          // Refresh the application status
           _viewOpportunityDetails(_selectedOpportunity!);
         }
       } catch (e) {
@@ -268,7 +264,6 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       }
     }
   }
-
 
   // --- Main Build Method & UI ---
 
@@ -449,8 +444,8 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, -2))],
       ),
       child: _currentApplication != null
-        ? _buildStatusAndWithdrawView() // Show status and withdraw button
-        : _buildApplyNowView(),       // Show the original "Apply Now" button
+        ? _buildStatusAndWithdrawView()
+        : _buildApplyNowView(),
     );
   }
 
@@ -538,7 +533,6 @@ class _studentOppPgaeState extends State<studentOppPgae> {
     );
   }
 
-  // --- Other Helper Widgets (Unchanged) ---
   Widget _buildDetailHeader(Opportunity opportunity) {
     return FutureBuilder<Company?>(
       future: _authService.getCompany(opportunity.companyId),
@@ -574,6 +568,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       },
     );
   }
+  
   Widget _buildDetailKeyInfoSection(Opportunity opportunity) {
     String formatDate(DateTime? date) => date == null ? 'N/A' : DateFormat('MMMM d, yyyy').format(date);
     return Column(
@@ -584,6 +579,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ],
     );
   }
+  
   Widget _buildInfoTile({required IconData icon, required String title, required String value, Color? valueColor}) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -592,10 +588,11 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       child: ListTile(
         leading: Icon(icon, color: const Color(0xFF422F5D)),
         title: Text(title, style: GoogleFonts.lato(fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
-        subtitle: Text(value, style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: valueColor ?? Colors.black87)),
+        subtitle: Text(value, style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: valueColor ?? Theme.of(context).textTheme.bodyLarge!.color)),
       ),
     );
   }
+  
   Widget _buildDetailSection({required String title, required Widget content}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
@@ -609,6 +606,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ),
     );
   }
+  
   Widget _buildChipList(List<String> items) {
     return Wrap(
       spacing: 8.0,
@@ -620,6 +618,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       )).toList(),
     );
   }
+  
   Widget _buildRequirementList(List<String> items) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -636,6 +635,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       )).toList(),
     );
   }
+  
   Widget _buildMoreInfo(Opportunity opportunity) {
     return Card(
         elevation: 0,
@@ -650,11 +650,13 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         )
     );
   }
+  
   Widget _buildMoreInfoRow(IconData icon, String title, String value) => ListTile(
     leading: Icon(icon, color: Colors.grey.shade600),
     title: Text(title, style: GoogleFonts.lato(fontWeight: FontWeight.w600)),
     trailing: Text(value, style: GoogleFonts.lato(fontSize: 15, fontWeight: FontWeight.w500)),
   );
+  
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -670,6 +672,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ),
     );
   }
+  
   Widget _buildTypeFilterChips() {
     final types = ['All', 'Internship', 'Co-op', 'Graduate Program', 'Bootcamp'];
     return Padding(
@@ -700,6 +703,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ),
     );
   }
+  
   Widget _buildActiveFiltersBar() {
     final hasActiveFilters = _selectedCity != null || _selectedLocationType != null || _isPaid != null || _selectedDuration != null;
     if (!hasActiveFilters) return const SizedBox.shrink();
@@ -722,6 +726,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ),
     );
   }
+  
   Widget _buildContent() {
     switch (_state) {
       case ScreenState.initialLoading:
@@ -742,6 +747,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         );
     }
   }
+  
   Widget _buildDateInfo(IconData icon, String title, String value) {
     return Expanded(
       child: Column(
@@ -760,6 +766,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ),
     );
   }
+  
   Widget _buildEmptyState() {
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       const Icon(Icons.search_off, size: 80, color: Colors.grey),
@@ -771,6 +778,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ElevatedButton(onPressed: _resetAllFilters, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF422F5D), foregroundColor: Colors.white), child: const Text('Clear All Filters'))
     ]));
   }
+  
   Widget _buildErrorWidget() {
     return Center(child: Padding(
       padding: const EdgeInsets.all(16.0),
@@ -785,9 +793,11 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ]),
     ));
   }
+  
   void _navigateToSaved() {
     if (_studentId != null) Navigator.push(context, MaterialPageRoute(builder: (context) => SavedstudentOppPgae(studentId: _studentId!)));
   }
+  
   void _showFilterSheet() {
     _cityController.text = _selectedCity ?? '';
     showModalBottomSheet(
@@ -859,6 +869,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       }
     );
   }
+  
   Future<void> _toggleBookmark(Opportunity opportunity, bool isCurrentlyBookmarked) async {
     if (_studentId == null || _studentId!.isEmpty) return;
     try {
@@ -873,20 +884,20 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       }
     }
   }
+  
   void _onNavigationTap(int index) {
     if (index == _currentIndex) return;
     switch (index) {
       case 0:
-              _showInfoMessage('Coming soon!');
-        break;
       case 1:
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const StudentCompaniesPage()));
+        _showInfoMessage('Coming soon!');
         break;
       case 3:
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const StudentViewProfile()));
         break;
     }
   }
+  
   void _showInfoMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
