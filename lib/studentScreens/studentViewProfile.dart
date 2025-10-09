@@ -13,16 +13,12 @@ import '/studentScreens/studentEditProfile.dart'; // Ensure this file exists
 import '../studentScreens/welcomeScreen.dart';
 import '../widgets/CustomBottomNavBar.dart';
 import '../studentScreens/studentOppPage.dart';
-import 'FollowedCompaniesPage.dart';
-
-<<<<<<< HEAD
-=======
+import '../studentScreens/studentResume.dart';
 // === ADD THIS IMPORT FOR THE NEW APPLICATIONS SCREEN ===
 // Make sure the path is correct for your project structure.
 import '../studentScreens/studentApplications.dart';
 
 // A placeholder for the login screen to navigate to after logout
->>>>>>> a38869ac3d3b33b5c97e469e0f73dc5540ba532c
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
   @override
@@ -57,30 +53,6 @@ class StudentViewProfile extends StatefulWidget {
 
   @override
   State<StudentViewProfile> createState() => _StudentViewProfileState();
-}
-
-// helper model to show company nicely inside the profile page
-class _MiniCompany {
-  final String id;
-  final String name;
-  final String sector;
-  final String? logoUrl;
-
-  _MiniCompany({
-    required this.id,
-    required this.name,
-    required this.sector,
-    this.logoUrl,
-  });
-
-  factory _MiniCompany.fromMap(String id, Map<String, dynamic> m) {
-    return _MiniCompany(
-      id: id,
-      name: (m['companyName'] ?? '').toString(),
-      sector: (m['sector'] ?? '').toString(),
-      logoUrl: m['logoUrl'] as String?,
-    );
-  }
 }
 
 class _StudentViewProfileState extends State<StudentViewProfile> {
@@ -234,7 +206,10 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
         // Navigator.push(context, MaterialPageRoute(builder: (context) => const HomePage()));
         break;
       case 1: // Companies
-        _openScreen(const StudentCompaniesPage());
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const StudentCompaniesPage()),
+        );
         break;
 
       case 2: // Opportunities
@@ -778,6 +753,26 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
     );
   }
 
+  Widget _buildFollowedCompaniesView(_ProfileUiModel profile) {
+    return _InfoCard(
+      title: 'Followed Companies',
+      children: [
+        if (profile.followedCompanies.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(child: Text('You are not following any companies.')),
+          )
+        else
+          ...profile.followedCompanies.map(
+            (company) => ListTile(
+              leading: const Icon(Icons.business_outlined),
+              title: Text(company),
+            ),
+          ),
+      ],
+    );
+  }
+
   List<Widget> _buildMenuContent(Student student, _ProfileUiModel profile) {
     final sections = [
       _MenuSection(
@@ -862,11 +857,8 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
             title: 'Generated Resumes',
             subtitle: 'Tailored resumes for employers',
             onTap: () => _openScreen(
-              StaticInfoViewerPage(
-                title: 'Generated Resumes',
-                content: _buildGeneratedResumesView(),
-                editingPage: GeneratedResumesScreen(student: student),
-              ),
+            MyResumesScreen(student: student),
+
             ),
           ),
           _MenuItemData(
@@ -878,7 +870,13 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
                 : _BadgeChip(
                     label: profile.followedCompanies.length.toString(),
                   ),
-            onTap: () => _openScreen(const FollowedCompaniesPage()),
+            onTap: () => _openScreen(
+              StaticInfoViewerPage(
+                title: 'Followed Companies',
+                content: _buildFollowedCompaniesView(profile),
+                editingPage: FollowedCompaniesScreen(student: student),
+              ),
+            ),
           ),
         ],
       ),

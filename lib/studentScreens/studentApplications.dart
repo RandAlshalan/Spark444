@@ -43,7 +43,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
   // --- UPDATED: New list of filters ---
   final List<String> _statusFilters = [
     'All',
-    'Applied',
+    'Pending',
     'In Progress',
     'Accepted',
     'Rejected',
@@ -112,14 +112,14 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
         final filter = _activeStatusFilter.toLowerCase();
         
         // Handle special user-facing names
-        if (filter == 'applied') {
+        if (filter == 'pending') {
           return status == 'pending';
         }
         if (filter == 'in progress') {
           return status == 'reviewed';
         }
         if (filter == 'accepted') {
-          return status == 'accepted' || status == 'hired';
+          return status == 'accepted' ;
         }
         
         // Otherwise, do a direct comparison for other statuses
@@ -534,7 +534,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
   Color _getFilterColor(String filter) {
     switch (filter) {
       case 'All': return _sparkPrimaryPurple;
-      case 'Applied': return _getStatusColor('pending');
+      case 'Pending': return _getStatusColor('pending');
       case 'In Progress': return _getStatusColor('reviewed');
       case 'Accepted': return _getStatusColor('accepted');
       case 'Rejected': return _getStatusColor('rejected');
