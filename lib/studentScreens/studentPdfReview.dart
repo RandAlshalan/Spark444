@@ -17,9 +17,7 @@ class PdfPreviewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Preview: $resumeTitle'),
-      ),
+      appBar: AppBar(title: Text('Preview: $resumeTitle')),
       // The PdfPreview widget from the 'printing' package does all the hard work.
       // It provides a beautiful UI with options to print, share, and save.
       body: PdfPreview(

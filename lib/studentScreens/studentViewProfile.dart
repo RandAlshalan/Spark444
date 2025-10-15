@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../studentScreens/studentCompaniesPage.dart';
-
+import 'FollowedCompaniesPage.dart';
 import '../../../models/student.dart';
 import '../../../services/authService.dart';
 import '../models/profile_ui_model.dart'; // Ensure this file exists
@@ -53,6 +53,30 @@ class StudentViewProfile extends StatefulWidget {
 
   @override
   State<StudentViewProfile> createState() => _StudentViewProfileState();
+}
+
+// helper model to show company nicely inside the profile page
+class _MiniCompany {
+  final String id;
+  final String name;
+  final String sector;
+  final String? logoUrl;
+
+  _MiniCompany({
+    required this.id,
+    required this.name,
+    required this.sector,
+    this.logoUrl,
+  });
+
+  factory _MiniCompany.fromMap(String id, Map<String, dynamic> m) {
+    return _MiniCompany(
+      id: id,
+      name: (m['companyName'] ?? '').toString(),
+      sector: (m['sector'] ?? '').toString(),
+      logoUrl: m['logoUrl'] as String?,
+    );
+  }
 }
 
 class _StudentViewProfileState extends State<StudentViewProfile> {
@@ -206,10 +230,8 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
         // Navigator.push(context, MaterialPageRoute(builder: (context) => const HomePage()));
         break;
       case 1: // Companies
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const StudentCompaniesPage()),
-        );
+        _openScreen(const StudentCompaniesPage());
+
         break;
 
       case 2: // Opportunities
@@ -830,9 +852,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
             onTap: () {
               // Ensure your Student model has an 'id' field containing the Firestore document ID.
               if (_student?.id != null) {
-                _openScreen(
-                  StudentApplicationsScreen(studentId: _student!.id),
-                );
+                _openScreen(StudentApplicationsScreen(studentId: _student!.id));
               } else {
                 // Fallback in case the student ID is not available
                 _showInfoMessage('Could not retrieve student profile ID.');
@@ -856,10 +876,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
             icon: Icons.description_outlined,
             title: 'Generated Resumes',
             subtitle: 'Tailored resumes for employers',
-            onTap: () => _openScreen(
-            MyResumesScreen(student: student),
-
-            ),
+            onTap: () => _openScreen(MyResumesScreen(student: student)),
           ),
           _MenuItemData(
             icon: Icons.bookmark_border_outlined,
@@ -870,13 +887,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
                 : _BadgeChip(
                     label: profile.followedCompanies.length.toString(),
                   ),
-            onTap: () => _openScreen(
-              StaticInfoViewerPage(
-                title: 'Followed Companies',
-                content: _buildFollowedCompaniesView(profile),
-                editingPage: FollowedCompaniesScreen(student: student),
-              ),
-            ),
+            onTap: () => _openScreen(const FollowedCompaniesPage()),
           ),
         ],
       ),

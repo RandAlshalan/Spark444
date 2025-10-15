@@ -7,6 +7,7 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:my_app/studentScreens/FollowedCompaniesPage.dart';
 
 import '../models/student.dart';
 import '../services/authService.dart';
@@ -629,7 +630,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
                 : _BadgeChip(
                     label: profile.followedCompanies.length.toString(),
                   ),
-            onTap: () => _openScreen(FollowedCompaniesScreen(student: student)),
+            onTap: () => _openScreen(const FollowedCompaniesPage()),
           ),
         ],
       ),
@@ -2743,7 +2744,8 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     _passwordController.dispose();
     super.dispose();
   }
-//
+
+  //
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _submitting = true);

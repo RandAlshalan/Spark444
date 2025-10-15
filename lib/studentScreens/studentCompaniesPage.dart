@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:my_app/studentScreens/StudentCompanyProfilePage';
+import 'package:my_app/studentScreens/StudentCompanyProfilePage.dart';
 
 import '../services/companyService.dart';
 import '../models/company.dart';
 
 const _purple = Color(0xFF422F5D);
 
-// ثـابـت لاسم كولكشن الطلاب (عندك: student بدون s)
 const String kStudentsCollection = 'student';
 
 class StudentCompaniesPage extends StatefulWidget {

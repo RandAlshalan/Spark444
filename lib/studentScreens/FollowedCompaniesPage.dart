@@ -2,9 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
-// افتحي صفحة بروفايل الشركة عند الضغط
-import './StudentCompanyProfilePage';
+import './StudentCompanyProfilePage.dart';
 
 const _purple = Color(0xFF422F5D);
 const String kStudentsCollection = 'student';
