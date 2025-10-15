@@ -2077,47 +2077,67 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       return;
     }
 
-    final result = await FilePicker.platform.pickFiles(withData: true);
+    final result = await FilePicker.platform.pickFiles(
+      withData: true,
+      allowMultiple: true,
+      type: FileType.custom,
+      allowedExtensions: const ['pdf', 'png'],
+    );
     if (result == null) return;
 
-    final file = result.files.single;
-    if (file.bytes == null) {
+    final validFiles = result.files.where((file) {
+      final extension = file.extension?.toLowerCase();
+      final hasBytes = file.bytes != null;
+      return hasBytes && (extension == 'pdf' || extension == 'png');
+    }).toList();
+    final skippedCount = result.files.length - validFiles.length;
+    if (validFiles.isEmpty) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Failed to read the selected file.')),
+        const SnackBar(content: Text('Only PDF or PNG files can be uploaded.')),
       );
       return;
     }
 
-    final path =
-        'students/${user.uid}/documents/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
     setState(() => _loading = true);
     try {
-      final ref = _storage.ref().child(path);
-      await ref.putData(
-        file.bytes!,
-        firebase_storage.SettableMetadata(
-          contentType: 'application/octet-stream',
-        ),
-      );
-      final url = await ref.getDownloadURL();
+      final baseTimestamp = DateTime.now().microsecondsSinceEpoch;
+      for (var i = 0; i < validFiles.length; i++) {
+        final file = validFiles[i];
+        final path =
+            'students/${user.uid}/documents/${baseTimestamp + i}_${file.name}';
+        final ref = _storage.ref().child(path);
+        final extension = file.extension?.toLowerCase();
+        await ref.putData(
+          file.bytes!,
+          firebase_storage.SettableMetadata(
+            contentType: extension == 'pdf' ? 'application/pdf' : 'image/png',
+          ),
+        );
+        final url = await ref.getDownloadURL();
 
-      await _firestore
-          .collection(AuthService.kStudentCol)
-          .doc(user.uid)
-          .collection('documents')
-          .add({
-            'name': file.name,
-            'url': url,
-            'storagePath': path,
-            'uploadedAt': FieldValue.serverTimestamp(),
-          });
+        await _firestore
+            .collection(AuthService.kStudentCol)
+            .doc(user.uid)
+            .collection('documents')
+            .add({
+              'name': file.name,
+              'url': url,
+              'storagePath': path,
+              'uploadedAt': FieldValue.serverTimestamp(),
+            });
+      }
 
       _changed = true;
       await _loadDocuments();
       if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Document uploaded successfully.')),
-      );
+      String baseMessage = validFiles.length == 1
+          ? 'Document uploaded successfully.'
+          : '${validFiles.length} documents uploaded successfully.';
+      if (skippedCount > 0) {
+        baseMessage +=
+            ' $skippedCount file(s) were skipped because they are not PDF or PNG.';
+      }
+      messenger.showSnackBar(SnackBar(content: Text(baseMessage)));
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -2199,49 +2219,60 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                     Center(child: Text('No documents uploaded yet.')),
                   ],
                 )
-              : GridView.builder(
-                  padding: const EdgeInsets.all(20),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.1,
-                  ),
-                  itemCount: _documents.length,
-                  itemBuilder: (context, index) {
-                    final document = _documents[index];
-                    return Card(
-                      elevation: 3,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final bool isWide = constraints.maxWidth >= 600;
+                    final int crossAxisCount = isWide ? 3 : 2;
+                    final double childAspectRatio = isWide ? 1.0 : 0.75;
+                    return GridView.builder(
+                      padding: const EdgeInsets.all(20),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: childAspectRatio,
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.insert_drive_file,
-                              size: 40,
-                              color: Colors.grey,
+                      itemCount: _documents.length,
+                      itemBuilder: (context, index) {
+                        final document = _documents[index];
+                        return Card(
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.insert_drive_file,
+                                  size: 40,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(height: 12),
+                                Expanded(
+                                  child: Center(
+                                    child: Text(
+                                      document.name,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 13),
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                TextButton.icon(
+                                  onPressed: () => _deleteDocument(document),
+                                  icon: const Icon(Icons.delete_outline),
+                                  label: const Text('Remove'),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 12),
-                            Text(
-                              document.name,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 13),
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 16),
-                            TextButton.icon(
-                              onPressed: () => _deleteDocument(document),
-                              icon: const Icon(Icons.delete_outline),
-                              label: const Text('Remove'),
-                            ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),

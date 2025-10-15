@@ -29,6 +29,17 @@ class StorageService {
   final firebase_storage.FirebaseStorage _storage =
       firebase_storage.FirebaseStorage.instance;
 
+  String _inferContentType(String? extension) {
+    switch (extension?.toLowerCase()) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'png':
+        return 'image/png';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
   // Generic method to get a list of files from a sub-collection
   Future<List<StoredFile>> getFiles(String uid, String collection) async {
     final snapshot = await _firestore
@@ -62,12 +73,14 @@ class StorageService {
     }
 
     final path =
-        'students/$uid/$collection/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-    
+        'students/$uid/$collection/${DateTime.now().microsecondsSinceEpoch}_${file.name}';
+
     final ref = _storage.ref().child(path);
     await ref.putData(
       file.bytes!,
-      firebase_storage.SettableMetadata(contentType: 'application/octet-stream'),
+      firebase_storage.SettableMetadata(
+        contentType: _inferContentType(file.extension),
+      ),
     );
     final url = await ref.getDownloadURL();
 
@@ -81,6 +94,16 @@ class StorageService {
           'storagePath': path,
           'uploadedAt': FieldValue.serverTimestamp(),
         });
+  }
+
+  Future<void> uploadFiles({
+    required String uid,
+    required String collection,
+    required List<PlatformFile> files,
+  }) async {
+    for (final file in files) {
+      await uploadFile(uid: uid, collection: collection, file: file);
+    }
   }
 
   // Generic method to delete a file and its record
