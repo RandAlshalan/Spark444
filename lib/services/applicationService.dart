@@ -52,7 +52,16 @@ class ApplicationService {
       'companyFeedback': null,
     });
   }
-
+  
+Future<void> deleteApplication({required String applicationId}) async {
+    try {
+      await _firestore.collection('applications').doc(applicationId).delete();
+    } catch (e) {
+      // Re-throw the error to be caught by the UI layer
+      print('Error deleting application: $e');
+      throw Exception('Could not delete the application record.');
+    }
+  }
   /// Updates an application's status to 'Withdrawn' instead of deleting it.
   Future<void> withdrawApplication({required String applicationId}) async {
     await _applicationsCollection.doc(applicationId).update({

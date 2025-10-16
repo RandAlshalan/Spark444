@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/opportunity.dart';
 
 class OpportunityService {
-  // أنت تستخدم `withConverter` هنا بشكل ممتاز، وهذا يجعل الكود أفضل
+  //`withConverter` 
   final CollectionReference<Opportunity> _opportunitiesRef = FirebaseFirestore
       .instance
       .collection('opportunities')
@@ -11,7 +11,7 @@ class OpportunityService {
         toFirestore: (opportunity, _) => opportunity.toFirestore(),
       );
 
-  // ... (دالة getOpportunities تبقى كما هي لأنها صحيحة)
+  
   Future<List<Opportunity>> getOpportunities({
     String? searchQuery,
     String? type,
@@ -46,7 +46,7 @@ class OpportunityService {
     return snapshot.docs.map((doc) => doc.data()).toList();
   }
 
-  // ... (دالة getCompanyOpportunities تبقى كما هي لأنها صحيحة)
+
   Future<List<Opportunity>> getCompanyOpportunities(String companyId) async {
     if (companyId.isEmpty) {
       return [];
@@ -63,20 +63,16 @@ class OpportunityService {
     }
   }
 
-  // ✨======= هذا هو الكود المصحح لدالة الإضافة =======✨
+
   Future<void> addOpportunity(Opportunity opportunity) async {
     try {
-      // بما أن `_opportunitiesRef` معرفة بـ `withConverter`,
-      // يمكننا تمرير كائن `Opportunity` مباشرةً وهو سيقوم بالتحويل تلقائيًا.
-      // لكن بما أننا نريد إضافة وقت النشر من السيرفر، سنقوم بتعديل بسيط.
-      
-      // 1. حوّل الكائن إلى Map باستخدام دالتك
+
       final data = opportunity.toFirestore();
       
-      // 2. أضف وقت النشر من السيرفر (Server Timestamp)
+
       data['postedDate'] = FieldValue.serverTimestamp(); 
       
-      // 3. أضف الـ Map مباشرةً إلى Firestore (بدون تحويلات معقدة)
+ 
       await FirebaseFirestore.instance.collection('opportunities').add(data);
 
     } catch (e) {
@@ -84,10 +80,10 @@ class OpportunityService {
       rethrow;
     }
   }
-  // ✨================ نهاية الكود المصحح ================✨
 
 
-  // ... (دالة updateOpportunity تبقى كما هي لأنها صحيحة)
+
+
   Future<void> updateOpportunity(Opportunity opportunity) async {
     try {
       await _opportunitiesRef.doc(opportunity.id).update(opportunity.toFirestore());
@@ -97,7 +93,7 @@ class OpportunityService {
     }
   }
 
-  // ... (دالة deleteOpportunity تبقى كما هي لأنها صحيحة)
+
   Future<void> deleteOpportunity(String opportunityId) async {
     try {
       await _opportunitiesRef.doc(opportunityId).delete();

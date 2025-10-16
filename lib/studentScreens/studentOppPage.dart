@@ -1,10 +1,11 @@
 // lib/studentScreens/studentOppPage.dart
 
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:my_app/models/application.dart'; // Import the Application model
+import 'package:my_app/models/application.dart';
 import 'package:my_app/models/company.dart';
 import 'package:my_app/models/opportunity.dart';
 import 'package:my_app/services/applicationService.dart';
@@ -12,6 +13,7 @@ import 'package:my_app/services/authService.dart';
 import 'package:my_app/services/bookmarkService.dart';
 import 'package:my_app/services/opportunityService.dart';
 import 'package:my_app/studentScreens/studentCompaniesPage.dart';
+import 'package:my_app/studentScreens/studentCompanyProfilePage.dart';
 import '../studentScreens/studentViewProfile.dart';
 import '../widgets/CustomBottomNavBar.dart';
 import '../studentScreens/studentSavedOpp.dart';
@@ -34,14 +36,15 @@ class _studentOppPgaeState extends State<studentOppPgae> {
 
   // State variables
   List<Opportunity> _opportunities = [];
+  Map<String, Company> _companyCache = {};
   ScreenState _state = ScreenState.initialLoading;
   String? _errorMessage;
   String? _studentId;
   int _currentIndex = 2;
 
-  // --- UPDATED State for in-page detail view ---
+  // In-page detail view state
   Opportunity? _selectedOpportunity;
-  Application? _currentApplication; // Holds the full application object, including status
+  Application? _currentApplication;
   bool _isApplying = false;
 
   // Controllers
@@ -107,15 +110,31 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       final opportunities = await _opportunityService.getOpportunities(
         searchQuery: null, type: null, city: null, locationType: null, isPaid: null);
 
+      if (opportunities.isNotEmpty) {
+        final companyIds = opportunities.map((opp) => opp.companyId).toSet().toList();
+        if (companyIds.isNotEmpty) {
+          final companyDocs = await FirebaseFirestore.instance.collection('companies').where(FieldPath.documentId, whereIn: companyIds).get();
+          _companyCache = { for (var doc in companyDocs.docs) doc.id: Company.fromFirestore(doc) };
+        }
+      }
+
       final query = _searchController.text.toLowerCase();
       final filtered = opportunities.where((opp) {
         final matchesType = _activeTypeFilter == 'All' || opp.type == _activeTypeFilter;
-        final matchesSearch = query.isEmpty || opp.role.toLowerCase().contains(query) || opp.name.toLowerCase().contains(query);
+        
+        final company = _companyCache[opp.companyId];
+        final companyNameMatch = company?.companyName.toLowerCase().contains(query) ?? false;
+        final matchesSearch = query.isEmpty 
+                              || opp.role.toLowerCase().contains(query) 
+                              || opp.name.toLowerCase().contains(query)
+                              || companyNameMatch;
+        
         final matchesCity = _selectedCity == null || (opp.location?.toLowerCase() == _selectedCity?.toLowerCase());
         final matchesLocation = _selectedLocationType == null || (opp.workMode?.toLowerCase() == _selectedLocationType?.toLowerCase());
         final matchesPaid = _isPaid == null || (opp.isPaid == _isPaid);
         final durationCategory = getDurationCategory(opp.startDate, opp.endDate);
         final matchesDuration = _selectedDuration == null || durationCategory == _selectedDuration;
+
         return matchesType && matchesSearch && matchesCity && matchesLocation && matchesPaid && matchesDuration;
       }).toList();
 
@@ -159,15 +178,14 @@ class _studentOppPgaeState extends State<studentOppPgae> {
     _fetchOpportunities();
   }
 
-  // --- In-Page View Switching Logic ---
+  // --- In-Page View Switching & Navigation ---
 
   void _viewOpportunityDetails(Opportunity opportunity) async {
     setState(() {
       _selectedOpportunity = opportunity;
-      _currentApplication = null; // Reset while loading new data
+      _currentApplication = null;
       _isApplying = false;
     });
-    // Fetch the application details for this specific opportunity
     final app = await _applicationService.getApplicationForOpportunity(
       studentId: _studentId!,
       opportunityId: opportunity.id,
@@ -191,6 +209,15 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       return Future.value(false);
     }
     return Future.value(true);
+  }
+
+  void _navigateToCompanyProfile(String companyId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StudentCompanyProfilePage(companyId: companyId),
+      ),
+    );
   }
 
   // --- Application Logic ---
@@ -224,7 +251,6 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Application submitted successfully!'), backgroundColor: Colors.green));
-        // Refresh the application status after applying
         _viewOpportunityDetails(_selectedOpportunity!);
       }
     } catch (e) {
@@ -258,7 +284,6 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         await _applicationService.withdrawApplication(applicationId: _currentApplication!.id);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Application withdrawn.'), backgroundColor: Colors.green));
-          // Refresh the application status
           _viewOpportunityDetails(_selectedOpportunity!);
         }
       } catch (e) {
@@ -268,7 +293,6 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       }
     }
   }
-
 
   // --- Main Build Method & UI ---
 
@@ -449,8 +473,8 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, -2))],
       ),
       child: _currentApplication != null
-        ? _buildStatusAndWithdrawView() // Show status and withdraw button
-        : _buildApplyNowView(),       // Show the original "Apply Now" button
+        ? _buildStatusAndWithdrawView()
+        : _buildApplyNowView(),
     );
   }
 
@@ -538,17 +562,17 @@ class _studentOppPgaeState extends State<studentOppPgae> {
     );
   }
 
-  // --- Other Helper Widgets (Unchanged) ---
   Widget _buildDetailHeader(Opportunity opportunity) {
-    return FutureBuilder<Company?>(
-      future: _authService.getCompany(opportunity.companyId),
-      builder: (context, snapshot) {
-        return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: FutureBuilder<Company?>(
+          future: _authService.getCompany(opportunity.companyId),
+          builder: (context, snapshot) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
                   radius: 32,
@@ -564,16 +588,30 @@ class _studentOppPgaeState extends State<studentOppPgae> {
                       Text(opportunity.role, style: GoogleFonts.lato(fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF422F5D))),
                       const SizedBox(height: 6),
                       Text(snapshot.data?.companyName ?? 'Loading...', style: GoogleFonts.lato(fontSize: 16, color: Colors.grey.shade700)),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () => _navigateToCompanyProfile(opportunity.companyId),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          alignment: Alignment.centerLeft,
+                          foregroundColor: const Color(0xFF422F5D),
+                        ),
+                        child: const Text(
+                          'View Company Profile',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ],
-            ),
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
+  
   Widget _buildDetailKeyInfoSection(Opportunity opportunity) {
     String formatDate(DateTime? date) => date == null ? 'N/A' : DateFormat('MMMM d, yyyy').format(date);
     return Column(
@@ -584,6 +622,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ],
     );
   }
+  
   Widget _buildInfoTile({required IconData icon, required String title, required String value, Color? valueColor}) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -592,10 +631,11 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       child: ListTile(
         leading: Icon(icon, color: const Color(0xFF422F5D)),
         title: Text(title, style: GoogleFonts.lato(fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
-        subtitle: Text(value, style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: valueColor ?? Colors.black87)),
+        subtitle: Text(value, style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: valueColor ?? Theme.of(context).textTheme.bodyLarge!.color)),
       ),
     );
   }
+  
   Widget _buildDetailSection({required String title, required Widget content}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
@@ -609,6 +649,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ),
     );
   }
+  
   Widget _buildChipList(List<String> items) {
     return Wrap(
       spacing: 8.0,
@@ -620,6 +661,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       )).toList(),
     );
   }
+  
   Widget _buildRequirementList(List<String> items) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -636,6 +678,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       )).toList(),
     );
   }
+  
   Widget _buildMoreInfo(Opportunity opportunity) {
     return Card(
         elevation: 0,
@@ -650,11 +693,13 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         )
     );
   }
+  
   Widget _buildMoreInfoRow(IconData icon, String title, String value) => ListTile(
     leading: Icon(icon, color: Colors.grey.shade600),
     title: Text(title, style: GoogleFonts.lato(fontWeight: FontWeight.w600)),
     trailing: Text(value, style: GoogleFonts.lato(fontSize: 15, fontWeight: FontWeight.w500)),
   );
+  
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -670,6 +715,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ),
     );
   }
+  
   Widget _buildTypeFilterChips() {
     final types = ['All', 'Internship', 'Co-op', 'Graduate Program', 'Bootcamp'];
     return Padding(
@@ -700,6 +746,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ),
     );
   }
+  
   Widget _buildActiveFiltersBar() {
     final hasActiveFilters = _selectedCity != null || _selectedLocationType != null || _isPaid != null || _selectedDuration != null;
     if (!hasActiveFilters) return const SizedBox.shrink();
@@ -722,6 +769,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ),
     );
   }
+  
   Widget _buildContent() {
     switch (_state) {
       case ScreenState.initialLoading:
@@ -742,6 +790,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         );
     }
   }
+  
   Widget _buildDateInfo(IconData icon, String title, String value) {
     return Expanded(
       child: Column(
@@ -760,6 +809,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ),
     );
   }
+  
   Widget _buildEmptyState() {
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       const Icon(Icons.search_off, size: 80, color: Colors.grey),
@@ -771,6 +821,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ElevatedButton(onPressed: _resetAllFilters, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF422F5D), foregroundColor: Colors.white), child: const Text('Clear All Filters'))
     ]));
   }
+  
   Widget _buildErrorWidget() {
     return Center(child: Padding(
       padding: const EdgeInsets.all(16.0),
@@ -785,9 +836,11 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       ]),
     ));
   }
+  
   void _navigateToSaved() {
     if (_studentId != null) Navigator.push(context, MaterialPageRoute(builder: (context) => SavedstudentOppPgae(studentId: _studentId!)));
   }
+  
   void _showFilterSheet() {
     _cityController.text = _selectedCity ?? '';
     showModalBottomSheet(
@@ -859,6 +912,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       }
     );
   }
+  
   Future<void> _toggleBookmark(Opportunity opportunity, bool isCurrentlyBookmarked) async {
     if (_studentId == null || _studentId!.isEmpty) return;
     try {
@@ -873,11 +927,12 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       }
     }
   }
+  
   void _onNavigationTap(int index) {
     if (index == _currentIndex) return;
     switch (index) {
       case 0:
-              _showInfoMessage('Coming soon!');
+        _showInfoMessage('Coming soon!');
         break;
       case 1:
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const StudentCompaniesPage()));
@@ -887,6 +942,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         break;
     }
   }
+  
   void _showInfoMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
