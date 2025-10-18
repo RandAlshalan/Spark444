@@ -1,5 +1,6 @@
+// --- IMPORTS ---
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:/flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -15,6 +16,7 @@ const Color _sparkPrimaryPurple = Color(0xFF422F5D);
 const Color _profileBackgroundColor = Color(0xFFF8F9FA);
 const Color _profileTextColor = Color(0xFF1E1E1E);
 
+// --- WIDGET DEFINITION ---
 class StudentApplicationsScreen extends StatefulWidget {
   final String studentId;
 
@@ -26,49 +28,66 @@ class StudentApplicationsScreen extends StatefulWidget {
 }
 
 class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
+  // --- 1. State Variables & Services ---
+
+  // Services
   final ApplicationService _applicationService = ApplicationService();
   final AuthService _authService = AuthService();
-  final TextEditingController _searchController = TextEditingController();
-  Timer? _debounce;
 
-  // State variables for managing UI and data
+  // Controllers
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce; // Timer for search input delay
+
+  // UI State
   bool _isLoading = true;
-  List<Application> _allApplications = [];
-  List<Application> _filteredApplications = [];
+  Application? _selectedApplication; // Holds the application being viewed
+  String _activeStatusFilter = 'All'; // Current active status filter
+
+  // Data State
+  List<Application> _allApplications = []; // Stores all applications from Firestore
+  List<Application> _filteredApplications = []; // Stores the visible applications after filtering
+  // Caches to store details and avoid re-fetching from Firestore
   Map<String, Opportunity> _opportunityDetailsCache = {};
   Map<String, Company> _companyDetailsCache = {};
 
-  Application? _selectedApplication;
-  String _activeStatusFilter = 'All';
-
+  // Static list of filter options
   final List<String> _statusFilters = [
     'All',
     'Pending',
-    'In Progress',
+    'In Progress', // This maps to 'Reviewed' status
     'Accepted',
     'Rejected',
     'Withdrawn',
     'Draft'
   ];
 
+  // --- 2. Lifecycle Methods ---
+
   @override
   void initState() {
     super.initState();
-    _loadApplications();
-    _searchController.addListener(_onSearchChanged);
+    _loadApplications(); // Load initial data when the screen starts
+    _searchController.addListener(_onSearchChanged); // Listen for search text changes
   }
 
   @override
   void dispose() {
+    // Clean up controllers and timers when the widget is removed
     _searchController.dispose();
     _debounce?.cancel();
     super.dispose();
   }
 
+  // --- 3. Data & State Logic ---
+
+  /// Fetches all applications for the student from Firestore.
+  /// It also pre-fetches and caches all related opportunity and company data
+  /// to avoid multiple database calls while building the list.
   Future<void> _loadApplications() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
+      // 1. Fetch all applications for this student
       final querySnapshot = await FirebaseFirestore.instance
           .collection('applications')
           .where('studentId', isEqualTo: widget.studentId)
@@ -79,40 +98,49 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
           .map((doc) => Application.fromFirestore(doc))
           .toList();
 
+      // 2. Get unique Opportunity IDs from the applications
       if (applications.isNotEmpty) {
         final opportunityIds =
             applications.map((app) => app.opportunityId).toSet().toList();
+        
+        // 3. Fetch all required opportunities in one batch
         final oppDocs = await FirebaseFirestore.instance
             .collection('opportunities')
             .where(FieldPath.documentId, whereIn: opportunityIds)
             .get();
+        // 4. Store opportunities in the cache
         _opportunityDetailsCache = {
           for (var doc in oppDocs.docs) doc.id: Opportunity.fromFirestore(doc)
         };
       }
 
+      // 5. Get unique Company IDs from the cached opportunities
       if (_opportunityDetailsCache.isNotEmpty) {
         final companyIds = _opportunityDetailsCache.values
             .map((opp) => opp.companyId)
             .toSet()
             .toList();
+            
         if (companyIds.isNotEmpty) {
+          // 6. Fetch all required companies in one batch
           final companyDocs = await FirebaseFirestore.instance
               .collection('companies')
               .where(FieldPath.documentId, whereIn: companyIds)
               .get();
+          // 7. Store companies in the cache
           _companyDetailsCache = {
             for (var doc in companyDocs.docs) doc.id: Company.fromFirestore(doc)
           };
         }
       }
 
+      // 8. Update the state with all fetched data
       if (mounted) {
         setState(() {
           _allApplications = applications;
           _isLoading = false;
         });
-        _filterApplications();
+        _filterApplications(); // Apply default filters
       }
     } catch (e) {
       debugPrint("Error fetching applications: $e");
@@ -120,39 +148,48 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     }
   }
 
+  /// Called when search text changes. Uses a debounce to wait 500ms
+  /// after the user stops typing before starting the filter.
   void _onSearchChanged() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), _filterApplications);
   }
 
+  /// Filters the `_allApplications` list based on the active status filter
+  /// and the search query, then updates `_filteredApplications`.
   void _filterApplications() {
     List<Application> results = List.from(_allApplications);
     final query = _searchController.text.toLowerCase();
 
+    // 1. Apply Status Filter
     if (_activeStatusFilter != 'All') {
       results = results.where((app) {
         final status = app.status.toLowerCase();
         final filter = _activeStatusFilter.toLowerCase();
 
-        if (filter == 'pending') {
-          return status == 'pending';
-        }
+        // Handle special case where "In Progress" button maps to "Reviewed" status
         if (filter == 'in progress') {
           return status == 'reviewed';
         }
         if (filter == 'accepted') {
-          return status == 'accepted';
+          // Show both 'Accepted' (by student) and 'Hired' (by company)
+          return status == 'accepted' || status == 'hired';
         }
+        // Handle all other statuses
         return status == filter;
       }).toList();
     }
 
+    // 2. Apply Search Query Filter
     if (query.isNotEmpty) {
       results = results.where((app) {
+        // Get data from cache
         final opportunity = _opportunityDetailsCache[app.opportunityId];
         if (opportunity == null) return false;
         
         final company = _companyDetailsCache[opportunity.companyId];
+        
+        // Check for matches in role or company name
         final bool roleMatch = opportunity.role.toLowerCase().contains(query);
         final bool companyMatch =
             company?.companyName.toLowerCase().contains(query) ?? false;
@@ -161,27 +198,15 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       }).toList();
     }
 
+    // 3. Update the UI state
     setState(() => _filteredApplications = results);
   }
 
-  void _viewApplicationDetails(Application application) {
-    setState(() => _selectedApplication = application);
-  }
+  // --- 4. User Actions ---
 
-  void _showApplicationList() {
-    setState(() => _selectedApplication = null);
-  }
-  
-  void _navigateToCompanyProfile(String companyId) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => StudentCompanyProfilePage(companyId: companyId),
-      ),
-    );
-  }
-
+  /// Withdraws an application after user confirmation.
   Future<void> _withdrawApplication(Application application) async {
+    // Show confirmation dialog
     final bool? confirm = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -208,8 +233,8 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Application withdrawn.'),
             backgroundColor: Colors.green));
-        _showApplicationList();
-        _loadApplications();
+        _showApplicationList(); // Go back to the list view
+        _loadApplications(); // Refresh the list
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('Error: ${e.toString()}'),
@@ -218,7 +243,9 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     }
   }
 
+  /// Permanently deletes an application (only available for 'Withdrawn' apps).
   Future<void> _deleteApplicationPermanently(Application application) async {
+    // Show confirmation dialog
     final bool? confirm = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -239,9 +266,11 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
 
     if (confirm == true) {
       try {
+        // 1. Delete from Firestore
         await _applicationService.deleteApplication(
             applicationId: application.id);
 
+        // 2. Remove from local state to update UI immediately
         setState(() {
           _allApplications.removeWhere((app) => app.id == application.id);
           _filteredApplications
@@ -259,18 +288,45 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     }
   }
 
+  // --- 5. Navigation & View Switching ---
+
+  /// Switches the view to show the details of a selected application.
+  void _viewApplicationDetails(Application application) {
+    setState(() => _selectedApplication = application);
+  }
+
+  /// Switches the view back to the main list.
+  void _showApplicationList() {
+    setState(() => _selectedApplication = null);
+  }
+
+  /// Navigates to the company's profile page.
+  void _navigateToCompanyProfile(String companyId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StudentCompanyProfilePage(companyId: companyId),
+      ),
+    );
+  }
+
+  /// Handles the physical back button press.
   Future<bool> _onBackPressed() {
     if (_selectedApplication != null) {
+      // If on detail view, go back to list view
       _showApplicationList();
-      return Future.value(false);
+      return Future.value(false); // Do not pop the route (exit app)
     }
+    // If on list view, allow app to exit
     return Future.value(true);
   }
+
+  // --- 6. Main Build Methods ---
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: _onBackPressed,
+      onWillPop: _onBackPressed, // Intercept back button
       child: Scaffold(
         backgroundColor: _profileBackgroundColor,
         appBar: _buildAppBar(),
@@ -279,13 +335,16 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     );
   }
 
+  /// Builds the AppBar, which changes title based on the view.
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
+      // Show custom back button only on detail view
       leading: _selectedApplication != null
           ? IconButton(
               icon: const Icon(Icons.arrow_back),
               onPressed: _showApplicationList)
           : null,
+      // Use default back button only on list view
       automaticallyImplyLeading: _selectedApplication == null,
       title: Text(
           _selectedApplication == null
@@ -299,14 +358,18 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     );
   }
 
+  /// Builds the main body, switching between loading, empty, list, and detail views.
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
           child: CircularProgressIndicator(color: _sparkPrimaryPurple));
     }
 
-    if (_allApplications.isEmpty) return _buildEmptyState();
+    if (_allApplications.isEmpty) {
+      return _buildEmptyState();
+    }
 
+    // Switch between detail and list view
     if (_selectedApplication != null) {
       return _buildDetailView(_selectedApplication!);
     } else {
@@ -314,9 +377,12 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     }
   }
 
+  // --- 7. Core View Builders ---
+
+  /// Builds the main list view with search, filters, and the list of cards.
   Widget _buildListView() {
     return RefreshIndicator(
-      onRefresh: _loadApplications,
+      onRefresh: _loadApplications, // Enable pull-to-refresh
       color: _sparkPrimaryPurple,
       child: Column(
         children: [
@@ -324,8 +390,10 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
           _buildFilterButtons(),
           Expanded(
             child: _filteredApplications.isEmpty
+                // Show message if filters result in no applications
                 ? const Center(
                     child: Text('No applications match your criteria.'))
+                // Otherwise, build the list
                 : ListView.builder(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -333,8 +401,11 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
                     itemBuilder: (context, index) {
                       final app = _filteredApplications[index];
                       final opp = _opportunityDetailsCache[app.opportunityId];
+                      
+                      // If opportunity data is not found (e.g., deleted), show nothing
                       if (opp == null) return const SizedBox.shrink();
 
+                      // Use the custom _ApplicationCard widget
                       return _ApplicationCard(
                         application: app,
                         opportunity: opp,
@@ -350,59 +421,9 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     );
   }
 
-  Widget _buildSearchBar() => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        child: TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: 'Search by role or company...',
-            prefixIcon: const Icon(Icons.search),
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none),
-          ),
-        ),
-      );
-
-  Widget _buildFilterButtons() {
-    return SizedBox(
-      height: 50,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: _statusFilters.length,
-        itemBuilder: (context, index) {
-          final status = _statusFilters[index];
-          final isSelected = _activeStatusFilter == status;
-          final color = _getFilterColor(status);
-
-          return ElevatedButton(
-            onPressed: () {
-              setState(() => _activeStatusFilter = status);
-              _filterApplications();
-            },
-            style: ElevatedButton.styleFrom(
-              foregroundColor: isSelected ? Colors.white : color,
-              backgroundColor: isSelected ? color : color.withOpacity(0.1),
-              elevation: isSelected ? 2 : 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(
-                  color: isSelected ? color : Colors.transparent,
-                ),
-              ),
-            ),
-            child: Text(status),
-          );
-        },
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-      ),
-    );
-  }
-
+  /// Builds the detailed view for a single application.
   Widget _buildDetailView(Application application) {
+    // Get the opportunity data from the cache
     final opportunity = _opportunityDetailsCache[application.opportunityId];
     if (opportunity == null) {
       return const Center(child: Text('Could not load opportunity details.'));
@@ -416,8 +437,10 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header with company info
                 _buildDetailHeader(opportunity),
                 const SizedBox(height: 24),
+                // Section for "Your Application" (Status, Applied Date)
                 _buildDetailSection(
                   title: 'Your Application',
                   content: Column(
@@ -446,8 +469,10 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
                     ],
                   ),
                 ),
+                // Section for "Opportunity Details"
                 _buildDetailKeyInfoSection(opportunity),
                 const SizedBox(height: 24),
+                // --- Copied sections from Opportunity Details page ---
                 if (opportunity.description != null &&
                     opportunity.description!.isNotEmpty)
                   _buildDetailSection(
@@ -472,6 +497,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
             ),
           ),
         ),
+        // Show "Withdraw" button only if status allows
         if (application.status.toLowerCase() == 'pending' ||
             application.status.toLowerCase() == 'reviewed')
           _buildWithdrawButton(application),
@@ -479,6 +505,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     );
   }
 
+  /// Builds the UI for when the student has no applications at all.
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -497,6 +524,66 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     );
   }
 
+  // --- 8. List View Components ---
+
+  /// Builds the search bar widget.
+  Widget _buildSearchBar() => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: 'Search by role or company...',
+            prefixIcon: const Icon(Icons.search),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none),
+          ),
+        ),
+      );
+
+  /// Builds the horizontal scrolling list of filter buttons.
+  Widget _buildFilterButtons() {
+    return SizedBox(
+      height: 50,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: _statusFilters.length,
+        itemBuilder: (context, index) {
+          final status = _statusFilters[index];
+          final isSelected = _activeStatusFilter == status;
+          final color = _getFilterColor(status); // Get color for this status
+
+          return ElevatedButton(
+            onPressed: () {
+              // Set the active filter and re-filter the list
+              setState(() => _activeStatusFilter = status);
+              _filterApplications();
+            },
+            style: ElevatedButton.styleFrom(
+              foregroundColor: isSelected ? Colors.white : color,
+              backgroundColor: isSelected ? color : color.withOpacity(0.1),
+              elevation: isSelected ? 2 : 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: isSelected ? color : Colors.transparent,
+                ),
+              ),
+            ),
+            child: Text(status),
+          );
+        },
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+      ),
+    );
+  }
+
+  // --- 9. Detail View Components ---
+
+  /// Builds the header card in the detail view.
   Widget _buildDetailHeader(Opportunity opportunity) {
     return InkWell(
       onTap: () => _navigateToCompanyProfile(opportunity.companyId),
@@ -506,6 +593,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
+          // Use FutureBuilder to load company data
           child: FutureBuilder<Company?>(
             future: _authService.getCompany(opportunity.companyId),
             builder: (context, snapshot) {
@@ -552,6 +640,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     );
   }
 
+  /// Builds the "Key Info" section for the detail view.
   Widget _buildDetailKeyInfoSection(Opportunity opportunity) {
     String formatDate(DateTime? date) =>
         date == null ? 'N/A' : DateFormat('MMMM d, yyyy').format(date);
@@ -576,110 +665,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     );
   }
 
-  Widget _buildInfoTile(
-      {required IconData icon,
-      required String title,
-      required String value,
-      Color? valueColor}) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: Colors.grey.shade200)),
-      child: ListTile(
-        leading: Icon(icon, color: _sparkPrimaryPurple),
-        title: Text(title,
-            style: GoogleFonts.lato(
-                fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
-        subtitle: Text(value,
-            style: GoogleFonts.lato(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: valueColor ?? _profileTextColor)),
-      ),
-    );
-  }
-
-  Widget _buildDetailSection({required String title, required Widget content}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: GoogleFonts.lato(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: _sparkPrimaryPurple)),
-          const SizedBox(height: 12),
-          content,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChipList(List<String> items) {
-    return Wrap(
-      spacing: 8.0,
-      runSpacing: 8.0,
-      children: items
-          .map((item) => Chip(
-                label: Text(item),
-                backgroundColor: _sparkPrimaryPurple.withOpacity(0.1),
-                labelStyle: const TextStyle(
-                    color: _sparkPrimaryPurple, fontWeight: FontWeight.w600),
-              ))
-          .toList(),
-    );
-  }
-
-  Widget _buildRequirementList(List<String> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: items
-          .map((req) => Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.check_circle_outline,
-                        color: Colors.green, size: 20),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        child: Text(req,
-                            style: GoogleFonts.lato(fontSize: 15, height: 1.5))),
-                  ],
-                ),
-              ))
-          .toList(),
-    );
-  }
-
-  Widget _buildMoreInfo(Opportunity opportunity) {
-    return Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-            side: BorderSide(color: Colors.grey.shade200)),
-        child: Column(children: [
-          _buildMoreInfoRow(Icons.badge_outlined, 'Type', opportunity.type),
-          if (opportunity.preferredMajor != null)
-            _buildMoreInfoRow(Icons.school_outlined, 'Preferred Major',
-                opportunity.preferredMajor!),
-          _buildMoreInfoRow(Icons.attach_money_outlined, 'Payment',
-              opportunity.isPaid ? 'Paid' : 'Unpaid'),
-        ]));
-  }
-
-  Widget _buildMoreInfoRow(IconData icon, String title, String value) =>
-      ListTile(
-        leading: Icon(icon, color: Colors.grey.shade600),
-        title: Text(title, style: GoogleFonts.lato(fontWeight: FontWeight.w600)),
-        trailing: Text(value,
-            style: GoogleFonts.lato(fontSize: 15, fontWeight: FontWeight.w500)),
-      );
-
+  /// Builds the "Withdraw Application" button at the bottom of the detail view.
   Widget _buildWithdrawButton(Application application) {
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -711,6 +697,141 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     );
   }
 
+  // --- 10. Reusable Helper Widgets ---
+  // (Used in the Detail View)
+
+  /// A generic info tile for the detail view.
+  Widget _buildInfoTile(
+      {required IconData icon,
+      required String title,
+      required String value,
+      Color? valueColor}) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: Colors.grey.shade200)),
+      child: ListTile(
+        leading: Icon(icon, color: _sparkPrimaryPurple),
+        title: Text(title,
+            style: GoogleFonts.lato(
+                fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
+        subtitle: Text(value,
+            style: GoogleFonts.lato(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: valueColor ?? _profileTextColor)),
+      ),
+    );
+  }
+
+  /// A generic section builder for the detail view.
+  Widget _buildDetailSection({required String title, required Widget content}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: GoogleFonts.lato(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: _sparkPrimaryPurple)),
+          const SizedBox(height: 12),
+          content,
+        ],
+      ),
+    );
+  }
+
+  /// Builds a list of chips (for skills).
+  Widget _buildChipList(List<String> items) {
+    return Wrap(
+      spacing: 8.0,
+      runSpacing: 8.0,
+      children: items
+          .map((item) => Chip(
+                label: Text(item),
+                backgroundColor: _sparkPrimaryPurple.withOpacity(0.1),
+                labelStyle: const TextStyle(
+                    color: _sparkPrimaryPurple, fontWeight: FontWeight.w600),
+              ))
+          .toList(),
+    );
+  }
+
+  /// Builds a list of requirements with checkmarks.
+  Widget _buildRequirementList(List<String> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: items
+          .map((req) => Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.check_circle_outline,
+                        color: Colors.green, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                        child: Text(req,
+                            style: GoogleFonts.lato(fontSize: 15, height: 1.5))),
+                  ],
+                ),
+              ))
+          .toList(),
+    );
+  }
+
+  /// Builds the "More Info" card (Type, Major, Payment).
+  Widget _buildMoreInfo(Opportunity opportunity) {
+    return Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: Colors.grey.shade200)),
+        child: Column(children: [
+          _buildMoreInfoRow(Icons.badge_outlined, 'Type', opportunity.type),
+          if (opportunity.preferredMajor != null)
+            _buildMoreInfoRow(Icons.school_outlined, 'Preferred Major',
+                opportunity.preferredMajor!),
+          _buildMoreInfoRow(Icons.attach_money_outlined, 'Payment',
+              opportunity.isPaid ? 'Paid' : 'Unpaid'),
+        ]));
+  }
+
+  /// Helper row for the "More Info" card.
+  Widget _buildMoreInfoRow(IconData icon, String title, String value) =>
+      ListTile(
+        leading: Icon(icon, color: Colors.grey.shade600),
+        title: Text(title, style: GoogleFonts.lato(fontWeight: FontWeight.w600)),
+        trailing: Text(value,
+            style: GoogleFonts.lato(fontSize: 15, fontWeight: FontWeight.w500)),
+      );
+
+  /// Builds the status chip widget.
+  Widget _buildStatusChip(String status) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: _getStatusColor(status).withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        status.capitalize(),
+        style: GoogleFonts.lato(
+          color: _getStatusColor(status),
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  // --- 11. Helper Utilities ---
+
+  /// Returns a specific color for each filter button.
   Color _getFilterColor(String filter) {
     switch (filter) {
       case 'All':
@@ -732,12 +853,13 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     }
   }
 
+  /// Returns a specific color for each application status.
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'hired':
       case 'accepted':
         return Colors.green.shade600;
-      case 'reviewed':
+      case 'reviewed': // "In Progress"
         return Colors.blue.shade600;
       case 'rejected':
         return Colors.red.shade600;
@@ -748,26 +870,11 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
         return Colors.orange.shade700;
     }
   }
-
-  Widget _buildStatusChip(String status) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: _getStatusColor(status).withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status.capitalize(),
-        style: GoogleFonts.lato(
-          color: _getStatusColor(status),
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
 }
 
+// --- SEPARATE CARD WIDGET ---
+
+/// A dedicated widget to display a single application card in the list.
 class _ApplicationCard extends StatelessWidget {
   final Application application;
   final Opportunity opportunity;
@@ -775,7 +882,7 @@ class _ApplicationCard extends StatelessWidget {
   final VoidCallback onWithdraw;
   final VoidCallback onDelete;
   final bool isDetailView;
-  final AuthService _authService = AuthService();
+  final AuthService _authService = AuthService(); // To get company data
 
   _ApplicationCard({
     required this.application,
@@ -801,8 +908,10 @@ class _ApplicationCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header with company logo, role, and status
             _buildHeader(context, opportunity),
             const SizedBox(height: 12),
+            // Date info
             Row(
               children: [
                 _buildDateInfo(
@@ -814,12 +923,14 @@ class _ApplicationCard extends StatelessWidget {
                     formattedAppliedDate),
               ],
             ),
+            // Action buttons (Withdraw, View More)
             if (!isDetailView) ...[
               const Padding(
                   padding: EdgeInsets.only(top: 12.0), child: Divider()),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  // Show "Withdraw" button only if status allows
                   if (application.status.toLowerCase() == 'pending' ||
                       application.status.toLowerCase() == 'reviewed')
                     TextButton(
@@ -845,6 +956,7 @@ class _ApplicationCard extends StatelessWidget {
     );
   }
 
+  /// Builds the header of the card (Logo, Role, Status, Delete button).
   Widget _buildHeader(BuildContext context, Opportunity opportunity) {
     return FutureBuilder<Company?>(
       future: _authService.getCompany(opportunity.companyId),
@@ -852,6 +964,7 @@ class _ApplicationCard extends StatelessWidget {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Company Logo
             CircleAvatar(
               radius: 28,
               backgroundColor: Colors.grey.shade200,
@@ -865,6 +978,7 @@ class _ApplicationCard extends StatelessWidget {
                   : null,
             ),
             const SizedBox(width: 12),
+            // Role and Company Name
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -879,10 +993,12 @@ class _ApplicationCard extends StatelessWidget {
                 ],
               ),
             ),
+            // Status Chip and Delete Button
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 _buildStatusChip(application.status),
+                // Show delete 'x' button only for withdrawn applications
                 if (application.status.toLowerCase() == 'withdrawn')
                   Padding(
                     padding: const EdgeInsets.only(left: 8.0),
@@ -906,6 +1022,9 @@ class _ApplicationCard extends StatelessWidget {
       },
     );
   }
+
+  // --- Helper methods for _ApplicationCard ---
+  // These are duplicated from the main state for component encapsulation.
 
   Widget _buildDateInfo(IconData icon, String title, String value) {
     return Expanded(
@@ -971,6 +1090,7 @@ class _ApplicationCard extends StatelessWidget {
   }
 }
 
+// --- UTILITY EXTENSION ---
 extension StringExtension on String {
   String capitalize() {
     if (isEmpty) return this;

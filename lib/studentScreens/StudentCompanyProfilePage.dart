@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/company.dart';
+// --- (1) إضافة Import للسيرفس ---
+import '../services/bookmarkService.dart'; 
 
 const _purple = Color(0xFF422F5D);
 const _pink = Color(0xFFD64483);
@@ -171,7 +173,7 @@ class StudentCompanyProfilePage extends StatelessWidget {
                                 final reviewsCount = company.studentReviews.length;
                                 return Center(
                                   child: TabBar(
-                                    isScrollable: false,
+                                    isScrollable: true, // <-- الحل لمشكلة ضيق المساحة
                                     labelColor: Colors.black,
                                     unselectedLabelColor: Colors.black.withOpacity(0.5),
                                     indicatorColor: _purple,
@@ -371,8 +373,11 @@ class _DetailsTab extends StatelessWidget {
 // =================== Opportunities Tab (new) ===================
 
 class _OpportunitiesTab extends StatelessWidget {
-  const _OpportunitiesTab({required this.companyId});
+   _OpportunitiesTab({required this.companyId});
   final String companyId;
+
+  // --- (2) إضافة السيرفس هنا ---
+  final BookmarkService _bookmarkService = BookmarkService();
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _oppsStream() {
     return FirebaseFirestore.instance
@@ -381,36 +386,32 @@ class _OpportunitiesTab extends StatelessWidget {
         .snapshots();
   }
 
-  /// نخزّن الإشارات المرجعية (Bookmarks) في كولكشن عام اسمه "bookmarks"
-  /// كل وثيقة ID = uid_opportunityId  وتحتوي userId و opportunityId.
-  Stream<Set<String>> _bookmarkedIdsStream(String uid) {
-    return FirebaseFirestore.instance
-        .collection('bookmarks')
-        .where('userId', isEqualTo: uid)
-        .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => (d.data()['opportunityId'] ?? '').toString())
-            .where((id) => id.isNotEmpty)
-            .toSet());
+  // --- (3) الدالة الجديدة لقراءة حالة الحفظ (تستخدم السيرفس) ---
+  Stream<bool> _isBookmarkedStream(String uid, String opportunityId) {
+    return _bookmarkService.isBookmarkedStream(
+      studentId: uid,
+      opportunityId: opportunityId,
+    );
   }
-
+  
+  // --- (4) الدالة الجديدة لحفظ/حذف (تستخدم السيرفس) ---
   Future<void> _toggleBookmark({
     required String uid,
     required String opportunityId,
     required bool isBookmarked,
     required BuildContext context,
   }) async {
-    final docId = '${uid}_$opportunityId';
-    final ref = FirebaseFirestore.instance.collection('bookmarks').doc(docId);
     try {
       if (isBookmarked) {
-        await ref.delete();
+        await _bookmarkService.removeBookmark(
+          studentId: uid,
+          opportunityId: opportunityId,
+        );
       } else {
-        await ref.set({
-          'userId': uid,
-          'opportunityId': opportunityId,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        await _bookmarkService.addBookmark(
+          studentId: uid,
+          opportunityId: opportunityId,
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -439,76 +440,82 @@ class _OpportunitiesTab extends StatelessWidget {
           return const Center(child: Text('No opportunities yet.'));
         }
 
-        // نقرأ إشارات المستخدم المرجعية كستريم ثاني
-        return StreamBuilder<Set<String>>(
-          stream: _bookmarkedIdsStream(uid),
-          builder: (context, bmSnap) {
-            final bookmarked = bmSnap.data ?? <String>{};
+        // --- (5) حذف الـ StreamBuilder<Set<String>> الخارجي ---
+        // تم نقله لداخل كل عنصر في القائمة
+        
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          itemCount: oppDocs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, i) {
+            final m = oppDocs[i].data();
+            final oppId = oppDocs[i].id;
+            
+            // هذا الكود الذي طلبته لعرض الـ role
+            final role =
+                (m['role'] ?? m['title'] ?? m['positionTitle'] ?? 'Opportunity').toString();
+                
+            final companyName = (m['companyName'] ?? '').toString();
+            final location = (m['location'] ?? '').toString();
+            final modality = (m['modality'] ?? m['workType'] ?? '').toString(); // Remote / In-person ..
+            final paid = (m['paid'] ?? m['isPaid'] ?? false) == true;
+            final desc = (m['shortDescription'] ?? m['description'] ?? '')
+                .toString();
 
-            return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              itemCount: oppDocs.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, i) {
-                final m = oppDocs[i].data();
-                final oppId = oppDocs[i].id;
-                final title =
-                    (m['title'] ?? m['positionTitle'] ?? 'Opportunity').toString();
-                final companyName = (m['companyName'] ?? '').toString();
-                final location = (m['location'] ?? '').toString();
-                final modality = (m['modality'] ?? m['workType'] ?? '').toString(); // Remote / In-person ..
-                final paid = (m['paid'] ?? m['isPaid'] ?? false) == true;
-                final desc = (m['shortDescription'] ?? m['description'] ?? '')
-                    .toString();
+            // --- تم حذف final isBookmarked = bookmarked.contains(oppId); ---
 
-                final isBookmarked = bookmarked.contains(oppId);
-
-                return Card(
-                  elevation: 0,
-                  color: const Color(0xFFF7F1FB),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                    child: Column(
+            return Card(
+              elevation: 0,
+              color: const Color(0xFFF7F1FB),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // عنوان + Bookmark
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // عنوان + Bookmark
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // لوجو بسيط مكان الصورة
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(22),
-                              ),
-                              child: const Icon(Icons.work_outline, color: _purple),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(title,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis),
-                                  if (companyName.isNotEmpty)
-                                    Text(companyName,
-                                        style: TextStyle(
-                                          color: Colors.black.withOpacity(0.6),
-                                        )),
-                                ],
-                              ),
-                            ),
-                            IconButton(
+                        // لوجو بسيط مكان الصورة
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(22),
+                          ),
+                          child: const Icon(Icons.work_outline, color: _purple),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(role, // <-- استخدام متغير role هنا
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                              if (companyName.isNotEmpty)
+                                Text(companyName,
+                                    style: TextStyle(
+                                      color: Colors.black.withOpacity(0.6),
+                                    )),
+                            ],
+                          ),
+                        ),
+                        
+                        // --- (5) إضافة StreamBuilder هنا حول الـ IconButton ---
+                        StreamBuilder<bool>(
+                          stream: _isBookmarkedStream(uid, oppId),
+                          builder: (context, snapshot) {
+                            final isBookmarked = snapshot.data ?? false;
+                            return IconButton(
                               icon: Icon(
                                 isBookmarked
                                     ? Icons.bookmark
@@ -522,53 +529,44 @@ class _OpportunitiesTab extends StatelessWidget {
                                 context: context,
                               ),
                               tooltip: isBookmarked ? 'Remove' : 'Save',
-                            ),
-                          ],
+                            );
+                          },
                         ),
-                        const SizedBox(height: 12),
-
-                        // وصف مختصر
-                        if (desc.isNotEmpty)
-                          Text(
-                            desc,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.black.withOpacity(0.8),
-                              height: 1.35,
-                            ),
-                          ),
-
-                        const SizedBox(height: 12),
-                        // Chips (location / modality / paid)
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 8,
-                          children: [
-                            if (location.isNotEmpty)
-                              _TagChip(icon: Icons.location_on_outlined, label: location),
-                            if (modality.isNotEmpty)
-                              _TagChip(icon: Icons.business_center_outlined, label: modality),
-                            _TagChip(
-                              icon: Icons.attach_money,
-                              label: paid ? 'Paid' : 'Unpaid',
-                            ),
-                          ],
-                        ),
-
-                        // زر “View More” اختياري
-                        // Align(
-                        //   alignment: Alignment.centerRight,
-                        //   child: TextButton(
-                        //     onPressed: () {/* open details page */},
-                        //     child: const Text('View More'),
-                        //   ),
-                        // ),
                       ],
                     ),
-                  ),
-                );
-              },
+                    const SizedBox(height: 12),
+
+                    // وصف مختصر
+                    if (desc.isNotEmpty)
+                      Text(
+                        desc,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.black.withOpacity(0.8),
+                          height: 1.35,
+                        ),
+                      ),
+
+                    const SizedBox(height: 12),
+                    // Chips (location / modality / paid)
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      children: [
+                        if (location.isNotEmpty)
+                          _TagChip(icon: Icons.location_on_outlined, label: location),
+                        if (modality.isNotEmpty)
+                          _TagChip(icon: Icons.business_center_outlined, label: modality),
+                        _TagChip(
+                          icon: Icons.attach_money,
+                          label: paid ? 'Paid' : 'Unpaid',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             );
           },
         );
