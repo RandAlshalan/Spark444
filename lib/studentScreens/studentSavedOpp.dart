@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:my_app/models/company.dart'; // Added import
 import 'package:my_app/models/opportunity.dart';
 import 'package:my_app/services/authService.dart'; // Added import
@@ -22,20 +23,30 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Saved Opportunities', style: GoogleFonts.lato(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Saved Opportunities',
+          style: GoogleFonts.lato(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
         elevation: 1,
       ),
       body: StreamBuilder<List<Opportunity>>(
-        stream: _bookmarkService.getBookmarkedOpportunitiesStream(studentId: widget.studentId),
+        stream: _bookmarkService.getBookmarkedOpportunitiesStream(
+          studentId: widget.studentId,
+        ),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Color(0xFF422F5D)));
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFF422F5D)),
+            );
           }
 
           if (snapshot.hasError) {
             return Center(
-              child: Text('Error loading saved opportunities.', style: GoogleFonts.lato(color: Colors.red)),
+              child: Text(
+                'Error loading saved opportunities.',
+                style: GoogleFonts.lato(color: Colors.red),
+              ),
             );
           }
 
@@ -64,11 +75,21 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.bookmark_remove_outlined, size: 60, color: Colors.grey),
+          const Icon(
+            Icons.bookmark_remove_outlined,
+            size: 60,
+            color: Colors.grey,
+          ),
           const SizedBox(height: 16),
-          Text('No Saved Opportunities', style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(
+            'No Saved Opportunities',
+            style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          const Text('Your saved items will appear here.', style: TextStyle(color: Colors.grey)),
+          const Text(
+            'Your saved items will appear here.',
+            style: TextStyle(color: Colors.grey),
+          ),
         ],
       ),
     );
@@ -79,10 +100,16 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
   Future<void> _toggleBookmark(Opportunity opportunity) async {
     // On this screen, a toggle will always be a "remove" action.
     try {
-      await _bookmarkService.removeBookmark(studentId: widget.studentId, opportunityId: opportunity.id);
+      await _bookmarkService.removeBookmark(
+        studentId: widget.studentId,
+        opportunityId: opportunity.id,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Removed from saved opportunities.'), duration: Duration(seconds: 1)),
+          const SnackBar(
+            content: Text('Removed from saved opportunities.'),
+            duration: Duration(seconds: 1),
+          ),
         );
       }
     } catch (e) {
@@ -112,16 +139,22 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
                   future: _authService.getCompany(opportunity.companyId),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
-                      return const CircleAvatar(radius: 25, backgroundColor: Colors.grey);
+                      return const CircleAvatar(
+                        radius: 25,
+                        backgroundColor: Colors.grey,
+                      );
                     }
                     final company = snapshot.data!;
                     return CircleAvatar(
                       radius: 25,
                       backgroundColor: Colors.grey.shade200,
-                      backgroundImage: (company.logoUrl != null && company.logoUrl!.isNotEmpty)
+                      backgroundImage:
+                          (company.logoUrl != null &&
+                              company.logoUrl!.isNotEmpty)
                           ? NetworkImage(company.logoUrl!)
                           : null,
-                      child: (company.logoUrl == null || company.logoUrl!.isEmpty)
+                      child:
+                          (company.logoUrl == null || company.logoUrl!.isEmpty)
                           ? const Icon(Icons.business, color: Colors.grey)
                           : null,
                     );
@@ -132,14 +165,29 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(opportunity.role, style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(
+                        opportunity.role,
+                        style: GoogleFonts.lato(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text(opportunity.name, style: GoogleFonts.lato(fontSize: 15, color: Colors.grey.shade700)),
+                      Text(
+                        opportunity.name,
+                        style: GoogleFonts.lato(
+                          fontSize: 15,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.bookmark, color: Color(0xFF422F5D)), // Always bookmarked on this screen
+                  icon: const Icon(
+                    Icons.bookmark,
+                    color: Color(0xFF422F5D),
+                  ), // Always bookmarked on this screen
                   onPressed: () => _toggleBookmark(opportunity),
                   tooltip: 'Remove Bookmark',
                 ),
@@ -151,7 +199,10 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
               runSpacing: 8.0,
               children: [
                 if (opportunity.location != null)
-                  _buildInfoChip(Icons.location_on_outlined, opportunity.location!),
+                  _buildInfoChip(
+                    Icons.location_on_outlined,
+                    opportunity.location!,
+                  ),
                 if (opportunity.workMode != null)
                   _buildInfoChip(Icons.work_outline, opportunity.workMode!),
                 _buildInfoChip(
@@ -159,6 +210,14 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
                   opportunity.isPaid ? 'Paid' : 'Unpaid',
                   color: opportunity.isPaid ? Colors.green : Colors.orange,
                 ),
+                // Show response deadline to students when the company enabled visibility
+                if (opportunity.responseDeadlineVisible == true &&
+                    opportunity.responseDeadline != null)
+                  _buildInfoChip(
+                    Icons.event_available,
+                    'Respond by ${DateFormat('MMM d, yyyy').format(opportunity.responseDeadline!.toDate())}',
+                    color: Colors.blueGrey,
+                  ),
               ],
             ),
           ],
@@ -180,7 +239,13 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
         children: [
           Icon(icon, size: 16, color: chipColor),
           const SizedBox(width: 6),
-          Text(label, style: GoogleFonts.lato(color: chipColor, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: GoogleFonts.lato(
+              color: chipColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

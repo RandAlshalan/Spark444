@@ -21,6 +21,8 @@ class Opportunity {
   final Timestamp? applicationDeadline; // When applications close
   final Timestamp?
   responseDeadline; // When company must update applicant statuses
+  final bool?
+  responseDeadlineVisible; // Whether students can see the response deadline
   final Timestamp? postedDate; // When the opportunity was posted
   final bool
   isActive; // Whether the opportunity is currently active/open for applications
@@ -45,6 +47,7 @@ class Opportunity {
     this.applicationOpenDate,
     this.applicationDeadline,
     this.responseDeadline,
+    this.responseDeadlineVisible,
     this.postedDate,
     this.isActive = true, // Default to true if not specified
     // --- END CONSTRUCTOR UPDATES ---
@@ -76,6 +79,7 @@ class Opportunity {
       applicationOpenDate: data['applicationOpenDate'] as Timestamp?,
       applicationDeadline: data['applicationDeadline'] as Timestamp?,
       responseDeadline: data['responseDeadline'] as Timestamp?,
+      responseDeadlineVisible: data['responseDeadlineVisible'] as bool?,
       postedDate: data['postedDate'] as Timestamp?,
       isActive: data['isActive'] ?? true, // Default to true if not present
       // --- END MAPPING UPDATED FIELDS ---
@@ -104,8 +108,10 @@ class Opportunity {
         'applicationOpenDate': applicationOpenDate,
       if (applicationDeadline != null)
         'applicationDeadline': applicationDeadline,
-      // Conditionally add responseDeadline based on the toggle in your form
+      // Conditionally add responseDeadline and its visibility based on the toggle in your form
       if (responseDeadline != null) 'responseDeadline': responseDeadline,
+      if (responseDeadlineVisible != null)
+        'responseDeadlineVisible': responseDeadlineVisible,
       'postedDate':
           postedDate, // For updates, keep the existing date. For creation, it will be set by the service.
       'isActive': isActive,

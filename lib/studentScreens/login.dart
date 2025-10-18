@@ -59,8 +59,10 @@ class _LoginScreenState extends State<LoginScreen>
                 color: Colors.transparent,
                 child: Container(
                   margin: EdgeInsets.only(top: topSafe > 0 ? 0 : 12),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFFF99D46), Color(0xFFD64483)],
@@ -77,7 +79,9 @@ class _LoginScreenState extends State<LoginScreen>
                         child: Text(
                           message,
                           style: const TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.w600),
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       GestureDetector(
@@ -106,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _hideTopToast() {
-    _toastEntry?..remove();
+    _toastEntry?.remove();
     _toastEntry = null;
   }
 
@@ -143,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen>
         // ✅ MODIFIED: Handles new generic Firebase error
         case 'invalid-credential':
           return "Wrong email/username or password";
-        
+
         case 'invalid-email':
           return "Invalid email format";
         case 'email-not-verified':
@@ -178,8 +182,9 @@ class _LoginScreenState extends State<LoginScreen>
     });
 
     try {
-      final loginResult =
-          await _authService.login(idRaw.trim(), pwRaw.trim());
+      final loginResult = await _authService.login(idRaw.trim(), pwRaw.trim());
+
+      if (!mounted) return; // Avoid using BuildContext across async gaps
 
       final String userType = loginResult['userType'];
       final bool isVerified = loginResult['isVerified'];
@@ -188,14 +193,14 @@ class _LoginScreenState extends State<LoginScreen>
 
       if (userType == 'student') {
         Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const StudentViewProfile()));
+          context,
+          MaterialPageRoute(builder: (context) => const StudentViewProfile()),
+        );
       } else if (userType == 'company') {
         Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const CompanyHomePage()));
+          context,
+          MaterialPageRoute(builder: (context) => const CompanyHomePage()),
+        );
         if (!isVerified) {
           Future.delayed(const Duration(milliseconds: 300), () {
             if (!mounted) return;
@@ -212,7 +217,10 @@ class _LoginScreenState extends State<LoginScreen>
       // Since the error message is now generic, we can't be sure which field is wrong.
       // So, we'll just show the toast without highlighting a specific field.
       // You could optionally highlight both fields if you prefer.
-      _setErrors(pwError: " ", idError: " "); // Add a space to trigger the red border without text
+      _setErrors(
+        pwError: " ",
+        idError: " ",
+      ); // Add a space to trigger the red border without text
       _showTopToast(mappedMsg);
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -222,8 +230,7 @@ class _LoginScreenState extends State<LoginScreen>
   InputBorder _fieldBorder(bool hasError) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide:
-          BorderSide(color: hasError ? Colors.red : Colors.transparent),
+      borderSide: BorderSide(color: hasError ? Colors.red : Colors.transparent),
     );
   }
 
@@ -253,31 +260,40 @@ class _LoginScreenState extends State<LoginScreen>
               const Text(
                 "SPARK",
                 style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF422F5D)),
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF422F5D),
+                ),
               ),
               const Text(
                 "Ignite your future",
                 style: TextStyle(
-                    color: Color(0xFFF99D46),
-                    fontStyle: FontStyle.italic,
-                    fontSize: 14),
+                  color: Color(0xFFF99D46),
+                  fontStyle: FontStyle.italic,
+                  fontSize: 14,
+                ),
               ),
               const SizedBox(height: 30),
               // Identifier
               TextField(
                 controller: _idController,
                 inputFormatters: [
-                  FilteringTextInputFormatter.deny(RegExp(r'\s')), // Prevent spaces
+                  FilteringTextInputFormatter.deny(
+                    RegExp(r'\s'),
+                  ), // Prevent spaces
                 ],
                 decoration: InputDecoration(
                   hintText: "Username or Email",
-                  prefixIcon: const Icon(Icons.person_outline, color: Colors.grey),
+                  prefixIcon: const Icon(
+                    Icons.person_outline,
+                    color: Colors.grey,
+                  ),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 15,
+                  ),
                   border: _fieldBorder(idHasError),
                   enabledBorder: _fieldBorder(idHasError),
                   focusedBorder: _fieldBorder(idHasError),
@@ -292,9 +308,10 @@ class _LoginScreenState extends State<LoginScreen>
                     child: Text(
                       _idError!,
                       style: const TextStyle(
-                          color: Colors.red,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500),
+                        color: Colors.red,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
@@ -304,15 +321,22 @@ class _LoginScreenState extends State<LoginScreen>
                 controller: _passwordController,
                 obscureText: _obscurePassword,
                 inputFormatters: [
-                  FilteringTextInputFormatter.deny(RegExp(r'\s')), // Prevent spaces
+                  FilteringTextInputFormatter.deny(
+                    RegExp(r'\s'),
+                  ), // Prevent spaces
                 ],
                 decoration: InputDecoration(
                   hintText: "Password",
-                  prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+                  prefixIcon: const Icon(
+                    Icons.lock_outline,
+                    color: Colors.grey,
+                  ),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 15,
+                  ),
                   border: _fieldBorder(pwHasError),
                   enabledBorder: _fieldBorder(pwHasError),
                   focusedBorder: _fieldBorder(pwHasError),
@@ -337,9 +361,10 @@ class _LoginScreenState extends State<LoginScreen>
                     child: Text(
                       _pwError!,
                       style: const TextStyle(
-                          color: Colors.red,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500),
+                        color: Colors.red,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
@@ -359,11 +384,13 @@ class _LoginScreenState extends State<LoginScreen>
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _login,
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30))),
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
                     child: _isLoading
                         ? const SizedBox(
                             width: 22,
@@ -371,41 +398,56 @@ class _LoginScreenState extends State<LoginScreen>
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               color: Colors.white,
-                            ))
-                        : const Text('Log In',
+                            ),
+                          )
+                        : const Text(
+                            'Log In',
                             style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white)),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               GestureDetector(
                 onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute(
-                      builder: (context) => const ForgotPasswordScreen()));
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const ForgotPasswordScreen(),
+                    ),
+                  );
                 },
-                child: const Text("Forgot Password?",
-                    style: TextStyle(
-                        color: Color(0xFF6B4791),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline)),
+                child: const Text(
+                  "Forgot Password?",
+                  style: TextStyle(
+                    color: Color(0xFF6B4791),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
               ),
               const SizedBox(height: 22),
               TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                            builder: (context) => const WelcomeScreen()),
-                        (route) => false);
-                  },
-                  child: const Text(
-                    "Back to Welcome Page",
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Color(0xFF6B4791)),
-                  )),
+                onPressed: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (context) => const WelcomeScreen(),
+                    ),
+                    (route) => false,
+                  );
+                },
+                child: const Text(
+                  "Back to Welcome Page",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF6B4791),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

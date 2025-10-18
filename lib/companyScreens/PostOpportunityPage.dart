@@ -50,6 +50,11 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
   DateTime? _endDate;
   DateTime? _applicationOpenDate;
   DateTime? _applicationDeadline;
+  DateTime? _responseDeadline;
+  bool _responseDeadlineVisible =
+      false; // Whether students can see the response deadline
+  // final TextEditingController _responseDeadlineController =
+  //     TextEditingController();
 
   final List<String> _selectedSkills = [];
   final List<String> _selectedRequirements = [];
@@ -131,6 +136,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     _skillController.dispose();
     _requirementController.dispose();
     _otherMajorController.dispose();
+    // _responseDeadlineController.dispose();
     super.dispose();
   }
 
@@ -185,6 +191,32 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
 
   Future<void> _postOpportunity() async {
     if (_formKey.currentState!.validate()) {
+      // Final validation: ensure response deadline (if provided) is after applicationDeadline
+      // and before opportunity start date
+      if (_responseDeadline != null) {
+        if (_applicationDeadline != null &&
+            !_responseDeadline!.isAfter(_applicationDeadline!)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Response deadline must be after the application deadline.',
+              ),
+            ),
+          );
+          return;
+        }
+        if (_startDate != null && !_responseDeadline!.isBefore(_startDate!)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Response deadline must be before the opportunity start date.',
+              ),
+            ),
+          );
+          return;
+        }
+      }
+
       setState(() => _isLoading = true);
 
       final User? currentUser = FirebaseAuth.instance.currentUser;
@@ -233,9 +265,11 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
         applicationDeadline: _applicationDeadline != null
             ? Timestamp.fromDate(_applicationDeadline!)
             : null,
-        responseDeadline: null,
-        postedDate:
-            null,
+        responseDeadline: _responseDeadline != null
+            ? Timestamp.fromDate(_responseDeadline!)
+            : null,
+        responseDeadlineVisible: _responseDeadlineVisible,
+        postedDate: null,
         isActive: true,
       );
 
@@ -907,7 +941,8 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                   onTap: () async {
                     final pickedRange = await _selectDateRange(
                       context,
-                      initialDateRange: (_applicationOpenDate != null &&
+                      initialDateRange:
+                          (_applicationOpenDate != null &&
                               _applicationDeadline != null)
                           ? DateTimeRange(
                               start: _applicationOpenDate!,
@@ -929,6 +964,89 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                     }
                     return null;
                   },
+                ),
+
+                // Response deadline (optional) + visibility toggle
+                _buildStyledTextFormField(
+                  controller: TextEditingController(
+                    text: _responseDeadline != null
+                        ? DateFormat('MMM d, yyyy').format(_responseDeadline!)
+                        : '',
+                  ),
+                  labelText:
+                      'Response Deadline (Company must update applicant statuses by)',
+                  icon: Icons.event_available,
+                  readOnly: true,
+                  onTap: () async {
+                    DateTime? minDate = _applicationDeadline;
+                    DateTime? maxDate = _startDate;
+                    final pickedDate = await _selectDate(
+                      context,
+                      initialDate:
+                          _responseDeadline ??
+                          (minDate != null
+                              ? minDate.add(const Duration(days: 1))
+                              : DateTime.now()),
+                      firstDate: minDate != null
+                          ? minDate.add(const Duration(days: 1))
+                          : DateTime.now(),
+                      lastDate: maxDate != null
+                          ? maxDate.subtract(const Duration(days: 1))
+                          : DateTime(2100),
+                    );
+                    if (pickedDate != null) {
+                      setState(() {
+                        _responseDeadline = pickedDate;
+                      });
+                    }
+                  },
+                  validator: (value) {
+                    if (_responseDeadline == null) {
+                      return 'Please select a response deadline';
+                    }
+                    if (_applicationDeadline != null &&
+                        _responseDeadline!.isBefore(
+                          _applicationDeadline!.add(const Duration(days: 1)),
+                        )) {
+                      return 'Response deadline must be after application deadline';
+                    }
+                    if (_startDate != null &&
+                        _responseDeadline!.isAfter(
+                          _startDate!.subtract(const Duration(days: 1)),
+                        )) {
+                      return 'Response deadline must be before opportunity start date';
+                    }
+                    return null;
+                  },
+                ),
+
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8.0),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Show response deadline to students?',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Switch(
+                        value: _responseDeadlineVisible,
+                        onChanged: (v) =>
+                            setState(() => _responseDeadlineVisible = v),
+                        activeColor: accentColor,
+                      ),
+                    ],
+                  ),
                 ),
 
                 _buildStyledTextFormField(
@@ -988,8 +1106,10 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 minimumSize: Size.zero, // Make it compact
               ),
               child: const Text(
@@ -1039,8 +1159,7 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     required IconData icon,
     required VoidCallback? onTap,
     bool enabled = true,
-    String? Function(String?)?
-        validator,
+    String? Function(String?)? validator,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
