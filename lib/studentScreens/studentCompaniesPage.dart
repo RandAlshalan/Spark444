@@ -1,3 +1,5 @@
+// lib/studentScreens/studentCompaniesPage.dart
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,6 +7,15 @@ import 'package:my_app/studentScreens/StudentCompanyProfilePage.dart';
 
 import '../services/companyService.dart';
 import '../models/company.dart';
+
+// --- NAV BAR IMPORTS START ---
+// Imports extracted from studentOppPage.dart
+import 'package:google_fonts/google_fonts.dart';
+import '../widgets/CustomBottomNavBar.dart';
+import '../studentScreens/studentViewProfile.dart';
+import '../studentScreens/studentSavedOpp.dart';
+import '../studentScreens/studentOppPage.dart'; // For navigating to opportunities
+// --- NAV BAR IMPORTS END ---
 
 const _purple = Color(0xFF422F5D);
 
@@ -18,21 +29,21 @@ class StudentCompaniesPage extends StatefulWidget {
 }
 
 class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
+  // Original state variables
   final _service = CompanyService();
   final _searchCtrl = TextEditingController();
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
 
-  // نمنع الضغطات المتكررة على زر المتابعة
   final Set<String> _pendingToggles = {};
-
-  // تحديث تفاؤلي: نخزّن الحالة المؤقتة لكل شركة (true=following, false=not)
   final Map<String, bool> _optimisticFollowing = {};
-
-  // هل صار تعديل (تابِع/إلغاء)؟ نرجّعه للصفحة السابقة
   bool _modified = false;
-
   String _query = '';
+
+  // --- NAV BAR STATE START ---
+  // This page corresponds to index 1 (Companies)
+  int _currentIndex = 1;
+  // --- NAV BAR STATE END ---
 
   @override
   void dispose() {
@@ -48,7 +59,6 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
     try {
       setState(() {
         _pendingToggles.add(companyId);
-        // تحديث تفاؤلي فوري: اعكس الحالة الحالية
         _optimisticFollowing[companyId] = !isFollowing;
       });
 
@@ -58,10 +68,9 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
             : FieldValue.arrayUnion([companyId]),
       }, SetOptions(merge: true));
 
-      _modified = true; // صار تغيير
+      _modified = true;
     } catch (e) {
       if (!mounted) return;
-      // تراجع عن التحديث التفاؤلي عند الفشل
       setState(() {
         _optimisticFollowing[companyId] = isFollowing;
       });
@@ -72,11 +81,68 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
       if (mounted) {
         setState(() {
           _pendingToggles.remove(companyId);
-          // نخلّي القيمة التفاؤلية، وبتتأكد من الستريم مباشرة
         });
       }
     }
   }
+
+  // --- NAV BAR HANDLERS START ---
+
+  void _onNavigationTap(int index) {
+    if (index == _currentIndex) return; // Do nothing if same tab is tapped
+
+    switch (index) {
+      case 0:
+        // This case was a "Coming soon!" message (e.g., Home/Chat)
+        _showInfoMessage('Coming soon!');
+        break;
+      // case 1: (Current Page) - is handled by the initial `if` check.
+      case 2:
+        // Navigate to Opportunities Page
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const studentOppPgae()),
+        );
+        break;
+      case 3:
+        // Navigate to Profile Page
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const StudentViewProfile()),
+        );
+        break;
+    }
+  }
+
+  void _navigateToSaved() {
+    // Use the existing _auth service to get the current user's ID
+    final studentId = _auth.currentUser?.uid;
+
+    if (studentId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SavedstudentOppPgae(studentId: studentId),
+        ),
+      );
+    } else {
+      _showInfoMessage("Could not open saved items. User ID not found.");
+    }
+  }
+
+  void _showInfoMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: GoogleFonts.lato()),
+        backgroundColor: const Color(0xFF422F5D),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  // --- NAV BAR HANDLERS END ---
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +173,15 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
           leading: BackButton(
             onPressed: () => Navigator.pop(context, _modified),
           ),
+          // --- APP BAR ACTION ADDED ---
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.bookmarks_outlined),
+              onPressed: _navigateToSaved,
+              tooltip: 'Saved',
+            ),
+          ],
+          // ---
         ),
         body: Column(
           children: [
@@ -154,6 +229,12 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
             ),
           ],
         ),
+        // --- BOTTOM NAV BAR ADDED ---
+        bottomNavigationBar: CustomBottomNavBar(
+          currentIndex: _currentIndex,
+          onTap: _onNavigationTap,
+        ),
+        // ---
       ),
     );
   }

@@ -1,777 +1,464 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+
 import '../models/company.dart';
+import '../models/opportunity.dart';
+import '../services/bookmarkService.dart';
 
-const _purple = Color(0xFF422F5D);
-const _pink = Color(0xFFD64483);
-const _chipBg = Color(0xFFEDE7F3);
+const _primaryColor = Color(0xFF422F5D);
+const _secondaryColor = Color(0xFFD64483);
 
-class StudentCompanyProfilePage extends StatelessWidget {
+class StudentCompanyProfilePage extends StatefulWidget {
   const StudentCompanyProfilePage({super.key, required this.companyId});
+
   final String companyId;
 
-  Stream<DocumentSnapshot<Map<String, dynamic>>> _companyDocStream() {
+  @override
+  State<StudentCompanyProfilePage> createState() =>
+      _StudentCompanyProfilePageState();
+}
+
+class _StudentCompanyProfilePageState
+    extends State<StudentCompanyProfilePage> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final BookmarkService _bookmarkService = BookmarkService();
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>> _companyStream() {
     return FirebaseFirestore.instance
         .collection('companies')
-        .doc(companyId)
+        .doc(widget.companyId)
         .snapshots();
   }
 
-  Stream<int> _oppsCountStream() {
+  Stream<QuerySnapshot<Map<String, dynamic>>> _opportunitiesStream() {
     return FirebaseFirestore.instance
         .collection('opportunities')
-        .where('companyId', isEqualTo: companyId)
-        .snapshots()
-        .map((s) => s.size);
+        .where('companyId', isEqualTo: widget.companyId)
+        .orderBy('postedDate', descending: true)
+        .snapshots();
   }
 
-  Stream<bool> _isFollowingStream(String studentId) {
+  Stream<bool> _isFollowingStream(String uid) {
     return FirebaseFirestore.instance
         .collection('student')
-        .doc(studentId)
+        .doc(uid)
         .snapshots()
-        .map((d) {
-          final data = d.data();
-          final list = List<String>.from(data?['followedCompanies'] ?? []);
-          return list.contains(companyId);
-        });
+        .map((snapshot) {
+      final data = snapshot.data();
+      final followed =
+          List<String>.from(data?['followedCompanies'] ?? const <String>[]);
+      return followed.contains(widget.companyId);
+    });
   }
 
   Future<void> _toggleFollow({
-    required String studentId,
-    required bool following,
+    required String uid,
+    required bool isFollowing,
   }) async {
-    final ref = FirebaseFirestore.instance.collection('student').doc(studentId);
-    await ref.set({
-      'followedCompanies': following
-          ? FieldValue.arrayRemove([companyId])
-          : FieldValue.arrayUnion([companyId]),
-    }, SetOptions(merge: true));
-  }
+    final ref =
+        FirebaseFirestore.instance.collection('student').doc(uid);
 
-  @override
-  Widget build(BuildContext context) {
-    final studentId = FirebaseAuth.instance.currentUser?.uid;
-
-    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: _companyDocStream(),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        if (!snap.hasData || !snap.data!.exists || snap.data!.data() == null) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Company')),
-            body: const Center(child: Text('Company not found')),
-          );
-        }
-
-        final data = snap.data!.data()!;
-        final company = Company.fromMap(snap.data!.id, data);
-
-        return DefaultTabController(
-          length: 3,
-          child: Scaffold(
-            extendBodyBehindAppBar: true,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              foregroundColor: Colors.white,
-            ),
-            body: SingleChildScrollView(
-              child: Column(
-                children: [
-                  // -------- Header (taller + big avatar + raised follow btn)
-                  Stack(
-                    children: [
-                      Container(
-                        height: 260, // أعلى للهيدر
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [_purple, _pink],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                      ),
-                      // Avatar XL (radius 60) مع إطار أبيض وظل خفيف
-                      Positioned.fill(
-                        child: Align(
-                          alignment: const Alignment(0, 0.22),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.12),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: CircleAvatar(
-                              radius: 64,
-                              backgroundColor: Colors.white,
-                              child:
-                                  (company.logoUrl != null &&
-                                      company.logoUrl!.isNotEmpty)
-                                  ? CircleAvatar(
-                                      radius: 58,
-                                      backgroundImage: NetworkImage(
-                                        company.logoUrl!,
-                                      ),
-                                    )
-                                  : CircleAvatar(
-                                      radius: 58,
-                                      backgroundColor: Colors.white,
-                                      child: Text(
-                                        (company.companyName.trim().isEmpty
-                                                ? ''
-                                                : company.companyName
-                                                      .trim()
-                                                      .split(RegExp(r'\s+'))
-                                                      .take(2)
-                                                      .map((w) => w[0])
-                                                      .join())
-                                            .toUpperCase(),
-                                        style: const TextStyle(
-                                          fontSize: 26,
-                                          fontWeight: FontWeight.w800,
-                                          color: _purple,
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (studentId != null)
-                        Positioned(
-                          right: 16,
-                          bottom: 72, // رفعت الزر فوق حتى ما يغطي الكارد
-                          child: StreamBuilder<bool>(
-                            stream: _isFollowingStream(studentId),
-                            builder: (context, s) {
-                              final following = s.data ?? false;
-                              return OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  side: const BorderSide(color: Colors.white),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                    vertical: 10,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(22),
-                                  ),
-                                ),
-                                onPressed: () async {
-                                  try {
-                                    await _toggleFollow(
-                                      studentId: studentId,
-                                      following: following,
-                                    );
-                                  } catch (e) {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(content: Text('Failed: $e')),
-                                      );
-                                    }
-                                  }
-                                },
-                                child: Text(following ? 'Following' : 'Follow'),
-                              );
-                            },
-                          ),
-                        ),
-                    ],
-                  ),
-
-                  // -------- Card (centered tabs)
-                  Container(
-                    transform: Matrix4.translationValues(0, -36, 0),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Material(
-                      elevation: 0,
-                      borderRadius: BorderRadius.circular(18),
-                      color: Colors.white,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              company.companyName,
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            if (company.sector.isNotEmpty)
-                              Text(
-                                company.sector,
-                                style: TextStyle(
-                                  color: Colors.black.withOpacity(0.6),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            const SizedBox(height: 10),
-                            if ((company.description ?? '').isNotEmpty)
-                              Text(
-                                company.description!,
-                                style: TextStyle(
-                                  color: Colors.black.withOpacity(0.75),
-                                  height: 1.4,
-                                ),
-                              ),
-                            const SizedBox(height: 16),
-
-                            StreamBuilder<int>(
-                              stream: _oppsCountStream(),
-                              builder: (context, oppCountSnap) {
-                                final oppCount = oppCountSnap.data ?? 0;
-                                final reviewsCount =
-                                    company.studentReviews.length;
-                                return Center(
-                                  child: TabBar(
-                                    isScrollable: false,
-                                    labelColor: Colors.black,
-                                    unselectedLabelColor: Colors.black
-                                        .withOpacity(0.5),
-                                    indicatorColor: _purple,
-                                    indicatorWeight: 3,
-                                    dividerColor: Colors.transparent,
-                                    tabs: [
-                                      const Tab(text: 'Details'),
-                                      Tab(text: 'Opportunities ($oppCount)'),
-                                      Tab(text: 'Reviews ($reviewsCount)'),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // -------- Tabs
-                  Container(
-                    height: 700,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: TabBarView(
-                      children: [
-                        _DetailsTab(company: company, data: data),
-                        _OpportunitiesTab(companyId: companyId),
-                        _ReviewsTab(reviewCount: company.studentReviews.length),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            ),
-          ),
-        );
+    await ref.set(
+      {
+        'followedCompanies': isFollowing
+            ? FieldValue.arrayRemove([widget.companyId])
+            : FieldValue.arrayUnion([widget.companyId]),
       },
+      SetOptions(merge: true),
     );
   }
-}
-
-// =================== Details Tab ===================
-
-class _DetailsTab extends StatelessWidget {
-  const _DetailsTab({required this.company, required this.data});
-  final Company company;
-  final Map<String, dynamic> data;
-
-  Future<void> _launchEmail(String email) async {
-    if (email.trim().isEmpty) return;
-    final uri = Uri(scheme: 'mailto', path: email);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
-  Future<void> _launchPhone(String phone) async {
-    if (phone.trim().isEmpty) return;
-    final uri = Uri(scheme: 'tel', path: phone);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
-  String _extractEmail(String text) {
-    final m = RegExp(
-      r'[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}',
-    ).firstMatch(text);
-    return (m?.group(0) ?? '').trim();
-  }
-
-  String _extractPhone(String text) {
-    final m = RegExp(r'(\+?\d[\d\s\-\(\)]{7,})').firstMatch(text);
-    return (m?.group(1) ?? '').trim();
-  }
-
-  List<String> _detectServices(String description, String sector) {
-    final text = (description + ' ' + sector).toLowerCase();
-    final map = <String, String>{
-      'cloud': 'Cloud & Data Center',
-      'data center': 'Cloud & Data Center',
-      'security': 'Cybersecurity',
-      'cyber': 'Cybersecurity',
-      'cybersecurity': 'Cybersecurity',
-      'network': 'Networking',
-      'networking': 'Networking',
-      'iot': 'IoT / Edge Computing',
-      'edge': 'IoT / Edge Computing',
-      'managed services': 'Managed Services',
-      'consult': 'Consulting',
-      'ai': 'AI',
-      'machine learning': 'ML',
-      'analytics': 'Analytics',
-      'infrastructure': 'Infrastructure',
-      'software': 'Software',
-      'mobile': 'Mobile',
-      'web': 'Web',
-      'devops': 'DevOps',
-      'support': 'Support',
-    };
-    final out = <String>[];
-    for (final k in map.keys) {
-      if (text.contains(k)) {
-        final label = map[k]!;
-        if (!out.contains(label)) out.add(label);
-      }
-    }
-    if (out.isEmpty && sector.trim().isNotEmpty) out.add(sector.trim());
-    return out.take(8).toList();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final about = (company.description ?? '').trim();
-    final rawContact = company.contactInfo.trim();
+    final uid = _auth.currentUser?.uid;
 
-    // EMAIL
-    final emailFromFields =
-        (data['contactEmail'] ?? data['email'] ?? company.email)
-            .toString()
-            .trim();
-    final emailFromText = _extractEmail('$rawContact $about');
-    final email = emailFromFields.isNotEmpty ? emailFromFields : emailFromText;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Company'),
+        backgroundColor: Colors.white,
+        foregroundColor: _primaryColor,
+        elevation: 0,
+      ),
+      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: _companyStream(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-    // PHONE
-    String phone = (data['phone'] ?? data['contactPhone'] ?? '')
-        .toString()
-        .trim();
-    if (phone.isEmpty) phone = _extractPhone('$rawContact $about');
+          if (!snapshot.hasData ||
+              !snapshot.data!.exists ||
+              snapshot.data!.data() == null) {
+            return const Center(child: Text('Company not found.'));
+          }
 
-    // Contact name بدون رقم/إيميل
-    var contactName = rawContact;
-    if (phone.isNotEmpty) {
-      contactName = contactName
-          .replaceAll(phone, '')
-          .replaceAll(RegExp(r'\s{2,}'), ' ')
-          .trim();
-    }
-    if (emailFromText.isNotEmpty) {
-      contactName = contactName
-          .replaceAll(emailFromText, '')
-          .replaceAll(RegExp(r'\s{2,}'), ' ')
-          .trim();
-    }
-    contactName = contactName
-        .replaceAll(RegExp(r'^[\-\•\|,;:()\s]+|[\-\•\|,;:()\s]+$'), '')
-        .trim();
+          final data = snapshot.data!.data()!;
+          final company = Company.fromMap(snapshot.data!.id, data);
 
-    // CORE SERVICES
-    List<String> services;
-    final raw =
-        data['coreServices'] ?? data['services'] ?? data['core_services'];
-    if (raw is Iterable) {
-      services = raw
-          .map((e) => e.toString().trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-    } else if (raw is String) {
-      services = raw
-          .split(RegExp(r'[;,]'))
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-    } else {
-      services = _detectServices(about, company.sector);
-    }
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _CompanyHeader(
+                  company: company,
+                  uid: uid,
+                  isFollowingStream:
+                      uid == null ? null : _isFollowingStream(uid),
+                  onToggleFollow: uid == null
+                      ? null
+                      : (isFollowing) =>
+                          _toggleFollow(uid: uid, isFollowing: isFollowing),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Opportunities',
+                  style: GoogleFonts.lato(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: _primaryColor,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: _opportunitiesStream(),
+                  builder: (context, oppSnapshot) {
+                    if (oppSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.only(top: 24),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
 
-    Widget sectionTitle(String t) => Padding(
-      padding: const EdgeInsets.only(top: 4, bottom: 8),
-      child: Text(
-        t,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    final docs = oppSnapshot.data?.docs ?? const [];
+                    if (docs.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.only(top: 24),
+                        child: Center(
+                          child: Text('No opportunities from this company yet.'),
+                        ),
+                      );
+                    }
+
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: docs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final doc = docs[index];
+                        final opportunity = Opportunity.fromFirestore(doc);
+
+                        return _OpportunityCard(
+                          opportunity: opportunity,
+                          bookmarkStream: uid == null
+                              ? null
+                              : _bookmarkService.isBookmarkedStream(
+                                  studentId: uid,
+                                  opportunityId: opportunity.id,
+                                ),
+                          onToggleBookmark: uid == null
+                              ? null
+                              : (isBookmarked) =>
+                                  _toggleBookmark(uid, opportunity.id, isBookmarked),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
-
-    return ListView(
-      padding: const EdgeInsets.only(top: 8, bottom: 16),
-      children: [
-        sectionTitle('About Us'),
-        Text(
-          about.isNotEmpty ? about : 'No description provided.',
-          style: TextStyle(color: Colors.black.withOpacity(0.75), height: 1.45),
-        ),
-        const Divider(height: 28),
-
-        sectionTitle('Core Services'),
-        if (services.isEmpty)
-          Text(
-            'No services listed.',
-            style: TextStyle(color: Colors.black.withOpacity(0.6)),
-          )
-        else
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: services
-                .map(
-                  (s) => Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _chipBg,
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                    child: Text(
-                      s,
-                      style: const TextStyle(
-                        color: _purple,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-        const Divider(height: 28),
-
-        sectionTitle('Contact Details'),
-        Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(
-                  Icons.email_outlined,
-                  color: _purple,
-                ), // رجّعنا الأيقونة
-                title: Text(
-                  email.isNotEmpty ? 'Email: $email' : 'Email: Not provided',
-                ),
-                subtitle: contactName.isNotEmpty ? Text(contactName) : null,
-                trailing: ElevatedButton(
-                  onPressed: email.isEmpty ? null : () => _launchEmail(email),
-                  child: const Text('Email'),
-                ),
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(
-                  Icons.phone_outlined,
-                  color: _purple,
-                ), // رجّعنا الأيقونة
-                title: Text(
-                  phone.isNotEmpty ? 'Phone: $phone' : 'Phone: Not provided',
-                ),
-                trailing: ElevatedButton(
-                  onPressed: phone.isEmpty ? null : () => _launchPhone(phone),
-                  child: const Text('Call'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// =================== Opportunities Tab (new) ===================
-
-class _OpportunitiesTab extends StatelessWidget {
-  const _OpportunitiesTab({required this.companyId});
-  final String companyId;
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> _oppsStream() {
-    return FirebaseFirestore.instance
-        .collection('opportunities')
-        .where('companyId', isEqualTo: companyId)
-        .snapshots();
   }
 
-  /// نخزّن الإشارات المرجعية (Bookmarks) في كولكشن عام اسمه "bookmarks"
-  /// كل وثيقة ID = uid_opportunityId  وتحتوي userId و opportunityId.
-  Stream<Set<String>> _bookmarkedIdsStream(String uid) {
-    return FirebaseFirestore.instance
-        .collection('bookmarks')
-        .where('userId', isEqualTo: uid)
-        .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map((d) => (d.data()['opportunityId'] ?? '').toString())
-              .where((id) => id.isNotEmpty)
-              .toSet(),
-        );
-  }
-
-  Future<void> _toggleBookmark({
-    required String uid,
-    required String opportunityId,
-    required bool isBookmarked,
-    required BuildContext context,
-  }) async {
-    final docId = '${uid}_$opportunityId';
-    final ref = FirebaseFirestore.instance.collection('bookmarks').doc(docId);
+  Future<void> _toggleBookmark(
+    String uid,
+    String opportunityId,
+    bool isBookmarked,
+  ) async {
     try {
       if (isBookmarked) {
-        await ref.delete();
+        await _bookmarkService.removeBookmark(
+          studentId: uid,
+          opportunityId: opportunityId,
+        );
       } else {
-        await ref.set({
-          'userId': uid,
-          'opportunityId': opportunityId,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        await _bookmarkService.addBookmark(
+          studentId: uid,
+          opportunityId: opportunityId,
+        );
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update bookmark: $e')),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update bookmark: $e')),
+      );
     }
   }
+}
+
+class _CompanyHeader extends StatelessWidget {
+  const _CompanyHeader({
+    required this.company,
+    required this.uid,
+    required this.isFollowingStream,
+    required this.onToggleFollow,
+  });
+
+  final Company company;
+  final String? uid;
+  final Stream<bool>? isFollowingStream;
+  final Future<void> Function(bool isFollowing)? onToggleFollow;
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
-      return const Center(child: Text('Please sign in to view opportunities.'));
-    }
+    final theme = Theme.of(context);
+    final location = company.contactInfo.trim();
 
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: _oppsStream(),
-      builder: (context, oppSnap) {
-        if (oppSnap.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final oppDocs = oppSnap.data?.docs ?? [];
-        if (oppDocs.isEmpty) {
-          return const Center(child: Text('No opportunities yet.'));
-        }
-
-        // نقرأ إشارات المستخدم المرجعية كستريم ثاني
-        return StreamBuilder<Set<String>>(
-          stream: _bookmarkedIdsStream(uid),
-          builder: (context, bmSnap) {
-            final bookmarked = bmSnap.data ?? <String>{};
-
-            return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              itemCount: oppDocs.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, i) {
-                final m = oppDocs[i].data();
-                final oppId = oppDocs[i].id;
-                final title =
-                    (m['title'] ?? m['positionTitle'] ?? 'Opportunity')
-                        .toString();
-                final companyName = (m['companyName'] ?? '').toString();
-                final location = (m['location'] ?? '').toString();
-                final modality = (m['modality'] ?? m['workType'] ?? '')
-                    .toString(); // Remote / In-person ..
-                final paid = (m['paid'] ?? m['isPaid'] ?? false) == true;
-                final desc = (m['shortDescription'] ?? m['description'] ?? '')
-                    .toString();
-
-                final isBookmarked = bookmarked.contains(oppId);
-
-                return Card(
-                  elevation: 0,
-                  color: const Color(0xFFF7F1FB),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // عنوان + Bookmark
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // لوجو بسيط مكان الصورة
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(22),
-                              ),
-                              child: const Icon(
-                                Icons.work_outline,
-                                color: _purple,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    title,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  if (companyName.isNotEmpty)
-                                    Text(
-                                      companyName,
-                                      style: TextStyle(
-                                        color: Colors.black.withOpacity(0.6),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                isBookmarked
-                                    ? Icons.bookmark
-                                    : Icons.bookmark_border,
-                                color: _purple,
-                              ),
-                              onPressed: () => _toggleBookmark(
-                                uid: uid,
-                                opportunityId: oppId,
-                                isBookmarked: isBookmarked,
-                                context: context,
-                              ),
-                              tooltip: isBookmarked ? 'Remove' : 'Save',
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        // وصف مختصر
-                        if (desc.isNotEmpty)
-                          Text(
-                            desc,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.black.withOpacity(0.8),
-                              height: 1.35,
-                            ),
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 34,
+                  backgroundColor: _primaryColor.withOpacity(0.1),
+                  backgroundImage: company.logoUrl != null &&
+                          company.logoUrl!.isNotEmpty
+                      ? NetworkImage(company.logoUrl!)
+                      : null,
+                  child: (company.logoUrl == null ||
+                          company.logoUrl!.isEmpty)
+                      ? Text(
+                          company.companyName.isEmpty
+                              ? '?'
+                              : company.companyName
+                                  .trim()
+                                  .split(RegExp(r'\\s+'))
+                                  .map((word) => word[0])
+                                  .take(2)
+                                  .join()
+                                  .toUpperCase(),
+                          style: const TextStyle(
+                            color: _primaryColor,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 20,
                           ),
-
-                        const SizedBox(height: 12),
-                        // Chips (location / modality / paid)
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 8,
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        company.companyName,
+                        style: GoogleFonts.lato(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: _primaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        company.sector,
+                        style: GoogleFonts.lato(
+                          color: _secondaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (location.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Row(
                           children: [
-                            if (location.isNotEmpty)
-                              _TagChip(
-                                icon: Icons.location_on_outlined,
-                                label: location,
+                            const Icon(Icons.location_on_outlined, size: 18),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                location,
+                                style: GoogleFonts.lato(fontSize: 13),
                               ),
-                            if (modality.isNotEmpty)
-                              _TagChip(
-                                icon: Icons.business_center_outlined,
-                                label: modality,
-                              ),
-                            _TagChip(
-                              icon: Icons.attach_money,
-                              label: paid ? 'Paid' : 'Unpaid',
                             ),
                           ],
                         ),
-
-                        // زر “View More” اختياري
-                        // Align(
-                        //   alignment: Alignment.centerRight,
-                        //   child: TextButton(
-                        //     onPressed: () {/* open details page */},
-                        //     child: const Text('View More'),
-                        //   ),
-                        // ),
                       ],
-                    ),
+                    ],
                   ),
-                );
-              },
-            );
-          },
-        );
-      },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (company.description != null &&
+                company.description!.trim().isNotEmpty) ...[
+              Text(
+                company.description!,
+                style: GoogleFonts.lato(
+                  color: Colors.grey.shade700,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (uid != null && isFollowingStream != null) ...[
+              StreamBuilder<bool>(
+                stream: isFollowingStream,
+                builder: (context, snapshot) {
+                  final isFollowing = snapshot.data ?? false;
+                  return SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: isFollowing
+                            ? Colors.white
+                            : _primaryColor,
+                        foregroundColor: isFollowing
+                            ? _primaryColor
+                            : Colors.white,
+                        side: BorderSide(
+                          color: isFollowing ? _primaryColor : Colors.transparent,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: onToggleFollow == null
+                          ? null
+                          : () => onToggleFollow!(isFollowing),
+                      child: Text(
+                        isFollowing ? 'Following' : 'Follow Company',
+                        style: GoogleFonts.lato(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
 
-// Chip بسيط شبيه بالتصميم
-class _TagChip extends StatelessWidget {
-  const _TagChip({required this.icon, required this.label});
-  final IconData icon;
-  final String label;
+class _OpportunityCard extends StatelessWidget {
+  const _OpportunityCard({
+    required this.opportunity,
+    required this.bookmarkStream,
+    required this.onToggleBookmark,
+  });
+
+  final Opportunity opportunity;
+  final Stream<bool>? bookmarkStream;
+  final Future<void> Function(bool isBookmarked)? onToggleBookmark;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    final theme = Theme.of(context);
+
+    Widget buildRow(IconData icon, String text) {
+      return Row(
         children: [
-          Icon(icon, size: 16, color: _purple),
+          Icon(icon, size: 18, color: Colors.grey.shade600),
           const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(color: _purple, fontWeight: FontWeight.w600),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.lato(
+                fontSize: 14,
+                color: Colors.grey.shade700,
+              ),
+            ),
           ),
         ],
-      ),
-    );
-  }
-}
+      );
+    }
 
-// =================== Reviews Tab ===================
-
-class _ReviewsTab extends StatelessWidget {
-  const _ReviewsTab({required this.reviewCount});
-  final int reviewCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        reviewCount > 0
-            ? 'There are $reviewCount reviews (design placeholder).'
-            : 'No reviews yet.',
-        style: const TextStyle(fontSize: 16),
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              opportunity.role,
+              style: GoogleFonts.lato(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: _primaryColor,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              opportunity.name,
+              style: GoogleFonts.lato(
+                fontSize: 14,
+                color: _secondaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            buildRow(Icons.location_on_outlined,
+                opportunity.location ?? 'Location not specified'),
+            const SizedBox(height: 6),
+            if (opportunity.workMode != null)
+              buildRow(Icons.apartment_outlined,
+                  opportunity.workMode ?? 'Work mode not specified'),
+            const SizedBox(height: 6),
+            buildRow(
+              Icons.payments_outlined,
+              opportunity.isPaid ? 'Paid opportunity' : 'Unpaid opportunity',
+            ),
+            if (opportunity.applicationDeadline != null) ...[
+              const SizedBox(height: 6),
+              buildRow(
+                Icons.event_available_outlined,
+                'Apply before ${DateFormat('MMM d, yyyy').format(opportunity.applicationDeadline!.toDate())}',
+              ),
+            ],
+            const SizedBox(height: 16),
+            if (bookmarkStream != null && onToggleBookmark != null)
+              StreamBuilder<bool>(
+                stream: bookmarkStream,
+                builder: (context, snapshot) {
+                  final isBookmarked = snapshot.data ?? false;
+                  return Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () => onToggleBookmark!(isBookmarked),
+                      icon: Icon(
+                        isBookmarked
+                            ? Icons.bookmark
+                            : Icons.bookmark_outline,
+                        color: isBookmarked ? _secondaryColor : _primaryColor,
+                      ),
+                      label: Text(
+                        isBookmarked ? 'Bookmarked' : 'Save for later',
+                        style: GoogleFonts.lato(
+                          color:
+                              isBookmarked ? _secondaryColor : _primaryColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
       ),
     );
   }
