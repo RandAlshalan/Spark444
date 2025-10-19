@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:my_app/models/application.dart';
+import 'package:my_app/models/Application.dart';
 import 'package:my_app/models/company.dart';
 import 'package:my_app/models/opportunity.dart';
 import 'package:my_app/services/applicationService.dart';
@@ -1516,15 +1516,17 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       _isApplying = false; // Reset applying state
     });
     // Fetch the application status for this specific opportunity
+    final studentId = _studentId;
+    if (studentId == null) return;
+
     final app = await _applicationService.getApplicationForOpportunity(
-      studentId: _studentId!,
+      studentId: studentId,
       opportunityId: opportunity.id,
     );
-    if (mounted) {
-      setState(() {
-        _currentApplication = app; // Store the application
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _currentApplication = app; // Store the application
+    });
   }
 
   // Switches the view back to the main list
