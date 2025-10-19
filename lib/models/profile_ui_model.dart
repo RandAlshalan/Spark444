@@ -40,13 +40,15 @@ class ProfileUiModel {
 
   /// A factory constructor that creates a `ProfileUiModel` from a `Student` object.
   factory ProfileUiModel.fromStudent(Student student) {
-    String? safePhone =
-        student.phoneNumber.trim().isEmpty ? null : student.phoneNumber.trim();
+    String? safePhone = student.phoneNumber.trim().isEmpty
+        ? null
+        : student.phoneNumber.trim();
     return ProfileUiModel(
       fullName: '${student.firstName} ${student.lastName}'.trim(),
       email: student.email,
-      username:
-          student.username.trim().isEmpty ? null : student.username.trim(),
+      username: student.username.trim().isEmpty
+          ? null
+          : student.username.trim(),
       phoneNumber: safePhone,
       university: student.university,
       major: student.major,

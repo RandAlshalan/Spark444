@@ -20,22 +20,22 @@ class Education {
   });
 
   Map<String, dynamic> toMap() => {
-        'degreeName': degreeName,
-        'instituteName': instituteName,
-        'startDate': Timestamp.fromDate(startDate),
-        'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
-        'isPresent': isPresent,
-        'gpa': gpa,
-      };
+    'degreeName': degreeName,
+    'instituteName': instituteName,
+    'startDate': Timestamp.fromDate(startDate),
+    'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
+    'isPresent': isPresent,
+    'gpa': gpa,
+  };
 
   factory Education.fromMap(Map<String, dynamic> map) => Education(
-        degreeName: map['degreeName'] ?? '',
-        instituteName: map['instituteName'] ?? '',
-        startDate: (map['startDate'] as Timestamp? ?? Timestamp.now()).toDate(),
-        endDate: (map['endDate'] as Timestamp?)?.toDate(),
-        isPresent: map['isPresent'] ?? false,
-        gpa: (map['gpa'] as num?)?.toDouble(),
-      );
+    degreeName: map['degreeName'] ?? '',
+    instituteName: map['instituteName'] ?? '',
+    startDate: (map['startDate'] as Timestamp? ?? Timestamp.now()).toDate(),
+    endDate: (map['endDate'] as Timestamp?)?.toDate(),
+    isPresent: map['isPresent'] ?? false,
+    gpa: (map['gpa'] as num?)?.toDouble(),
+  );
 }
 
 class Experience {
@@ -62,28 +62,28 @@ class Experience {
   });
 
   Map<String, dynamic> toMap() => {
-        'organization': organization,
-        'title': title,
-        'type': type,
-        'startDate': Timestamp.fromDate(startDate),
-        'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
-        'isPresent': isPresent,
-        'city': city,
-        'locationType': locationType,
-        'description': description,
-      };
+    'organization': organization,
+    'title': title,
+    'type': type,
+    'startDate': Timestamp.fromDate(startDate),
+    'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
+    'isPresent': isPresent,
+    'city': city,
+    'locationType': locationType,
+    'description': description,
+  };
 
   factory Experience.fromMap(Map<String, dynamic> map) => Experience(
-        organization: map['organization'] ?? '',
-        title: map['title'] ?? '',
-        type: map['type'] ?? '',
-        startDate: (map['startDate'] as Timestamp? ?? Timestamp.now()).toDate(),
-        endDate: (map['endDate'] as Timestamp?)?.toDate(),
-        isPresent: map['isPresent'] ?? false,
-        city: map['city'],
-        locationType: map['locationType'] ?? 'On-site',
-        description: map['description'],
-      );
+    organization: map['organization'] ?? '',
+    title: map['title'] ?? '',
+    type: map['type'] ?? '',
+    startDate: (map['startDate'] as Timestamp? ?? Timestamp.now()).toDate(),
+    endDate: (map['endDate'] as Timestamp?)?.toDate(),
+    isPresent: map['isPresent'] ?? false,
+    city: map['city'],
+    locationType: map['locationType'] ?? 'On-site',
+    description: map['description'],
+  );
 }
 
 class Award {
@@ -100,18 +100,18 @@ class Award {
   });
 
   Map<String, dynamic> toMap() => {
-        'title': title,
-        'organization': organization,
-        'issueDate': Timestamp.fromDate(issueDate),
-        'description': description,
-      };
+    'title': title,
+    'organization': organization,
+    'issueDate': Timestamp.fromDate(issueDate),
+    'description': description,
+  };
 
   factory Award.fromMap(Map<String, dynamic> map) => Award(
-        title: map['title'] ?? '',
-        organization: map['organization'] ?? '',
-        issueDate: (map['issueDate'] as Timestamp? ?? Timestamp.now()).toDate(),
-        description: map['description'] ?? '',
-      );
+    title: map['title'] ?? '',
+    organization: map['organization'] ?? '',
+    issueDate: (map['issueDate'] as Timestamp? ?? Timestamp.now()).toDate(),
+    description: map['description'] ?? '',
+  );
 }
 
 class Language {
@@ -134,16 +134,16 @@ class Project {
   Project({required this.title, required this.description, this.link});
 
   Map<String, dynamic> toMap() => {
-        'title': title,
-        'description': description,
-        'link': link,
-      };
+    'title': title,
+    'description': description,
+    'link': link,
+  };
 
   factory Project.fromMap(Map<String, dynamic> map) => Project(
-        title: map['title'] ?? '',
-        description: map['description'] ?? '',
-        link: map['link'],
-      );
+    title: map['title'] ?? '',
+    description: map['description'] ?? '',
+    link: map['link'],
+  );
 }
 
 class Extracurricular {
@@ -166,24 +166,24 @@ class Extracurricular {
   });
 
   Map<String, dynamic> toMap() => {
-        'organizationName': organizationName,
-        'eventName': eventName,
-        'role': role,
-        'description': description,
-        'startDate': Timestamp.fromDate(startDate),
-        'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
-        'isPresent': isPresent,
-      };
+    'organizationName': organizationName,
+    'eventName': eventName,
+    'role': role,
+    'description': description,
+    'startDate': Timestamp.fromDate(startDate),
+    'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
+    'isPresent': isPresent,
+  };
 
   factory Extracurricular.fromMap(Map<String, dynamic> map) => Extracurricular(
-        organizationName: map['organizationName'] ?? '',
-        eventName: map['eventName'],
-        role: map['role'] ?? '',
-        description: map['description'],
-        startDate: (map['startDate'] as Timestamp? ?? Timestamp.now()).toDate(),
-        endDate: (map['endDate'] as Timestamp?)?.toDate(),
-        isPresent: map['isPresent'] ?? false,
-      );
+    organizationName: map['organizationName'] ?? '',
+    eventName: map['eventName'],
+    role: map['role'] ?? '',
+    description: map['description'],
+    startDate: (map['startDate'] as Timestamp? ?? Timestamp.now()).toDate(),
+    endDate: (map['endDate'] as Timestamp?)?.toDate(),
+    isPresent: map['isPresent'] ?? false,
+  );
 }
 
 class License {
@@ -200,19 +200,20 @@ class License {
   });
 
   Map<String, dynamic> toMap() => {
-        'name': name,
-        'issuingOrganization': issuingOrganization,
-        'issueDate': Timestamp.fromDate(issueDate),
-        'expirationDate':
-            expirationDate != null ? Timestamp.fromDate(expirationDate!) : null,
-      };
+    'name': name,
+    'issuingOrganization': issuingOrganization,
+    'issueDate': Timestamp.fromDate(issueDate),
+    'expirationDate': expirationDate != null
+        ? Timestamp.fromDate(expirationDate!)
+        : null,
+  };
 
   factory License.fromMap(Map<String, dynamic> map) => License(
-        name: map['name'] ?? '',
-        issuingOrganization: map['issuingOrganization'] ?? '',
-        issueDate: (map['issueDate'] as Timestamp? ?? Timestamp.now()).toDate(),
-        expirationDate: (map['expirationDate'] as Timestamp?)?.toDate(),
-      );
+    name: map['name'] ?? '',
+    issuingOrganization: map['issuingOrganization'] ?? '',
+    issueDate: (map['issueDate'] as Timestamp? ?? Timestamp.now()).toDate(),
+    expirationDate: (map['expirationDate'] as Timestamp?)?.toDate(),
+  );
 }
 
 class CustomFieldEntry {
@@ -231,12 +232,12 @@ class CustomFieldEntry {
   });
 
   Map<String, dynamic> toMap() => {
-        'title': title,
-        'description': description,
-        'startDate': startDate != null ? Timestamp.fromDate(startDate!) : null,
-        'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
-        'currently': currently,
-      };
+    'title': title,
+    'description': description,
+    'startDate': startDate != null ? Timestamp.fromDate(startDate!) : null,
+    'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
+    'currently': currently,
+  };
 
   factory CustomFieldEntry.fromMap(Map<String, dynamic> map) =>
       CustomFieldEntry(
@@ -252,22 +253,19 @@ class CustomSection {
   String sectionTitle;
   List<CustomFieldEntry> entries;
 
-  CustomSection({
-    required this.sectionTitle,
-    this.entries = const [],
-  });
+  CustomSection({required this.sectionTitle, this.entries = const []});
 
   Map<String, dynamic> toMap() => {
-        'sectionTitle': sectionTitle,
-        'entries': entries.map((e) => e.toMap()).toList(),
-      };
+    'sectionTitle': sectionTitle,
+    'entries': entries.map((e) => e.toMap()).toList(),
+  };
 
   factory CustomSection.fromMap(Map<String, dynamic> map) => CustomSection(
-        sectionTitle: map['sectionTitle'] ?? 'Untitled Section',
-        entries: (map['entries'] as List? ?? [])
-            .map((e) => CustomFieldEntry.fromMap(e))
-            .toList(),
-      );
+    sectionTitle: map['sectionTitle'] ?? 'Untitled Section',
+    entries: (map['entries'] as List? ?? [])
+        .map((e) => CustomFieldEntry.fromMap(e))
+        .toList(),
+  );
 }
 
 // --- Main Resume Model ---
@@ -324,8 +322,9 @@ class Resume {
           .map((e) => Experience.fromMap(e))
           .toList(),
       skills: List<String>.from(map['skills'] ?? []),
-      awards:
-          (map['awards'] as List? ?? []).map((a) => Award.fromMap(a)).toList(),
+      awards: (map['awards'] as List? ?? [])
+          .map((a) => Award.fromMap(a))
+          .toList(),
       languages: (map['languages'] as List? ?? [])
           .map((l) => Language.fromMap(l))
           .toList(),
@@ -343,10 +342,11 @@ class Resume {
           .toList(),
       pdfUrl: map['pdfUrl'],
       createdAt: (map['createdAt'] as Timestamp? ?? Timestamp.now()).toDate(),
-      lastModifiedAt: (map['lastModifiedAt'] as Timestamp? ??
-              map['createdAt'] as Timestamp? ??
-              Timestamp.now())
-          .toDate(),
+      lastModifiedAt:
+          (map['lastModifiedAt'] as Timestamp? ??
+                  map['createdAt'] as Timestamp? ??
+                  Timestamp.now())
+              .toDate(),
     );
   }
 }

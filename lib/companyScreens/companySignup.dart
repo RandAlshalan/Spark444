@@ -17,14 +17,16 @@ import '../services/storage_service.dart'; // For StoredFile if needed, though d
 class PhoneNumberFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     // Get digits only
     final newText = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
 
     if (newText.isEmpty) {
       return const TextEditingValue();
     }
-    
+
     final buffer = StringBuffer();
     for (int i = 0; i < newText.length; i++) {
       buffer.write(newText[i]);
@@ -54,10 +56,12 @@ class _CompanySignupState extends State<CompanySignup> {
   // Controllers
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _sectorController = TextEditingController();
-  final TextEditingController _contactPersonController = TextEditingController();
+  final TextEditingController _contactPersonController =
+      TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final FocusNode _passwordFocusNode = FocusNode();
@@ -89,8 +93,13 @@ class _CompanySignupState extends State<CompanySignup> {
   bool _hasNumber = false;
   bool _hasSymbol = false;
   bool _is8CharsLong = false;
-  bool get _isPasswordValid => _is8CharsLong && _hasUppercase && _hasLowercase && _hasNumber && _hasSymbol;
-  
+  bool get _isPasswordValid =>
+      _is8CharsLong &&
+      _hasUppercase &&
+      _hasLowercase &&
+      _hasNumber &&
+      _hasSymbol;
+
   // Theme Colors
   static const Color primaryColor = Color(0xFF422F5D);
   static const Color secondaryColor = Color(0xFFF99D46);
@@ -155,7 +164,7 @@ class _CompanySignupState extends State<CompanySignup> {
     _debounce?.cancel();
     super.dispose();
   }
-  
+
   // ✅ ADDED: Password strength check logic
   void _checkPasswordStrength() {
     String password = _passwordController.text;
@@ -172,11 +181,16 @@ class _CompanySignupState extends State<CompanySignup> {
   void _checkCompanyNameUniqueness(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () async {
-      if (mounted) setState(() { _isCheckingName = true; });
+      if (mounted)
+        setState(() {
+          _isCheckingName = true;
+        });
       if (_companyNameError != null) {
-        setState(() { _companyNameError = null; });
+        setState(() {
+          _companyNameError = null;
+        });
       }
-      
+
       if (value.isNotEmpty) {
         // We use the same isUsernameUnique function for this check
         final isUnique = await _authService.isUsernameUnique(value);
@@ -186,7 +200,10 @@ class _CompanySignupState extends State<CompanySignup> {
           });
         }
       }
-      if (mounted) setState(() { _isCheckingName = false; });
+      if (mounted)
+        setState(() {
+          _isCheckingName = false;
+        });
     });
   }
 
@@ -208,7 +225,11 @@ class _CompanySignupState extends State<CompanySignup> {
   // ✅ ADDED: Image picking and uploading logic
   Future<void> _pickLogo() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 50, maxWidth: 512);
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+      maxWidth: 512,
+    );
 
     if (pickedFile != null) {
       setState(() {
@@ -218,9 +239,9 @@ class _CompanySignupState extends State<CompanySignup> {
   }
 
   Future<String?> _uploadLogo(String uid, XFile file) async {
-    final ref = firebase_storage.FirebaseStorage.instance
-        .ref()
-        .child('companies/$uid/logo/logo_${DateTime.now().millisecondsSinceEpoch}');
+    final ref = firebase_storage.FirebaseStorage.instance.ref().child(
+      'companies/$uid/logo/logo_${DateTime.now().millisecondsSinceEpoch}',
+    );
     await ref.putFile(File(file.path));
     return await ref.getDownloadURL();
   }
@@ -232,7 +253,7 @@ class _CompanySignupState extends State<CompanySignup> {
     if (!isStep2Valid) {
       return; // Stop execution.
     }
-    
+
     setState(() => _isLoading = true);
 
     try {
@@ -265,7 +286,9 @@ class _CompanySignupState extends State<CompanySignup> {
         companyName: _companyNameController.text.trim(),
         sector: finalSector,
         contactInfo: combinedContactInfo,
-        description: _descriptionController.text.trim().isNotEmpty ? _descriptionController.text.trim() : null,
+        description: _descriptionController.text.trim().isNotEmpty
+            ? _descriptionController.text.trim()
+            : null,
         logoUrl: _logoUrl,
         userType: 'company',
       );
@@ -275,19 +298,27 @@ class _CompanySignupState extends State<CompanySignup> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Company account created! Please check email to verify.')),
+        const SnackBar(
+          content: Text(
+            'Company account created! Please check email to verify.',
+          ),
+        ),
       );
-      Navigator.of(context).pop(); 
-
+      Navigator.of(context).pop();
     } on Exception catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString().replaceFirst('Exception: ', '')}')),
+        SnackBar(
+          content: Text(
+            'Error: ${e.toString().replaceFirst('Exception: ', '')}',
+          ),
+        ),
       );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
-        if (_isUploadingLogo) setState(() => _isUploadingLogo = false); // Ensure it's always reset
+        if (_isUploadingLogo)
+          setState(() => _isUploadingLogo = false); // Ensure it's always reset
       }
     }
   }
@@ -326,28 +357,53 @@ class _CompanySignupState extends State<CompanySignup> {
           fillColor: Colors.white,
           hintText: hintText,
           prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: primaryColor)),
-          errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 1.5)),
-          focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 2)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 15,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: primaryColor),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red, width: 1.5),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red, width: 2),
+          ),
           suffixIcon: suffixIcon,
           errorText: errorText,
         ),
       ),
     );
   }
-  
+
   // ✅ ADDED: Password strength indicator widgets
   Widget _buildPasswordCriteriaRow(String text, bool met) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4.0),
       child: Row(
         children: [
-          Icon( met ? Icons.check_circle : Icons.remove_circle_outline, color: met ? Colors.green : Colors.grey, size: 18),
+          Icon(
+            met ? Icons.check_circle : Icons.remove_circle_outline,
+            color: met ? Colors.green : Colors.grey,
+            size: 18,
+          ),
           const SizedBox(width: 8),
-          Text(text, style: TextStyle(color: met ? Colors.black87 : Colors.grey)),
+          Text(
+            text,
+            style: TextStyle(color: met ? Colors.black87 : Colors.grey),
+          ),
         ],
       ),
     );
@@ -369,12 +425,19 @@ class _CompanySignupState extends State<CompanySignup> {
     return Colors.green;
   }
 
-  Widget _buildGradientButton({required String text, required VoidCallback onPressed}) {
+  Widget _buildGradientButton({
+    required String text,
+    required VoidCallback onPressed,
+  }) {
     return SizedBox(
       width: double.infinity,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [secondaryColor, Color(0xFFD64483)], begin: Alignment.centerLeft, end: Alignment.centerRight),
+          gradient: const LinearGradient(
+            colors: [secondaryColor, Color(0xFFD64483)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
           borderRadius: BorderRadius.circular(30),
         ),
         child: ElevatedButton(
@@ -383,15 +446,32 @@ class _CompanySignupState extends State<CompanySignup> {
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
             padding: const EdgeInsets.symmetric(vertical: 18),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+          ),
           child: _isLoading
-              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
-              : Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                )
+              : Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
         ),
       ),
     );
   }
-  
+
   // ✅ ADDED: Builder for Step 1 Form for better organization
   Widget _buildStep1Form() {
     final passwordStrength = _calculatePasswordStrength();
@@ -403,34 +483,39 @@ class _CompanySignupState extends State<CompanySignup> {
             controller: _companyNameController,
             hintText: 'Company Name',
             icon: Icons.business_outlined,
-            inputFormatters: [
-              LengthLimitingTextInputFormatter(50),
-            ],
+            inputFormatters: [LengthLimitingTextInputFormatter(50)],
             onChanged: _checkCompanyNameUniqueness,
             errorText: _companyNameError,
             suffixIcon: _isCheckingName
-                ? const Padding(padding: EdgeInsets.all(12.0), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.0)))
+                ? const Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2.0),
+                    ),
+                  )
                 : null,
             validator: (value) {
-              if (value == null || value.trim().isEmpty) return 'Please enter company name';
+              if (value == null || value.trim().isEmpty)
+                return 'Please enter company name';
               // ✅ MODIFIED: Allow spaces and common symbols like '&' in company names.
 
               if (_companyNameError != null) return _companyNameError;
               return null;
-              
             },
           ),
           _buildStyledTextFormField(
             controller: _emailController,
             hintText: 'Business Email',
             icon: Icons.mail_outline,
-            inputFormatters: [
-              LengthLimitingTextInputFormatter(100),
-            ],
+            inputFormatters: [LengthLimitingTextInputFormatter(100)],
             keyboardType: TextInputType.emailAddress,
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Please enter an email';
-              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Invalid email format';
+              if (value == null || value.isEmpty)
+                return 'Please enter an email';
+              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value))
+                return 'Invalid email format';
               return null;
             },
           ),
@@ -441,26 +526,50 @@ class _CompanySignupState extends State<CompanySignup> {
             icon: Icons.lock_outline,
             focusNode: _passwordFocusNode,
             suffixIcon: IconButton(
-              icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: Colors.grey),
-              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              icon: Icon(
+                _obscurePassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: Colors.grey,
+              ),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
             ),
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Please enter password';
-              if (!_isPasswordValid) return 'Password does not meet requirements';
+              if (value == null || value.isEmpty)
+                return 'Please enter password';
+              if (!_isPasswordValid)
+                return 'Password does not meet requirements';
               return null;
             },
           ),
-          if ((_isPasswordFocused || _passwordController.text.isNotEmpty) && !_isPasswordValid)
+          if ((_isPasswordFocused || _passwordController.text.isNotEmpty) &&
+              !_isPasswordValid)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12.0,
+                vertical: 8.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildPasswordCriteriaRow('At least 8 characters', _is8CharsLong),
-                  _buildPasswordCriteriaRow('Contains an uppercase letter', _hasUppercase),
-                  _buildPasswordCriteriaRow('Contains a lowercase letter', _hasLowercase),
+                  _buildPasswordCriteriaRow(
+                    'At least 8 characters',
+                    _is8CharsLong,
+                  ),
+                  _buildPasswordCriteriaRow(
+                    'Contains an uppercase letter',
+                    _hasUppercase,
+                  ),
+                  _buildPasswordCriteriaRow(
+                    'Contains a lowercase letter',
+                    _hasLowercase,
+                  ),
                   _buildPasswordCriteriaRow('Contains a number', _hasNumber),
-                  _buildPasswordCriteriaRow('Contains a symbol (!@#\$&*~)', _hasSymbol),
+                  _buildPasswordCriteriaRow(
+                    'Contains a symbol (!@#\$&*~)',
+                    _hasSymbol,
+                  ),
                   const SizedBox(height: 8),
                   if (!_isPasswordValid)
                     ClipRRect(
@@ -480,13 +589,22 @@ class _CompanySignupState extends State<CompanySignup> {
             hintText: 'Confirm Password',
             icon: Icons.lock_outline,
             obscureText: _obscureConfirmPassword,
-             suffixIcon: IconButton(
-              icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: Colors.grey),
-              onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscureConfirmPassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: Colors.grey,
+              ),
+              onPressed: () => setState(
+                () => _obscureConfirmPassword = !_obscureConfirmPassword,
+              ),
             ),
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Please confirm your password';
-              if (value != _passwordController.text) return 'Passwords do not match';
+              if (value == null || value.isEmpty)
+                return 'Please confirm your password';
+              if (value != _passwordController.text)
+                return 'Passwords do not match';
               return null;
             },
           ),
@@ -504,24 +622,44 @@ class _CompanySignupState extends State<CompanySignup> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Text("Company Logo (Optional)", style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w600)),
+          const Text(
+            "Company Logo (Optional)",
+            style: TextStyle(
+              color: Colors.black54,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 10),
           GestureDetector(
-            onTap: _isUploadingLogo ? null : _pickLogo, // Disable tap while uploading
+            onTap: _isUploadingLogo
+                ? null
+                : _pickLogo, // Disable tap while uploading
             child: Stack(
               alignment: Alignment.center,
               children: [
                 CircleAvatar(
                   radius: 60,
                   backgroundColor: Colors.white,
-                  backgroundImage: _pickedImage != null ? FileImage(File(_pickedImage!.path)) : null,
+                  backgroundImage: _pickedImage != null
+                      ? FileImage(File(_pickedImage!.path))
+                      : null,
                   child: _pickedImage == null && !_isUploadingLogo
                       ? const Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.add_a_photo_outlined, size: 30, color: Colors.grey),
+                            Icon(
+                              Icons.add_a_photo_outlined,
+                              size: 30,
+                              color: Colors.grey,
+                            ),
                             SizedBox(height: 4),
-                            Text('Upload Logo', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                            Text(
+                              'Upload Logo',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         )
                       : null,
@@ -531,8 +669,13 @@ class _CompanySignupState extends State<CompanySignup> {
                   Container(
                     width: 120,
                     height: 120,
-                    decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
-                    child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
                   ),
               ],
             ),
@@ -547,7 +690,8 @@ class _CompanySignupState extends State<CompanySignup> {
                 _selectedSector = newValue;
               });
             },
-            validator: (value) => value == null ? 'Please select a sector' : null,
+            validator: (value) =>
+                value == null ? 'Please select a sector' : null,
             dropdownColor: backgroundColor,
             menuMaxHeight: 300,
             icon: const Icon(Icons.arrow_drop_down, color: primaryColor),
@@ -555,11 +699,26 @@ class _CompanySignupState extends State<CompanySignup> {
               filled: true,
               fillColor: Colors.white,
               hintText: 'Sector',
-              prefixIcon: const Icon(Icons.category_outlined, color: Colors.grey),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: primaryColor)),
+              prefixIcon: const Icon(
+                Icons.category_outlined,
+                color: Colors.grey,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 15,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: primaryColor),
+              ),
             ),
             items: _sectorsList.map<DropdownMenuItem<String>>((String value) {
               return DropdownMenuItem<String>(
@@ -584,42 +743,43 @@ class _CompanySignupState extends State<CompanySignup> {
             _buildStyledTextFormField(
               controller: _sectorController, // Re-use for "Other"
               hintText: 'Please specify your sector',
-              inputFormatters: [
-                LengthLimitingTextInputFormatter(40),
-              ],
+              inputFormatters: [LengthLimitingTextInputFormatter(40)],
               icon: Icons.edit,
-              validator: (value) => value == null || value.trim().isEmpty ? 'This field is required' : null,
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'This field is required'
+                  : null,
             ),
           _buildStyledTextFormField(
             controller: _contactPersonController,
             hintText: 'Contact Person Name',
-            inputFormatters: [
-              LengthLimitingTextInputFormatter(50),
-            ],
+            inputFormatters: [LengthLimitingTextInputFormatter(50)],
             validator: (value) {
-            if (value == null || value.trim().isEmpty) return 'Please enter a contact name';
+              if (value == null || value.trim().isEmpty)
+                return 'Please enter a contact name';
 
-            if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
-              return 'Names cannot contain numbers or symbols';
-            }
-            return null;
-          },
+              if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                return 'Names cannot contain numbers or symbols';
+              }
+              return null;
+            },
             icon: Icons.person_outline,
+
             //validator: (value) => value == null || value.isEmpty ? 'Please enter a contact name' : null,
-            
           ),
           _buildPhoneFormField(), // ✅ REPLACED: Using the new robust phone field
           _buildStyledTextFormField(
-              controller: _descriptionController,
-              hintText: 'Company Description (Optional)',
-              inputFormatters: [
-                LengthLimitingTextInputFormatter(500),
-              ],
-              icon: Icons.description_outlined,
-              maxLines: 4,
-              maxLength: 500),
+            controller: _descriptionController,
+            hintText: 'Company Description (Optional)',
+            inputFormatters: [LengthLimitingTextInputFormatter(500)],
+            icon: Icons.description_outlined,
+            maxLines: 4,
+            maxLength: 500,
+          ),
           const SizedBox(height: 30),
-          _buildGradientButton(text: 'Create Company Account', onPressed: _signUpCompany),
+          _buildGradientButton(
+            text: 'Create Company Account',
+            onPressed: _signUpCompany,
+          ),
         ],
       ),
     );
@@ -637,7 +797,8 @@ class _CompanySignupState extends State<CompanySignup> {
           LengthLimitingTextInputFormatter(9),
         ],
         validator: (value) {
-          if (value == null || value.isEmpty) return 'Please enter a phone number';
+          if (value == null || value.isEmpty)
+            return 'Please enter a phone number';
           if (value.length != 9) return 'Phone number must be 9 digits';
           if (!value.startsWith('5')) return 'Must start with 5';
           return null;
@@ -648,14 +809,15 @@ class _CompanySignupState extends State<CompanySignup> {
           hintText: '5X XXX XXXX',
           prefixIcon: const Icon(Icons.phone_outlined, color: Colors.grey),
           prefixText: '+966 ',
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
         ),
         autovalidateMode: AutovalidateMode.onUserInteraction,
       ),
     );
   }
-
-  
 
   @override
   Widget build(BuildContext context) {
@@ -669,11 +831,28 @@ class _CompanySignupState extends State<CompanySignup> {
             children: [
               Image.asset('assets/spark_logo.png', height: 120),
               const SizedBox(height: 5),
-              const Text('SPARK for Companies', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primaryColor)),
-              const Text('Connect with Future Talent', style: TextStyle(color: secondaryColor, fontStyle: FontStyle.italic, fontSize: 14)),
+              const Text(
+                'SPARK for Companies',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: primaryColor,
+                ),
+              ),
+              const Text(
+                'Connect with Future Talent',
+                style: TextStyle(
+                  color: secondaryColor,
+                  fontStyle: FontStyle.italic,
+                  fontSize: 14,
+                ),
+              ),
               const SizedBox(height: 30),
               Container(
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Row(
                   children: [
                     Expanded(
@@ -683,26 +862,55 @@ class _CompanySignupState extends State<CompanySignup> {
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           decoration: BoxDecoration(
-                            gradient: _currentStep == 0 ? const LinearGradient(colors: [secondaryColor, Color(0xFFD64483)]) : null,
+                            gradient: _currentStep == 0
+                                ? const LinearGradient(
+                                    colors: [secondaryColor, Color(0xFFD64483)],
+                                  )
+                                : null,
                             color: _currentStep == 0 ? null : Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Center(child: Text('Step 1: Account', style: TextStyle(fontWeight: FontWeight.bold, color: _currentStep == 0 ? Colors.white : Colors.grey[700]))),
+                          child: Center(
+                            child: Text(
+                              'Step 1: Account',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: _currentStep == 0
+                                    ? Colors.white
+                                    : Colors.grey[700],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
                     Expanded(
                       child: GestureDetector(
-                        onTap: _goToNextStep, // Validate before allowing step change
+                        onTap:
+                            _goToNextStep, // Validate before allowing step change
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           decoration: BoxDecoration(
-                            gradient: _currentStep == 1 ? const LinearGradient(colors: [secondaryColor, Color(0xFFD64483)]) : null,
+                            gradient: _currentStep == 1
+                                ? const LinearGradient(
+                                    colors: [secondaryColor, Color(0xFFD64483)],
+                                  )
+                                : null,
                             color: _currentStep == 1 ? null : Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Center(child: Text('Step 2: Profile', style: TextStyle(fontWeight: FontWeight.bold, color: _currentStep == 1 ? Colors.white : Colors.grey[700]))),
+                          child: Center(
+                            child: Text(
+                              'Step 2: Profile',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: _currentStep == 1
+                                    ? Colors.white
+                                    : Colors.grey[700],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -720,11 +928,19 @@ class _CompanySignupState extends State<CompanySignup> {
                   TextButton(
                     onPressed: () {
                       Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const LoginScreen(),
+                        ),
                         (Route<dynamic> route) => false,
                       );
                     },
-                    child: const Text('Login Page', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF422F5D))),
+                    child: const Text(
+                      'Login Page',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF422F5D),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -736,7 +952,13 @@ class _CompanySignupState extends State<CompanySignup> {
                     onPressed: () {
                       Navigator.of(context).pop();
                     },
-                    child: const Text('Welcome Page', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF422F5D))),
+                    child: const Text(
+                      'Welcome Page',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF422F5D),
+                      ),
+                    ),
                   ),
                 ],
               ),

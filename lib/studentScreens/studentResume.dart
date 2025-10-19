@@ -39,8 +39,10 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
     return Scaffold(
       // The bar at the top of the screen
       appBar: AppBar(
-        title: Text('My Resumes',
-            style: GoogleFonts.lato(fontWeight: FontWeight.bold)),
+        title: Text(
+          'My Resumes',
+          style: GoogleFonts.lato(fontWeight: FontWeight.bold),
+        ),
       ),
       // The main content of the screen
       body: StreamBuilder<QuerySnapshot>(
@@ -65,8 +67,10 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Text('Error: ${snapshot.error}',
-                    style: const TextStyle(color: Colors.red)),
+                child: Text(
+                  'Error: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.red),
+                ),
               ),
             );
           }
@@ -77,16 +81,24 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.description_outlined,
-                      size: 80, color: Colors.grey),
+                  const Icon(
+                    Icons.description_outlined,
+                    size: 80,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(height: 16),
-                  Text('No Resumes Yet',
-                      style: GoogleFonts.lato(
-                          fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text(
+                    'No Resumes Yet',
+                    style: GoogleFonts.lato(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   const Text(
-                      'Tap the "+" button to create your first resume.',
-                      style: TextStyle(color: Colors.grey)),
+                    'Tap the "+" button to create your first resume.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ],
               ),
             );
@@ -108,12 +120,17 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
               return Card(
                 margin: const EdgeInsets.only(bottom: 16),
                 child: ListTile(
-                  leading: const Icon(Icons.article_outlined,
-                      color: Color(0xFF422F5D)),
-                  title: Text(resume.title,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  leading: const Icon(
+                    Icons.article_outlined,
+                    color: Color(0xFF422F5D),
+                  ),
+                  title: Text(
+                    resume.title,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   subtitle: Text(
-                      'Modified: ${DateFormat.yMMMd().format(resume.lastModifiedAt)}'),
+                    'Modified: ${DateFormat.yMMMd().format(resume.lastModifiedAt)}',
+                  ),
                   // This is the 'three-dot' menu on the right
                   trailing: PopupMenuButton<String>(
                     // This 'onSelected' function runs when the user taps an option
@@ -129,12 +146,17 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
                     // These are the items in the menu
                     itemBuilder: (context) => [
                       const PopupMenuItem(
-                          value: 'view', child: Text('View as PDF')),
+                        value: 'view',
+                        child: Text('View as PDF'),
+                      ),
                       const PopupMenuItem(value: 'edit', child: Text('Edit')),
                       const PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Delete',
-                              style: TextStyle(color: Colors.red))),
+                        value: 'delete',
+                        child: Text(
+                          'Delete',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -184,8 +206,9 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
         actions: [
           // Cancel button
           TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
           // Delete button
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -206,15 +229,22 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
 
         // Show a green success message at the bottom
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('Resume deleted.'), backgroundColor: Colors.green));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Resume deleted.'),
+              backgroundColor: Colors.green,
+            ),
+          );
         }
       } catch (e) {
         // Show a red error message if something went wrong
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
               content: Text('Error deleting resume: $e'),
-              backgroundColor: Colors.red));
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       }
     }
@@ -251,7 +281,7 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        
+
         // --- PDF Header ---
         // This 'header' function runs for *every* new page
         header: (pw.Context context) {
@@ -267,9 +297,13 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.center,
               children: [
-                pw.Text(fullName,
-                    style: pw.TextStyle(
-                        fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                pw.Text(
+                  fullName,
+                  style: pw.TextStyle(
+                    fontSize: 24,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
                 pw.SizedBox(height: 5),
                 if (email.isNotEmpty || phone.isNotEmpty)
                   pw.Text('$email | $phone'),
@@ -282,11 +316,13 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
           return pw.Container(
             alignment: pw.Alignment.centerRight,
             margin: const pw.EdgeInsets.only(bottom: 10.0),
-            child: pw.Text('$fullName - Page ${context.pageNumber}',
-                style: const pw.TextStyle(color: PdfColors.grey)),
+            child: pw.Text(
+              '$fullName - Page ${context.pageNumber}',
+              style: const pw.TextStyle(color: PdfColors.grey),
+            ),
           );
         },
-        
+
         // --- PDF Body ---
         // This 'build' function returns a LIST of PDF widgets
         // that will flow across multiple pages.
@@ -298,9 +334,11 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
             // --- SUMMARY Section ---
             if (summary.isNotEmpty) ...[
               _buildSectionTitle('Summary'),
-              pw.Text(summary,
-                  style: const pw.TextStyle(fontSize: 11),
-                  textAlign: pw.TextAlign.justify),
+              pw.Text(
+                summary,
+                style: const pw.TextStyle(fontSize: 11),
+                textAlign: pw.TextAlign.justify,
+              ),
             ],
 
             // --- EXPERIENCE Section ---
@@ -340,10 +378,12 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
             if (resume.skills.isNotEmpty) ...[
               _buildSectionTitle('Skills'),
               pw.Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children:
-                      resume.skills.map((skill) => pw.Text('- $skill')).toList())
+                spacing: 8,
+                runSpacing: 4,
+                children: resume.skills
+                    .map((skill) => pw.Text('- $skill'))
+                    .toList(),
+              ),
             ],
 
             // --- LICENSES Section ---
@@ -369,7 +409,7 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
             // --- AWARDS Section ---
             if (resume.awards.isNotEmpty) ...[
               _buildSectionTitle('Awards'),
-              ...resume.awards.map((award) => _buildAwardItem(award)).toList()
+              ...resume.awards.map((award) => _buildAwardItem(award)).toList(),
             ],
 
             // --- LANGUAGES Section ---
@@ -377,13 +417,13 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
               _buildSectionTitle('Languages'),
               ...resume.languages
                   .map((lang) => _buildLanguageItem(lang))
-                  .toList()
-            ]
+                  .toList(),
+            ],
           ];
         },
       ),
     );
-    
+
     // Finally, save the PDF document and return the data
     return pdf.save();
   }
@@ -405,14 +445,16 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
           pw.Text(
             title.toUpperCase(),
             style: pw.TextStyle(
-                fontSize: 14,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.black),
+              fontSize: 14,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.black,
+            ),
           ),
           pw.Container(
-              height: 2,
-              color: PdfColors.grey700,
-              margin: const pw.EdgeInsets.only(top: 2)),
+            height: 2,
+            color: PdfColors.grey700,
+            margin: const pw.EdgeInsets.only(top: 2),
+          ),
         ],
       ),
     );
@@ -431,15 +473,20 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text(exp.title,
-                  style: pw.TextStyle(
-                      fontSize: 12, fontWeight: pw.FontWeight.bold)),
+              pw.Text(
+                exp.title,
+                style: pw.TextStyle(
+                  fontSize: 12,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
               pw.Text(duration, style: const pw.TextStyle(fontSize: 11)),
             ],
           ),
-          pw.Text(exp.organization,
-              style:
-                  pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic)),
+          pw.Text(
+            exp.organization,
+            style: pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic),
+          ),
         ],
       ),
     );
@@ -450,8 +497,8 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
     final graduationDate = edu.isPresent
         ? 'Present'
         : (edu.endDate != null
-            ? DateFormat.yMMMd().format(edu.endDate!)
-            : 'N/A');
+              ? DateFormat.yMMMd().format(edu.endDate!)
+              : 'N/A');
     return pw.Padding(
       padding: const pw.EdgeInsets.only(bottom: 12),
       child: pw.Column(
@@ -460,15 +507,20 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text(edu.degreeName,
-                  style: pw.TextStyle(
-                      fontSize: 12, fontWeight: pw.FontWeight.bold)),
+              pw.Text(
+                edu.degreeName,
+                style: pw.TextStyle(
+                  fontSize: 12,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
               pw.Text(graduationDate, style: const pw.TextStyle(fontSize: 11)),
             ],
           ),
-          pw.Text(edu.instituteName,
-              style:
-                  pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic)),
+          pw.Text(
+            edu.instituteName,
+            style: pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic),
+          ),
         ],
       ),
     );
@@ -481,20 +533,25 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text(project.title,
-              style:
-                  pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+          pw.Text(
+            project.title,
+            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+          ),
           pw.SizedBox(height: 2),
           pw.Text(project.description, style: const pw.TextStyle(fontSize: 11)),
           // Only show the link if it exists
           if (project.link != null && project.link!.isNotEmpty) ...[
             pw.SizedBox(height: 2),
             pw.UrlLink(
-                destination: project.link!,
-                child: pw.Text(project.link!,
-                    style: const pw.TextStyle(
-                        color: PdfColors.blue,
-                        decoration: pw.TextDecoration.underline))),
+              destination: project.link!,
+              child: pw.Text(
+                project.link!,
+                style: const pw.TextStyle(
+                  color: PdfColors.blue,
+                  decoration: pw.TextDecoration.underline,
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -514,20 +571,27 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text(extra.role,
-                  style: pw.TextStyle(
-                      fontSize: 12, fontWeight: pw.FontWeight.bold)),
+              pw.Text(
+                extra.role,
+                style: pw.TextStyle(
+                  fontSize: 12,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
               pw.Text(duration, style: const pw.TextStyle(fontSize: 11)),
             ],
           ),
-          pw.Text(extra.organizationName,
-              style:
-                  pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic)),
+          pw.Text(
+            extra.organizationName,
+            style: pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic),
+          ),
           if (extra.description != null && extra.description!.isNotEmpty)
             pw.Padding(
               padding: const pw.EdgeInsets.only(top: 2),
-              child:
-                  pw.Text(extra.description!, style: const pw.TextStyle(fontSize: 11)),
+              child: pw.Text(
+                extra.description!,
+                style: const pw.TextStyle(fontSize: 11),
+              ),
             ),
         ],
       ),
@@ -538,7 +602,8 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
   pw.Widget _buildLicenseItem(License license) {
     String dates = 'Issued: ${DateFormat.yMMMd().format(license.issueDate)}';
     if (license.expirationDate != null) {
-      dates += ' | Expires: ${DateFormat.yMMMd().format(license.expirationDate!)}';
+      dates +=
+          ' | Expires: ${DateFormat.yMMMd().format(license.expirationDate!)}';
     }
 
     return pw.Padding(
@@ -546,15 +611,18 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text(license.name,
-              style:
-                  pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-          pw.Text(license.issuingOrganization,
-              style:
-                  pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic)),
-          pw.Text(dates,
-              style:
-                  const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+          pw.Text(
+            license.name,
+            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.Text(
+            license.issuingOrganization,
+            style: pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic),
+          ),
+          pw.Text(
+            dates,
+            style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+          ),
         ],
       ),
     );
@@ -579,9 +647,13 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text(title,
-                    style: pw.TextStyle(
-                        fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                pw.Text(
+                  title,
+                  style: pw.TextStyle(
+                    fontSize: 12,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
                 if (duration != null)
                   pw.Text(duration, style: const pw.TextStyle(fontSize: 11)),
               ],
@@ -589,8 +661,10 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
           if (description.isNotEmpty)
             pw.Padding(
               padding: pw.EdgeInsets.only(top: title.isNotEmpty ? 2 : 0),
-              child:
-                  pw.Text(description, style: const pw.TextStyle(fontSize: 11)),
+              child: pw.Text(
+                description,
+                style: const pw.TextStyle(fontSize: 11),
+              ),
             ),
         ],
       ),
@@ -607,16 +681,23 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text(award.title,
-                  style: pw.TextStyle(
-                      fontSize: 12, fontWeight: pw.FontWeight.bold)),
-              pw.Text(DateFormat.yMMMd().format(award.issueDate),
-                  style: const pw.TextStyle(fontSize: 11)),
+              pw.Text(
+                award.title,
+                style: pw.TextStyle(
+                  fontSize: 12,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.Text(
+                DateFormat.yMMMd().format(award.issueDate),
+                style: const pw.TextStyle(fontSize: 11),
+              ),
             ],
           ),
-          pw.Text(award.organization,
-              style:
-                  pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic)),
+          pw.Text(
+            award.organization,
+            style: pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic),
+          ),
         ],
       ),
     );
@@ -629,9 +710,10 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Text(lang.name,
-              style:
-                  pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+          pw.Text(
+            lang.name,
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+          ),
           pw.Text(lang.proficiency, style: const pw.TextStyle(fontSize: 11)),
         ],
       ),

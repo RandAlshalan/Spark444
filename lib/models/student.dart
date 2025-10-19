@@ -89,11 +89,17 @@ class Student {
       major: major ?? this.major,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       level: levelSetToNull ? null : (level ?? this.level),
-      expectedGraduationDate: expectedGraduationDateSetToNull ? null : (expectedGraduationDate ?? this.expectedGraduationDate),
+      expectedGraduationDate: expectedGraduationDateSetToNull
+          ? null
+          : (expectedGraduationDate ?? this.expectedGraduationDate),
       gpa: gpaSetToNull ? null : (gpa ?? this.gpa),
       skills: skills ?? List<String>.from(this.skills),
-      profilePictureUrl: profilePictureUrlSetToNull ? null : (profilePictureUrl ?? this.profilePictureUrl),
-      shortSummary: shortSummarySetToNull ? null : (shortSummary ?? this.shortSummary),
+      profilePictureUrl: profilePictureUrlSetToNull
+          ? null
+          : (profilePictureUrl ?? this.profilePictureUrl),
+      shortSummary: shortSummarySetToNull
+          ? null
+          : (shortSummary ?? this.shortSummary),
       userType: userType,
       createdAt: createdAt,
       isVerified: isVerified ?? this.isVerified,
@@ -169,4 +175,3 @@ class Student {
     );
   }
 }
-

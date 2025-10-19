@@ -5,6 +5,9 @@ import '../services/authService.dart';
 import '../services/opportunityService.dart';
 import 'editCompanyProfilePage.dart';
 import 'PostOpportunityPage.dart';
+import 'opportunityAnalyticsPage.dart';
+import 'allApplicantsPage.dart';
+import 'company_theme.dart';
 import '../studentScreens/welcomeScreen.dart';
 import 'package:intl/intl.dart';
 
@@ -58,6 +61,49 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const PostOpportunityPage()),
+    );
+    if (!mounted) return;
+    _fetchCompanyData();
+  }
+
+  Future<void> _navigateToApplicantsList(Opportunity opportunity) async {
+    final company = _company;
+    if (company == null) {
+      _showSnackBar('Company information is still loading. Please try again.');
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            AllApplicantsPage(company: company, opportunity: opportunity),
+      ),
+    );
+    if (!mounted) return;
+    _fetchCompanyData();
+  }
+
+  Future<void> _navigateToAnalytics(Opportunity opportunity) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OpportunityAnalyticsPage(opportunity: opportunity),
+      ),
+    );
+    if (!mounted) return;
+    _fetchCompanyData();
+  }
+
+  Future<void> _navigateToAllApplicants() async {
+    final company = _company;
+    if (company == null) {
+      _showSnackBar('Company information is still loading. Please try again.');
+      return;
+    }
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AllApplicantsPage(company: company)),
     );
     if (!mounted) return;
     _fetchCompanyData();
@@ -556,13 +602,20 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             child: Row(
               children: [
                 TextButton.icon(
-                  onPressed: () => _showSnackBar(
-                    'Viewing applicants for ${opportunity.name}',
-                  ),
+                  onPressed: () => _navigateToApplicantsList(opportunity),
                   icon: const Icon(Icons.people_outline, size: 20),
                   label: const Text('View Applicants'),
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF6B4791),
+                    foregroundColor: CompanyColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _navigateToAnalytics(opportunity),
+                  icon: const Icon(Icons.auto_graph_outlined, size: 20),
+                  label: const Text('Analytics'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: CompanyColors.secondary,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
                 ),
@@ -597,7 +650,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       if (parts.length == 2) {
         final name = parts[0].trim();
         final number = parts[1].trim();
-        return _buildContactPills(name.isNotEmpty ? name : null, number.isNotEmpty ? number : null);
+        return _buildContactPills(
+          name.isNotEmpty ? name : null,
+          number.isNotEmpty ? number : null,
+        );
       }
     }
 
@@ -788,6 +844,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 _navigateToPostOpportunityPage();
               },
             ),
+            _buildDrawerItem(Icons.people_alt_outlined, 'All Applicants', () {
+              Navigator.of(context).pop();
+              _navigateToAllApplicants();
+            }),
 
             _buildDrawerItem(Icons.edit_outlined, 'Edit Profile', () {
               Navigator.of(context).pop();

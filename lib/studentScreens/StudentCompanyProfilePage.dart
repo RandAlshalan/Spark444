@@ -13,7 +13,10 @@ class StudentCompanyProfilePage extends StatelessWidget {
   final String companyId;
 
   Stream<DocumentSnapshot<Map<String, dynamic>>> _companyDocStream() {
-    return FirebaseFirestore.instance.collection('companies').doc(companyId).snapshots();
+    return FirebaseFirestore.instance
+        .collection('companies')
+        .doc(companyId)
+        .snapshots();
   }
 
   Stream<int> _oppsCountStream() {
@@ -25,17 +28,26 @@ class StudentCompanyProfilePage extends StatelessWidget {
   }
 
   Stream<bool> _isFollowingStream(String studentId) {
-    return FirebaseFirestore.instance.collection('student').doc(studentId).snapshots().map((d) {
-      final data = d.data();
-      final list = List<String>.from(data?['followedCompanies'] ?? []);
-      return list.contains(companyId);
-    });
+    return FirebaseFirestore.instance
+        .collection('student')
+        .doc(studentId)
+        .snapshots()
+        .map((d) {
+          final data = d.data();
+          final list = List<String>.from(data?['followedCompanies'] ?? []);
+          return list.contains(companyId);
+        });
   }
 
-  Future<void> _toggleFollow({required String studentId, required bool following}) async {
+  Future<void> _toggleFollow({
+    required String studentId,
+    required bool following,
+  }) async {
     final ref = FirebaseFirestore.instance.collection('student').doc(studentId);
     await ref.set({
-      'followedCompanies': following ? FieldValue.arrayRemove([companyId]) : FieldValue.arrayUnion([companyId]),
+      'followedCompanies': following
+          ? FieldValue.arrayRemove([companyId])
+          : FieldValue.arrayUnion([companyId]),
     }, SetOptions(merge: true));
   }
 
@@ -47,10 +59,15 @@ class StudentCompanyProfilePage extends StatelessWidget {
       stream: _companyDocStream(),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
         if (!snap.hasData || !snap.data!.exists || snap.data!.data() == null) {
-          return Scaffold(appBar: AppBar(title: const Text('Company')), body: const Center(child: Text('Company not found')));
+          return Scaffold(
+            appBar: AppBar(title: const Text('Company')),
+            body: const Center(child: Text('Company not found')),
+          );
         }
 
         final data = snap.data!.data()!;
@@ -88,22 +105,44 @@ class StudentCompanyProfilePage extends StatelessWidget {
                           child: Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 16, offset: const Offset(0, 8))],
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.12),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
                             ),
                             child: CircleAvatar(
                               radius: 64,
                               backgroundColor: Colors.white,
-                              child: (company.logoUrl != null && company.logoUrl!.isNotEmpty)
-                                  ? CircleAvatar(radius: 58, backgroundImage: NetworkImage(company.logoUrl!))
+                              child:
+                                  (company.logoUrl != null &&
+                                      company.logoUrl!.isNotEmpty)
+                                  ? CircleAvatar(
+                                      radius: 58,
+                                      backgroundImage: NetworkImage(
+                                        company.logoUrl!,
+                                      ),
+                                    )
                                   : CircleAvatar(
                                       radius: 58,
                                       backgroundColor: Colors.white,
                                       child: Text(
                                         (company.companyName.trim().isEmpty
                                                 ? ''
-                                                : company.companyName.trim().split(RegExp(r'\s+')).take(2).map((w) => w[0]).join())
+                                                : company.companyName
+                                                      .trim()
+                                                      .split(RegExp(r'\s+'))
+                                                      .take(2)
+                                                      .map((w) => w[0])
+                                                      .join())
                                             .toUpperCase(),
-                                        style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: _purple),
+                                        style: const TextStyle(
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.w800,
+                                          color: _purple,
+                                        ),
                                       ),
                                     ),
                             ),
@@ -122,15 +161,27 @@ class StudentCompanyProfilePage extends StatelessWidget {
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: Colors.white,
                                   side: const BorderSide(color: Colors.white),
-                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 10,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(22),
+                                  ),
                                 ),
                                 onPressed: () async {
                                   try {
-                                    await _toggleFollow(studentId: studentId, following: following);
+                                    await _toggleFollow(
+                                      studentId: studentId,
+                                      following: following,
+                                    );
                                   } catch (e) {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(content: Text('Failed: $e')),
+                                      );
                                     }
                                   }
                                 },
@@ -155,25 +206,45 @@ class StudentCompanyProfilePage extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(company.companyName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                            Text(
+                              company.companyName,
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                             const SizedBox(height: 4),
                             if (company.sector.isNotEmpty)
-                              Text(company.sector, style: TextStyle(color: Colors.black.withOpacity(0.6), fontSize: 14)),
+                              Text(
+                                company.sector,
+                                style: TextStyle(
+                                  color: Colors.black.withOpacity(0.6),
+                                  fontSize: 14,
+                                ),
+                              ),
                             const SizedBox(height: 10),
                             if ((company.description ?? '').isNotEmpty)
-                              Text(company.description!, style: TextStyle(color: Colors.black.withOpacity(0.75), height: 1.4)),
+                              Text(
+                                company.description!,
+                                style: TextStyle(
+                                  color: Colors.black.withOpacity(0.75),
+                                  height: 1.4,
+                                ),
+                              ),
                             const SizedBox(height: 16),
 
                             StreamBuilder<int>(
                               stream: _oppsCountStream(),
                               builder: (context, oppCountSnap) {
                                 final oppCount = oppCountSnap.data ?? 0;
-                                final reviewsCount = company.studentReviews.length;
+                                final reviewsCount =
+                                    company.studentReviews.length;
                                 return Center(
                                   child: TabBar(
                                     isScrollable: false,
                                     labelColor: Colors.black,
-                                    unselectedLabelColor: Colors.black.withOpacity(0.5),
+                                    unselectedLabelColor: Colors.black
+                                        .withOpacity(0.5),
                                     indicatorColor: _purple,
                                     indicatorWeight: 3,
                                     dividerColor: Colors.transparent,
@@ -235,7 +306,9 @@ class _DetailsTab extends StatelessWidget {
   }
 
   String _extractEmail(String text) {
-    final m = RegExp(r'[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}').firstMatch(text);
+    final m = RegExp(
+      r'[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}',
+    ).firstMatch(text);
     return (m?.group(0) ?? '').trim();
   }
 
@@ -285,80 +358,142 @@ class _DetailsTab extends StatelessWidget {
     final rawContact = company.contactInfo.trim();
 
     // EMAIL
-    final emailFromFields = (data['contactEmail'] ?? data['email'] ?? company.email).toString().trim();
+    final emailFromFields =
+        (data['contactEmail'] ?? data['email'] ?? company.email)
+            .toString()
+            .trim();
     final emailFromText = _extractEmail('$rawContact $about');
     final email = emailFromFields.isNotEmpty ? emailFromFields : emailFromText;
 
     // PHONE
-    String phone = (data['phone'] ?? data['contactPhone'] ?? '').toString().trim();
+    String phone = (data['phone'] ?? data['contactPhone'] ?? '')
+        .toString()
+        .trim();
     if (phone.isEmpty) phone = _extractPhone('$rawContact $about');
 
     // Contact name بدون رقم/إيميل
     var contactName = rawContact;
     if (phone.isNotEmpty) {
-      contactName = contactName.replaceAll(phone, '').replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+      contactName = contactName
+          .replaceAll(phone, '')
+          .replaceAll(RegExp(r'\s{2,}'), ' ')
+          .trim();
     }
     if (emailFromText.isNotEmpty) {
-      contactName = contactName.replaceAll(emailFromText, '').replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+      contactName = contactName
+          .replaceAll(emailFromText, '')
+          .replaceAll(RegExp(r'\s{2,}'), ' ')
+          .trim();
     }
-    contactName = contactName.replaceAll(RegExp(r'^[\-\•\|,;:()\s]+|[\-\•\|,;:()\s]+$'), '').trim();
+    contactName = contactName
+        .replaceAll(RegExp(r'^[\-\•\|,;:()\s]+|[\-\•\|,;:()\s]+$'), '')
+        .trim();
 
     // CORE SERVICES
     List<String> services;
-    final raw = data['coreServices'] ?? data['services'] ?? data['core_services'];
+    final raw =
+        data['coreServices'] ?? data['services'] ?? data['core_services'];
     if (raw is Iterable) {
-      services = raw.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
+      services = raw
+          .map((e) => e.toString().trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
     } else if (raw is String) {
-      services = raw.split(RegExp(r'[;,]')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      services = raw
+          .split(RegExp(r'[;,]'))
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
     } else {
       services = _detectServices(about, company.sector);
     }
 
     Widget sectionTitle(String t) => Padding(
-          padding: const EdgeInsets.only(top: 4, bottom: 8),
-          child: Text(t, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-        );
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      child: Text(
+        t,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+      ),
+    );
 
     return ListView(
       padding: const EdgeInsets.only(top: 8, bottom: 16),
       children: [
         sectionTitle('About Us'),
-        Text(about.isNotEmpty ? about : 'No description provided.', style: TextStyle(color: Colors.black.withOpacity(0.75), height: 1.45)),
+        Text(
+          about.isNotEmpty ? about : 'No description provided.',
+          style: TextStyle(color: Colors.black.withOpacity(0.75), height: 1.45),
+        ),
         const Divider(height: 28),
 
         sectionTitle('Core Services'),
         if (services.isEmpty)
-          Text('No services listed.', style: TextStyle(color: Colors.black.withOpacity(0.6)))
+          Text(
+            'No services listed.',
+            style: TextStyle(color: Colors.black.withOpacity(0.6)),
+          )
         else
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: services
-                .map((s) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(color: _chipBg, borderRadius: BorderRadius.circular(28)),
-                      child: Text(s, style: const TextStyle(color: _purple, fontWeight: FontWeight.w600)),
-                    ))
+                .map(
+                  (s) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _chipBg,
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                    child: Text(
+                      s,
+                      style: const TextStyle(
+                        color: _purple,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                )
                 .toList(),
           ),
         const Divider(height: 28),
 
         sectionTitle('Contact Details'),
         Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Column(
             children: [
               ListTile(
-                leading: const Icon(Icons.email_outlined, color: _purple), // رجّعنا الأيقونة
-                title: Text(email.isNotEmpty ? 'Email: $email' : 'Email: Not provided'),
+                leading: const Icon(
+                  Icons.email_outlined,
+                  color: _purple,
+                ), // رجّعنا الأيقونة
+                title: Text(
+                  email.isNotEmpty ? 'Email: $email' : 'Email: Not provided',
+                ),
                 subtitle: contactName.isNotEmpty ? Text(contactName) : null,
-                trailing: ElevatedButton(onPressed: email.isEmpty ? null : () => _launchEmail(email), child: const Text('Email')),
+                trailing: ElevatedButton(
+                  onPressed: email.isEmpty ? null : () => _launchEmail(email),
+                  child: const Text('Email'),
+                ),
               ),
               const Divider(height: 1),
               ListTile(
-                leading: const Icon(Icons.phone_outlined, color: _purple), // رجّعنا الأيقونة
-                title: Text(phone.isNotEmpty ? 'Phone: $phone' : 'Phone: Not provided'),
-                trailing: ElevatedButton(onPressed: phone.isEmpty ? null : () => _launchPhone(phone), child: const Text('Call')),
+                leading: const Icon(
+                  Icons.phone_outlined,
+                  color: _purple,
+                ), // رجّعنا الأيقونة
+                title: Text(
+                  phone.isNotEmpty ? 'Phone: $phone' : 'Phone: Not provided',
+                ),
+                trailing: ElevatedButton(
+                  onPressed: phone.isEmpty ? null : () => _launchPhone(phone),
+                  child: const Text('Call'),
+                ),
               ),
             ],
           ),
@@ -388,10 +523,12 @@ class _OpportunitiesTab extends StatelessWidget {
         .collection('bookmarks')
         .where('userId', isEqualTo: uid)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => (d.data()['opportunityId'] ?? '').toString())
-            .where((id) => id.isNotEmpty)
-            .toSet());
+        .map(
+          (snap) => snap.docs
+              .map((d) => (d.data()['opportunityId'] ?? '').toString())
+              .where((id) => id.isNotEmpty)
+              .toSet(),
+        );
   }
 
   Future<void> _toggleBookmark({
@@ -453,10 +590,12 @@ class _OpportunitiesTab extends StatelessWidget {
                 final m = oppDocs[i].data();
                 final oppId = oppDocs[i].id;
                 final title =
-                    (m['title'] ?? m['positionTitle'] ?? 'Opportunity').toString();
+                    (m['title'] ?? m['positionTitle'] ?? 'Opportunity')
+                        .toString();
                 final companyName = (m['companyName'] ?? '').toString();
                 final location = (m['location'] ?? '').toString();
-                final modality = (m['modality'] ?? m['workType'] ?? '').toString(); // Remote / In-person ..
+                final modality = (m['modality'] ?? m['workType'] ?? '')
+                    .toString(); // Remote / In-person ..
                 final paid = (m['paid'] ?? m['isPaid'] ?? false) == true;
                 final desc = (m['shortDescription'] ?? m['description'] ?? '')
                     .toString();
@@ -486,25 +625,32 @@ class _OpportunitiesTab extends StatelessWidget {
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(22),
                               ),
-                              child: const Icon(Icons.work_outline, color: _purple),
+                              child: const Icon(
+                                Icons.work_outline,
+                                color: _purple,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(title,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis),
+                                  Text(
+                                    title,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                   if (companyName.isNotEmpty)
-                                    Text(companyName,
-                                        style: TextStyle(
-                                          color: Colors.black.withOpacity(0.6),
-                                        )),
+                                    Text(
+                                      companyName,
+                                      style: TextStyle(
+                                        color: Colors.black.withOpacity(0.6),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
@@ -546,9 +692,15 @@ class _OpportunitiesTab extends StatelessWidget {
                           runSpacing: 8,
                           children: [
                             if (location.isNotEmpty)
-                              _TagChip(icon: Icons.location_on_outlined, label: location),
+                              _TagChip(
+                                icon: Icons.location_on_outlined,
+                                label: location,
+                              ),
                             if (modality.isNotEmpty)
-                              _TagChip(icon: Icons.business_center_outlined, label: modality),
+                              _TagChip(
+                                icon: Icons.business_center_outlined,
+                                label: modality,
+                              ),
                             _TagChip(
                               icon: Icons.attach_money,
                               label: paid ? 'Paid' : 'Unpaid',
@@ -598,17 +750,13 @@ class _TagChip extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
-              color: _purple,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(color: _purple, fontWeight: FontWeight.w600),
           ),
         ],
       ),
     );
   }
 }
-
 
 // =================== Reviews Tab ===================
 
@@ -620,7 +768,9 @@ class _ReviewsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Text(
-        reviewCount > 0 ? 'There are $reviewCount reviews (design placeholder).' : 'No reviews yet.',
+        reviewCount > 0
+            ? 'There are $reviewCount reviews (design placeholder).'
+            : 'No reviews yet.',
         style: const TextStyle(fontSize: 16),
       ),
     );

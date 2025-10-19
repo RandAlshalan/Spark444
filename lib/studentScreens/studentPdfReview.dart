@@ -13,7 +13,7 @@ class PdfPreviewScreen extends StatelessWidget {
   // It's a "Future" because it takes time to generate the PDF data.
   final Future<Uint8List> pdfFuture;
 
-  // This variable holds the title of the resume 
+  // This variable holds the title of the resume
   // so we can display it in the app bar at the top.
   final String resumeTitle;
 

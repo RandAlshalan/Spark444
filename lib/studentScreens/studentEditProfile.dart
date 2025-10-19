@@ -37,9 +37,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   /// Navigates to a detail screen and triggers a data refresh upon return if changes were made.
   Future<void> _navigateAndRefresh(Widget screen) async {
-    final result = await Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => screen),
-    );
+    final result = await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => screen));
 
     // If the popped screen returns `true`, it indicates a successful update.
     // We re-fetch the student's data to reflect the changes.
@@ -72,29 +72,74 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _buildSection(
             header: 'Profile Information',
             tiles: [
-              _buildProfileTile('Personal Information', Icons.person_outline, () => _navigateAndRefresh(PersonalInformationScreen(student: _student))),
-              _buildProfileTile('Academic Information', Icons.school_outlined, () => _navigateAndRefresh(AcademicInfoScreen(student: _student))),
-              _buildProfileTile('Skills', Icons.lightbulb_outline, () => _navigateAndRefresh(SkillsScreen(student: _student))),
-              _buildProfileTile('Followed Companies', Icons.business_center_outlined, () => _navigateAndRefresh(FollowedCompaniesScreen(student: _student))),
+              _buildProfileTile(
+                'Personal Information',
+                Icons.person_outline,
+                () => _navigateAndRefresh(
+                  PersonalInformationScreen(student: _student),
+                ),
+              ),
+              _buildProfileTile(
+                'Academic Information',
+                Icons.school_outlined,
+                () =>
+                    _navigateAndRefresh(AcademicInfoScreen(student: _student)),
+              ),
+              _buildProfileTile(
+                'Skills',
+                Icons.lightbulb_outline,
+                () => _navigateAndRefresh(SkillsScreen(student: _student)),
+              ),
+              _buildProfileTile(
+                'Followed Companies',
+                Icons.business_center_outlined,
+                () => _navigateAndRefresh(
+                  FollowedCompaniesScreen(student: _student),
+                ),
+              ),
             ],
           ),
           _buildSection(
             header: 'Documents & Resumes',
             tiles: [
-              _buildProfileTile('My Documents', Icons.folder_open_outlined, () => _navigateAndRefresh(DocumentsScreen(student: _student))),
-              _buildProfileTile('Generated Resumes', Icons.description_outlined, () => _navigateAndRefresh(GeneratedResumesScreen(student: _student))),
+              _buildProfileTile(
+                'My Documents',
+                Icons.folder_open_outlined,
+                () => _navigateAndRefresh(DocumentsScreen(student: _student)),
+              ),
+              _buildProfileTile(
+                'Generated Resumes',
+                Icons.description_outlined,
+                () => _navigateAndRefresh(
+                  GeneratedResumesScreen(student: _student),
+                ),
+              ),
             ],
           ),
           _buildSection(
             header: 'Account Settings',
             tiles: [
-              _buildProfileTile('Settings & Preferences', Icons.settings_outlined, () => _navigateAndRefresh(SettingsPreferencesScreen(student: _student))),
-              _buildProfileTile('Change Password', Icons.lock_outline, () => _navigateAndRefresh(const ChangePasswordScreen())),
+              _buildProfileTile(
+                'Settings & Preferences',
+                Icons.settings_outlined,
+                () => _navigateAndRefresh(
+                  SettingsPreferencesScreen(student: _student),
+                ),
+              ),
+              _buildProfileTile(
+                'Change Password',
+                Icons.lock_outline,
+                () => _navigateAndRefresh(const ChangePasswordScreen()),
+              ),
               // --- ADDED: Delete Account Tile ---
               _buildProfileTile(
                 'Delete Account',
                 Icons.delete_forever_outlined,
-                () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const DeleteAccountScreen())),
+                () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const DeleteAccountScreen(),
+                  ),
+                ),
                 color: Colors.red,
               ),
             ],
@@ -114,8 +159,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           CircleAvatar(
             radius: 40,
             backgroundColor: Colors.grey.shade200,
-            backgroundImage: _student.profilePictureUrl != null ? NetworkImage(_student.profilePictureUrl!) : null,
-            child: _student.profilePictureUrl == null ? const Icon(Icons.person, size: 40, color: Colors.grey) : null,
+            backgroundImage: _student.profilePictureUrl != null
+                ? NetworkImage(_student.profilePictureUrl!)
+                : null,
+            child: _student.profilePictureUrl == null
+                ? const Icon(Icons.person, size: 40, color: Colors.grey)
+                : null,
           ),
           const SizedBox(height: 12),
           Text(
@@ -141,7 +190,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
           child: Text(
             header.toUpperCase(),
-            style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600, fontSize: 13),
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
           ),
         ),
         Container(
@@ -155,11 +208,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   /// --- MODIFIED: Added optional color parameter for styling ---
   /// Builds a single navigation list tile.
-  Widget _buildProfileTile(String title, IconData icon, VoidCallback onTap, {Color? color}) {
+  Widget _buildProfileTile(
+    String title,
+    IconData icon,
+    VoidCallback onTap, {
+    Color? color,
+  }) {
     return ListTile(
       leading: Icon(icon, color: color ?? const Color(0xFF422F5D)),
       title: Text(title, style: TextStyle(color: color)),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+      trailing: const Icon(
+        Icons.arrow_forward_ios,
+        size: 16,
+        color: Colors.grey,
+      ),
       onTap: onTap,
     );
   }
@@ -173,7 +235,9 @@ const Color _profileSecondaryColor = Color(0xFFF99D46);
 class PhoneNumberFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     final newText = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
 
     if (newText.isEmpty) {
@@ -203,7 +267,8 @@ class PersonalInformationScreen extends StatefulWidget {
   final Student student;
 
   @override
-  State<PersonalInformationScreen> createState() => _PersonalInformationScreenState();
+  State<PersonalInformationScreen> createState() =>
+      _PersonalInformationScreenState();
 }
 
 class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
@@ -229,7 +294,14 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
 
   // --- ADDED: Sample list for cities. In a real app, fetch this from a service. ---
   final List<String> _locationsList = [
-    'Riyadh', 'Jeddah', 'Dammam', 'Khobar', 'Dhahran', 'Mecca', 'Medina', 'Other'
+    'Riyadh',
+    'Jeddah',
+    'Dammam',
+    'Khobar',
+    'Dhahran',
+    'Mecca',
+    'Medina',
+    'Other',
   ];
 
   @override
@@ -244,9 +316,13 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     if (phoneNumber.startsWith('+966')) {
       phoneNumber = phoneNumber.substring(4);
     }
-    _phoneController = TextEditingController(text: phoneNumber.replaceAll(' ', ''));
+    _phoneController = TextEditingController(
+      text: phoneNumber.replaceAll(' ', ''),
+    );
 
-    _summaryController = TextEditingController(text: student.shortSummary ?? '');
+    _summaryController = TextEditingController(
+      text: student.shortSummary ?? '',
+    );
     _otherLocationController = TextEditingController();
     // Set initial location. If it's not in our predefined list, set it as 'Other'.
     if (student.location != null && _locationsList.contains(student.location)) {
@@ -299,7 +375,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       icon: const Icon(Icons.clear, color: Colors.grey),
                       onPressed: onClear,
                     ),
-                    const Icon(Icons.arrow_drop_down, color: _profilePrimaryColor),
+                    const Icon(
+                      Icons.arrow_drop_down,
+                      color: _profilePrimaryColor,
+                    ),
                   ],
                 )
               : const Icon(Icons.arrow_drop_down, color: _profilePrimaryColor),
@@ -339,7 +418,11 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       onChanged: (value) {
                         setDialogState(() {
                           filteredItems = items
-                              .where((item) => item.toLowerCase().contains(value.toLowerCase()))
+                              .where(
+                                (item) => item.toLowerCase().contains(
+                                  value.toLowerCase(),
+                                ),
+                              )
                               .toList();
                         });
                       },
@@ -368,7 +451,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Close'),
-                )
+                ),
               ],
             );
           },
@@ -403,9 +486,14 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   void _checkUsernameUniqueness(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () async {
-      if (mounted) setState(() { _isCheckingUsername = true; });
+      if (mounted)
+        setState(() {
+          _isCheckingUsername = true;
+        });
       if (_usernameError != null) {
-        setState(() { _usernameError = null; });
+        setState(() {
+          _usernameError = null;
+        });
       }
       if (value.isNotEmpty && value != widget.student.username) {
         final isUnique = await _authService.isUsernameUnique(value);
@@ -415,12 +503,18 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
           });
         }
       }
-      if (mounted) setState(() { _isCheckingUsername = false; });
+      if (mounted)
+        setState(() {
+          _isCheckingUsername = false;
+        });
     });
   }
 
   Future<void> _pickImage() async {
-    final picked = await _imagePicker.pickImage(source: ImageSource.gallery, maxWidth: 512);
+    final picked = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+    );
     if (picked != null) {
       final bytes = await picked.readAsBytes();
       setState(() {
@@ -439,19 +533,25 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   }
 
   Future<String?> _uploadProfilePicture(String uid, XFile file) async {
-    final firebase_storage.Reference ref = firebase_storage.FirebaseStorage.instance.ref().child(
+    final firebase_storage.Reference
+    ref = firebase_storage.FirebaseStorage.instance.ref().child(
       'students/$uid/profile/profile_${DateTime.now().millisecondsSinceEpoch}_${file.name}',
     );
 
     final bytes = await file.readAsBytes();
-    await ref.putData(bytes, firebase_storage.SettableMetadata(contentType: 'image/jpeg'));
+    await ref.putData(
+      bytes,
+      firebase_storage.SettableMetadata(contentType: 'image/jpeg'),
+    );
     return ref.getDownloadURL();
   }
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_usernameError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_usernameError!)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_usernameError!)));
       return;
     }
     setState(() => _saving = true);
@@ -477,7 +577,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       } else if (shouldRemoveImage) {
         if (widget.student.profilePictureUrl != null) {
           try {
-            await firebase_storage.FirebaseStorage.instance.refFromURL(widget.student.profilePictureUrl!).delete();
+            await firebase_storage.FirebaseStorage.instance
+                .refFromURL(widget.student.profilePictureUrl!)
+                .delete();
           } catch (e) {
             debugPrint("Failed to delete old profile picture: $e");
           }
@@ -500,7 +602,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         phoneNumber: "+966${_phoneController.text.trim().replaceAll(' ', '')}",
         location: finalLocation,
         locationSetToNull: finalLocation == null,
-        shortSummary: _summaryController.text.trim().isEmpty ? null : _summaryController.text.trim(),
+        shortSummary: _summaryController.text.trim().isEmpty
+            ? null
+            : _summaryController.text.trim(),
         shortSummarySetToNull: _summaryController.text.trim().isEmpty,
         profilePictureUrl: profileUrl,
         profilePictureUrlSetToNull: profileUrl == null,
@@ -508,11 +612,15 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
 
       await _authService.updateStudent(user.uid, updated);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated successfully!')),
+      );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -546,7 +654,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       radius: 48,
                       backgroundImage: backgroundImage,
                       backgroundColor: Colors.grey[200],
-                      child: backgroundImage == null ? const Icon(Icons.person, size: 40) : null,
+                      child: backgroundImage == null
+                          ? const Icon(Icons.person, size: 40)
+                          : null,
                     ),
                     IconButton(
                       onPressed: _pickImage,
@@ -557,13 +667,18 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       ),
                     ),
                     // ADDED: "Remove Photo" button appears if a photo is set
-                    if (_previewBytes != null || widget.student.profilePictureUrl != null)
+                    if (_previewBytes != null ||
+                        widget.student.profilePictureUrl != null)
                       Positioned(
                         bottom: 0,
                         left: 0,
                         child: IconButton(
                           onPressed: _removeImage,
-                          icon: const Icon(Icons.delete_outline, color: Colors.white, size: 18),
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                           style: IconButton.styleFrom(
                             backgroundColor: Colors.red.withOpacity(0.8),
                             fixedSize: const Size(32, 32),
@@ -580,14 +695,19 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                     // --- MODIFIED --- Added consistent validation for first name
                     child: TextFormField(
                       controller: _firstNameController,
-                      decoration: const InputDecoration(labelText: 'First Name'),
+                      decoration: const InputDecoration(
+                        labelText: 'First Name',
+                      ),
                       inputFormatters: [LengthLimitingTextInputFormatter(15)],
                       validator: (value) {
-                        if (value == null || value.trim().isEmpty) return 'Required';
+                        if (value == null || value.trim().isEmpty)
+                          return 'Required';
                         if (value.contains(' ')) {
                           return 'First name cannot contain spaces';
                         }
-                        if (RegExp(r'[0-9!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                        if (RegExp(
+                          r'[0-9!@#$%^&*(),.?":{}|<>]',
+                        ).hasMatch(value)) {
                           return 'Names cannot contain numbers or symbols';
                         }
                         return null;
@@ -602,11 +722,14 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       decoration: const InputDecoration(labelText: 'Last Name'),
                       inputFormatters: [LengthLimitingTextInputFormatter(15)],
                       validator: (value) {
-                        if (value == null || value.trim().isEmpty) return 'Required';
+                        if (value == null || value.trim().isEmpty)
+                          return 'Required';
                         if (value.contains(' ')) {
                           return 'Last name cannot contain spaces';
                         }
-                        if (RegExp(r'[0-9!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                        if (RegExp(
+                          r'[0-9!@#$%^&*(),.?":{}|<>]',
+                        ).hasMatch(value)) {
                           return 'Names cannot contain numbers or symbols';
                         }
                         return null;
@@ -622,7 +745,14 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                   labelText: 'Username',
                   errorText: _usernameError,
                   suffixIcon: _isCheckingUsername
-                      ? const Padding(padding: EdgeInsets.all(12.0), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.0)))
+                      ? const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2.0),
+                          ),
+                        )
                       : null,
                 ),
                 // --- MODIFIED --- Character limit changed from 12 to 15
@@ -645,7 +775,11 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                         style: TextStyle(fontSize: 16, color: Colors.black54),
                       ),
                     ),
-                    Container(height: 20, width: 1, color: Colors.grey.shade400),
+                    Container(
+                      height: 20,
+                      width: 1,
+                      color: Colors.grey.shade400,
+                    ),
                     Expanded(
                       child: TextFormField(
                         controller: _phoneController,
@@ -656,10 +790,12 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                           PhoneNumberFormatter(),
                         ],
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'Please enter phone number';
+                          if (value == null || value.isEmpty)
+                            return 'Please enter phone number';
                           final digitsOnly = value.replaceAll(' ', '');
                           if (digitsOnly.length != 9) return 'Must be 9 digits';
-                          if (!digitsOnly.startsWith('5')) return 'Must start with 5';
+                          if (!digitsOnly.startsWith('5'))
+                            return 'Must start with 5';
                           return null;
                         },
                         decoration: const InputDecoration(
@@ -669,7 +805,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                           enabledBorder: InputBorder.none,
                           errorBorder: InputBorder.none,
                           focusedErrorBorder: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                         ),
                       ),
                     ),
@@ -702,7 +841,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                   padding: const EdgeInsets.only(top: 8.0),
                   child: TextFormField(
                     controller: _otherLocationController,
-                    decoration: const InputDecoration(labelText: 'Please specify your location'),
+                    decoration: const InputDecoration(
+                      labelText: 'Please specify your location',
+                    ),
                     // --- MODIFIED --- Character limit changed from 30 to 15
                     inputFormatters: [LengthLimitingTextInputFormatter(15)],
                     validator: null,
@@ -711,7 +852,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _summaryController,
-                decoration: const InputDecoration(labelText: 'Short Summary (Optional)'),
+                decoration: const InputDecoration(
+                  labelText: 'Short Summary (Optional)',
+                ),
                 maxLines: 4,
                 maxLength: 250,
               ),
@@ -719,7 +862,11 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
               ElevatedButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Save Changes'),
               ),
             ],
@@ -729,7 +876,6 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     );
   }
 }
-
 
 // --- 2. Academic Info Screen ---
 
@@ -757,15 +903,32 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
   bool _saving = false;
 
   final List<String> _universitiesList = [
-    'King Saud University', 'King Fahd University of Petroleum and Minerals', 'Alfaisal University', 'Princess Nourah bint Abdulrahman University', 'Imam Abdulrahman bin Faisal University', 'Other'
+    'King Saud University',
+    'King Fahd University of Petroleum and Minerals',
+    'Alfaisal University',
+    'Princess Nourah bint Abdulrahman University',
+    'Imam Abdulrahman bin Faisal University',
+    'Other',
   ];
   final List<String> _majorsList = [
-    'Computer Science', 'Software Engineering', 'Information Technology', 'Cybersecurity', 'Electrical Engineering', 'Mechanical Engineering', 'Business Administration', 'Finance', 'Other'
+    'Computer Science',
+    'Software Engineering',
+    'Information Technology',
+    'Cybersecurity',
+    'Electrical Engineering',
+    'Mechanical Engineering',
+    'Business Administration',
+    'Finance',
+    'Other',
   ];
 
   final List<String> _academicLevels = [
-    'Freshman (Level 1-2)', 'Sophomore (Level 3-4)', 'Junior (Level 5-6)',
-    'Senior (Level 7-8)', 'Senior (Level +9)', 'Graduate Student'
+    'Freshman (Level 1-2)',
+    'Sophomore (Level 3-4)',
+    'Junior (Level 5-6)',
+    'Senior (Level 7-8)',
+    'Senior (Level +9)',
+    'Graduate Student',
   ];
 
   @override
@@ -775,7 +938,8 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
 
     _otherUniversityController = TextEditingController();
     _otherMajorController = TextEditingController();
-    if (student.university.isNotEmpty && _universitiesList.contains(student.university)) {
+    if (student.university.isNotEmpty &&
+        _universitiesList.contains(student.university)) {
       _selectedUniversity = student.university;
     } else {
       _selectedUniversity = 'Other';
@@ -790,7 +954,9 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
 
     _selectedLevel = student.level;
     _gpaController = TextEditingController(text: student.gpa?.toString() ?? '');
-    _graduationController = TextEditingController(text: student.expectedGraduationDate ?? '');
+    _graduationController = TextEditingController(
+      text: student.expectedGraduationDate ?? '',
+    );
 
     if (student.gpa != null) {
       _gpaScale = student.gpa! > 4.0 ? '5.0' : '4.0';
@@ -830,7 +996,10 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                       icon: const Icon(Icons.clear, color: Colors.grey),
                       onPressed: onClear,
                     ),
-                    const Icon(Icons.arrow_drop_down, color: _profilePrimaryColor),
+                    const Icon(
+                      Icons.arrow_drop_down,
+                      color: _profilePrimaryColor,
+                    ),
                   ],
                 )
               : const Icon(Icons.arrow_drop_down, color: _profilePrimaryColor),
@@ -870,7 +1039,11 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                       onChanged: (value) {
                         setDialogState(() {
                           filteredItems = items
-                              .where((item) => item.toLowerCase().contains(value.toLowerCase()))
+                              .where(
+                                (item) => item.toLowerCase().contains(
+                                  value.toLowerCase(),
+                                ),
+                              )
                               .toList();
                         });
                       },
@@ -899,7 +1072,7 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Close'),
-                )
+                ),
               ],
             );
           },
@@ -959,20 +1132,30 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
         major: finalMajor,
         level: _selectedLevel,
         levelSetToNull: _selectedLevel == null,
-        expectedGraduationDate: _graduationController.text.trim().isEmpty ? null : _graduationController.text.trim(),
-        expectedGraduationDateSetToNull: _graduationController.text.trim().isEmpty,
-        gpa: _gpaController.text.trim().isEmpty ? null : double.tryParse(_gpaController.text.trim()),
+        expectedGraduationDate: _graduationController.text.trim().isEmpty
+            ? null
+            : _graduationController.text.trim(),
+        expectedGraduationDateSetToNull: _graduationController.text
+            .trim()
+            .isEmpty,
+        gpa: _gpaController.text.trim().isEmpty
+            ? null
+            : double.tryParse(_gpaController.text.trim()),
         gpaSetToNull: _gpaController.text.trim().isEmpty,
       );
 
       await _authService.updateStudent(user.uid, updated);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Academic info updated successfully!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Academic info updated successfully!')),
+      );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -994,12 +1177,16 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                 selectedValue: _selectedUniversity,
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Required';
-                  if (value == 'Other' && _otherUniversityController.text.trim().isEmpty) return 'Please specify your university';
+                  if (value == 'Other' &&
+                      _otherUniversityController.text.trim().isEmpty)
+                    return 'Please specify your university';
                   return null;
                 },
                 onTap: () async {
                   await _showSearchDialog(
-                    context: context, items: _universitiesList, title: 'University',
+                    context: context,
+                    items: _universitiesList,
+                    title: 'University',
                     onItemSelected: (value) => setState(() {
                       _selectedUniversity = value;
                       if (value != 'Other') _otherUniversityController.clear();
@@ -1012,10 +1199,13 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                   padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
                   child: TextFormField(
                     controller: _otherUniversityController,
-                    decoration: const InputDecoration(labelText: 'Please specify your university'),
+                    decoration: const InputDecoration(
+                      labelText: 'Please specify your university',
+                    ),
                     // --- MODIFIED --- Character limit changed from 30 to 15
                     inputFormatters: [LengthLimitingTextInputFormatter(15)],
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Required' : null,
                   ),
                 ),
               _buildSearchableDropdown(
@@ -1023,12 +1213,16 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                 selectedValue: _selectedMajor,
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Required';
-                  if (value == 'Other' && _otherMajorController.text.trim().isEmpty) return 'Please specify your major';
+                  if (value == 'Other' &&
+                      _otherMajorController.text.trim().isEmpty)
+                    return 'Please specify your major';
                   return null;
                 },
                 onTap: () async {
                   await _showSearchDialog(
-                    context: context, items: _majorsList, title: 'Major',
+                    context: context,
+                    items: _majorsList,
+                    title: 'Major',
                     onItemSelected: (value) => setState(() {
                       _selectedMajor = value;
                       if (value != 'Other') _otherMajorController.clear();
@@ -1041,10 +1235,13 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                   padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
                   child: TextFormField(
                     controller: _otherMajorController,
-                    decoration: const InputDecoration(labelText: 'Please specify your major'),
+                    decoration: const InputDecoration(
+                      labelText: 'Please specify your major',
+                    ),
                     // --- MODIFIED --- Character limit changed from 30 to 15
                     inputFormatters: [LengthLimitingTextInputFormatter(15)],
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Required' : null,
                   ),
                 ),
               const SizedBox(height: 16),
@@ -1057,11 +1254,14 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                   suffixIcon: _selectedLevel != null
                       ? IconButton(
                           icon: const Icon(Icons.clear, color: Colors.grey),
-                          onPressed: () => setState(() => _selectedLevel = null),
+                          onPressed: () =>
+                              setState(() => _selectedLevel = null),
                         )
                       : null,
                 ),
-                items: _academicLevels.map<DropdownMenuItem<String>>((String value) {
+                items: _academicLevels.map<DropdownMenuItem<String>>((
+                  String value,
+                ) {
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(value),
@@ -1077,7 +1277,8 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                   suffixIcon: _graduationController.text.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear, color: Colors.grey),
-                          onPressed: () => setState(() => _graduationController.clear()),
+                          onPressed: () =>
+                              setState(() => _graduationController.clear()),
                         )
                       : const Icon(Icons.calendar_today, color: Colors.grey),
                 ),
@@ -1106,21 +1307,31 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
                         )
                       : null,
                 ),
-                items: ['4.0', '5.0'].map((scale) => DropdownMenuItem(value: scale, child: Text(scale))).toList(),
+                items: ['4.0', '5.0']
+                    .map(
+                      (scale) =>
+                          DropdownMenuItem(value: scale, child: Text(scale)),
+                    )
+                    .toList(),
               ),
-              if (_gpaScale != null)
-                const SizedBox(height: 16),
+              if (_gpaScale != null) const SizedBox(height: 16),
               if (_gpaScale != null)
                 TextFormField(
                   controller: _gpaController,
-                  decoration: const InputDecoration(labelText: 'GPA (Optional, e.g., 3.8)'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'GPA (Optional, e.g., 3.8)',
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   validator: (value) {
                     if (value == null || value.isEmpty) return null;
                     final gpa = double.tryParse(value);
                     if (gpa == null) return 'Invalid GPA format';
-                    if (_gpaScale == '4.0' && (gpa < 0 || gpa > 4.0)) return 'GPA must be between 0 and 4.0';
-                    if (_gpaScale == '5.0' && (gpa < 0 || gpa > 5.0)) return 'GPA must be between 0 and 5.0';
+                    if (_gpaScale == '4.0' && (gpa < 0 || gpa > 4.0))
+                      return 'GPA must be between 0 and 4.0';
+                    if (_gpaScale == '5.0' && (gpa < 0 || gpa > 5.0))
+                      return 'GPA must be between 0 and 5.0';
                     return null;
                   },
                 ),
@@ -1128,7 +1339,11 @@ class _AcademicInfoScreenState extends State<AcademicInfoScreen> {
               ElevatedButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Save Changes'),
               ),
             ],
@@ -1166,15 +1381,21 @@ class _SkillsScreenState extends State<SkillsScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('No authenticated user found.');
 
-      final updated = widget.student.copyWith(skills: List<String>.from(_skills));
+      final updated = widget.student.copyWith(
+        skills: List<String>.from(_skills),
+      );
       await _authService.updateStudent(user.uid, updated);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Skills updated successfully.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Skills updated successfully.')),
+      );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -1188,25 +1409,32 @@ class _SkillsScreenState extends State<SkillsScreen> {
         content: Form(
           key: formKey,
           child: TextFormField(
-              controller: controller,
-              decoration: const InputDecoration(labelText: 'Skill name'),
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              // --- MODIFIED --- Character limit changed from 30 to 15
-              inputFormatters: [LengthLimitingTextInputFormatter(15)],
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) return 'Cannot be empty';
-                if (value.length > 15) return 'Cannot exceed 15 characters';
-                return null;
-              }
+            controller: controller,
+            decoration: const InputDecoration(labelText: 'Skill name'),
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            // --- MODIFIED --- Character limit changed from 30 to 15
+            inputFormatters: [LengthLimitingTextInputFormatter(15)],
+            validator: (value) {
+              if (value == null || value.trim().isEmpty)
+                return 'Cannot be empty';
+              if (value.length > 15) return 'Cannot exceed 15 characters';
+              return null;
+            },
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () {
-            if (formKey.currentState!.validate()) {
-              Navigator.of(context).pop(controller.text.trim());
-            }
-          }, child: const Text('Add')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.of(context).pop(controller.text.trim());
+              }
+            },
+            child: const Text('Add'),
+          ),
         ],
       ),
     );
@@ -1223,27 +1451,34 @@ class _SkillsScreenState extends State<SkillsScreen> {
       builder: (_) => AlertDialog(
         title: const Text('Edit Skill'),
         content: Form(
-            key: formKey,
-            child: TextFormField(
-                controller: controller,
-                decoration: const InputDecoration(labelText: 'Skill name'),
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                // --- MODIFIED --- Character limit changed from 30 to 15
-                inputFormatters: [LengthLimitingTextInputFormatter(15)],
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) return 'Cannot be empty';
-                  if (value.length > 15) return 'Cannot exceed 15 characters';
-                  return null;
-                }
-            ),
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            decoration: const InputDecoration(labelText: 'Skill name'),
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            // --- MODIFIED --- Character limit changed from 30 to 15
+            inputFormatters: [LengthLimitingTextInputFormatter(15)],
+            validator: (value) {
+              if (value == null || value.trim().isEmpty)
+                return 'Cannot be empty';
+              if (value.length > 15) return 'Cannot exceed 15 characters';
+              return null;
+            },
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () {
-            if (formKey.currentState!.validate()) {
-              Navigator.of(context).pop(controller.text.trim());
-            }
-          }, child: const Text('Save')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.of(context).pop(controller.text.trim());
+              }
+            },
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
@@ -1259,8 +1494,14 @@ class _SkillsScreenState extends State<SkillsScreen> {
         title: const Text('Remove Skill'),
         content: Text('Are you sure you want to remove "${_skills[index]}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Remove')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+          ),
         ],
       ),
     );
@@ -1279,36 +1520,45 @@ class _SkillsScreenState extends State<SkillsScreen> {
           TextButton(
             onPressed: _saving ? null : _persist,
             child: _saving
-                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Save'),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(onPressed: _addSkill, child: const Icon(Icons.add)),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addSkill,
+        child: const Icon(Icons.add),
+      ),
       body: _skills.isEmpty
           ? const Center(child: Text('No skills added yet.'))
           : ListView.builder(
-        padding: const EdgeInsets.all(20),
-        itemCount: _skills.length,
-        itemBuilder: (context, index) {
-          final skill = _skills[index];
-          return Card(
-            child: ListTile(
-              title: Text(skill),
-              trailing: PopupMenuButton<String>(
-                onSelected: (value) {
-                  if (value == 'edit') _editSkill(index);
-                  else if (value == 'remove') _removeSkill(index);
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'edit', child: Text('Edit')),
-                  PopupMenuItem(value: 'remove', child: Text('Remove')),
-                ],
-              ),
+              padding: const EdgeInsets.all(20),
+              itemCount: _skills.length,
+              itemBuilder: (context, index) {
+                final skill = _skills[index];
+                return Card(
+                  child: ListTile(
+                    title: Text(skill),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'edit')
+                          _editSkill(index);
+                        else if (value == 'remove')
+                          _removeSkill(index);
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'edit', child: Text('Edit')),
+                        PopupMenuItem(value: 'remove', child: Text('Remove')),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 }
@@ -1320,7 +1570,8 @@ class FollowedCompaniesScreen extends StatefulWidget {
   final Student student;
 
   @override
-  State<FollowedCompaniesScreen> createState() => _FollowedCompaniesScreenState();
+  State<FollowedCompaniesScreen> createState() =>
+      _FollowedCompaniesScreenState();
 }
 
 class _FollowedCompaniesScreenState extends State<FollowedCompaniesScreen> {
@@ -1339,14 +1590,18 @@ class _FollowedCompaniesScreenState extends State<FollowedCompaniesScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('No authenticated user found.');
-      final updated = widget.student.copyWith(followedCompanies: List<String>.from(_companies));
+      final updated = widget.student.copyWith(
+        followedCompanies: List<String>.from(_companies),
+      );
       await _authService.updateStudent(user.uid, updated);
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -1357,8 +1612,14 @@ class _FollowedCompaniesScreenState extends State<FollowedCompaniesScreen> {
         title: const Text('Unfollow Company'),
         content: Text('Stop following "${_companies[index]}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Unfollow')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Unfollow'),
+          ),
         ],
       ),
     );
@@ -1377,26 +1638,38 @@ class _FollowedCompaniesScreenState extends State<FollowedCompaniesScreen> {
           TextButton(
             onPressed: _saving ? null : _persist,
             child: _saving
-                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Save'),
           ),
         ],
       ),
       body: _companies.isEmpty
-          ? const Center(child: Text('You are not following any companies yet.'))
+          ? const Center(
+              child: Text('You are not following any companies yet.'),
+            )
           : ListView.separated(
-        padding: const EdgeInsets.all(20),
-        itemCount: _companies.length,
-        itemBuilder: (context, index) {
-          final company = _companies[index];
-          return ListTile(
-            leading: CircleAvatar(backgroundColor: Colors.blueGrey.shade100, child: Text(company[0].toUpperCase())),
-            title: Text(company),
-            trailing: IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => _removeCompany(index)),
-          );
-        },
-        separatorBuilder: (_, __) => const Divider(),
-      ),
+              padding: const EdgeInsets.all(20),
+              itemCount: _companies.length,
+              itemBuilder: (context, index) {
+                final company = _companies[index];
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.blueGrey.shade100,
+                    child: Text(company[0].toUpperCase()),
+                  ),
+                  title: Text(company),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.remove_circle_outline),
+                    onPressed: () => _removeCompany(index),
+                  ),
+                );
+              },
+              separatorBuilder: (_, __) => const Divider(),
+            ),
     );
   }
 }
@@ -1435,7 +1708,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading documents: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading documents: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -1445,7 +1720,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      messenger.showSnackBar(const SnackBar(content: Text('You must be signed in.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('You must be signed in.')),
+      );
       return;
     }
     final result = await FilePicker.platform.pickFiles(
@@ -1462,7 +1739,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     }).toList();
     final skippedCount = result.files.length - validFiles.length;
     if (validFiles.isEmpty) {
-      messenger.showSnackBar(const SnackBar(content: Text('Only PDF or PNG files can be uploaded.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Only PDF or PNG files can be uploaded.')),
+      );
       return;
     }
 
@@ -1480,7 +1759,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           ? 'Document uploaded successfully.'
           : '${validFiles.length} documents uploaded successfully.';
       if (skippedCount > 0) {
-        baseMessage += ' $skippedCount file(s) were skipped because they are not PDF or PNG.';
+        baseMessage +=
+            ' $skippedCount file(s) were skipped because they are not PDF or PNG.';
       }
       messenger.showSnackBar(SnackBar(content: Text(baseMessage)));
     } catch (e) {
@@ -1501,19 +1781,31 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         title: const Text('Delete Document'),
         content: Text('Are you sure you want to delete "${file.name}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
     if (confirm != true) return;
     setState(() => _loading = true);
     try {
-      await _storageService.deleteFile(uid: user.uid, collection: 'documents', file: file);
+      await _storageService.deleteFile(
+        uid: user.uid,
+        collection: 'documents',
+        file: file,
+      );
       _changed = true;
       await _loadDocuments();
       if (!mounted) return;
-      messenger.showSnackBar(const SnackBar(content: Text('Document deleted.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Document deleted.')),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -1531,64 +1823,73 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(title: const Text('Documents')),
-        floatingActionButton: FloatingActionButton(onPressed: _uploadDocument, child: const Icon(Icons.upload_file)),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _uploadDocument,
+          child: const Icon(Icons.upload_file),
+        ),
         body: RefreshIndicator(
           onRefresh: _loadDocuments,
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _documents.isEmpty
-                  ? const Center(child: Text('No documents uploaded yet.'))
-                  : LayoutBuilder(
-                      builder: (context, constraints) {
-                        final bool isWide = constraints.maxWidth >= 600;
-                        final int crossAxisCount = isWide ? 3 : 2;
-                        final double childAspectRatio = isWide ? 1.0 : 0.75;
-                        return GridView.builder(
-                          padding: const EdgeInsets.all(20),
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: crossAxisCount,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: childAspectRatio,
+              ? const Center(child: Text('No documents uploaded yet.'))
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final bool isWide = constraints.maxWidth >= 600;
+                    final int crossAxisCount = isWide ? 3 : 2;
+                    final double childAspectRatio = isWide ? 1.0 : 0.75;
+                    return GridView.builder(
+                      padding: const EdgeInsets.all(20),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: childAspectRatio,
+                      ),
+                      itemCount: _documents.length,
+                      itemBuilder: (context, index) {
+                        final document = _documents[index];
+                        return Card(
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          itemCount: _documents.length,
-                          itemBuilder: (context, index) {
-                            final document = _documents[index];
-                            return Card(
-                              elevation: 3,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.insert_drive_file, size: 40, color: Colors.grey),
-                                    const SizedBox(height: 12),
-                                    Expanded(
-                                      child: Center(
-                                        child: Text(
-                                          document.name,
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(fontSize: 13),
-                                          maxLines: 3,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    TextButton.icon(
-                                      onPressed: () => _deleteDocument(document),
-                                      icon: const Icon(Icons.delete_outline),
-                                      label: const Text('Remove'),
-                                    ),
-                                  ],
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.insert_drive_file,
+                                  size: 40,
+                                  color: Colors.grey,
                                 ),
-                              ),
-                            );
-                          },
+                                const SizedBox(height: 12),
+                                Expanded(
+                                  child: Center(
+                                    child: Text(
+                                      document.name,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 13),
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                TextButton.icon(
+                                  onPressed: () => _deleteDocument(document),
+                                  icon: const Icon(Icons.delete_outline),
+                                  label: const Text('Remove'),
+                                ),
+                              ],
+                            ),
+                          ),
                         );
                       },
-                    ),
+                    );
+                  },
+                ),
         ),
       ),
     );
@@ -1629,7 +1930,9 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading resumes: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading resumes: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -1639,7 +1942,9 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      messenger.showSnackBar(const SnackBar(content: Text('You must be signed in.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('You must be signed in.')),
+      );
       return;
     }
     final result = await FilePicker.platform.pickFiles(withData: true);
@@ -1648,7 +1953,11 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
 
     setState(() => _loading = true);
     try {
-      await _storageService.uploadFile(uid: user.uid, collection: 'resumes', file: file);
+      await _storageService.uploadFile(
+        uid: user.uid,
+        collection: 'resumes',
+        file: file,
+      );
       _changed = true;
       await _loadResumes(); // Refresh list
       if (!mounted) return;
@@ -1671,15 +1980,25 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
         title: const Text('Delete Resume'),
         content: Text('Are you sure you want to delete "${file.name}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
     if (confirm != true) return;
     setState(() => _loading = true);
     try {
-      await _storageService.deleteFile(uid: user.uid, collection: 'resumes', file: file);
+      await _storageService.deleteFile(
+        uid: user.uid,
+        collection: 'resumes',
+        file: file,
+      );
       _changed = true;
       await _loadResumes();
       if (!mounted) return;
@@ -1693,7 +2012,9 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
 
   void _openLink(String url) {
     // In a real app, you would use the url_launcher package.
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Open $url in browser.')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Open $url in browser.')));
   }
 
   @override
@@ -1706,7 +2027,10 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(title: const Text('Generated Resumes')),
-        floatingActionButton: FloatingActionButton(onPressed: _uploadResume, child: const Icon(Icons.upload)),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _uploadResume,
+          child: const Icon(Icons.upload),
+        ),
         body: RefreshIndicator(
           onRefresh: _loadResumes,
           child: _loading
@@ -1714,23 +2038,30 @@ class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
               : _resumes.isEmpty
               ? const Center(child: Text('No resumes uploaded yet.'))
               : ListView.separated(
-            padding: const EdgeInsets.all(20),
-            itemCount: _resumes.length,
-            itemBuilder: (context, index) {
-              final resume = _resumes[index];
-              return ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFF1F3F4),
-                  child: Icon(Icons.description, color: Colors.black87),
+                  padding: const EdgeInsets.all(20),
+                  itemCount: _resumes.length,
+                  itemBuilder: (context, index) {
+                    final resume = _resumes[index];
+                    return ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFF1F3F4),
+                        child: Icon(Icons.description, color: Colors.black87),
+                      ),
+                      title: Text(resume.name),
+                      subtitle: Text(
+                        resume.uploadedAt != null
+                            ? 'Uploaded ${resume.uploadedAt!.toLocal()}'
+                            : 'Awaiting timestamp',
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () => _deleteResume(resume),
+                      ),
+                      onTap: () => _openLink(resume.url),
+                    );
+                  },
+                  separatorBuilder: (_, __) => const Divider(),
                 ),
-                title: Text(resume.name),
-                subtitle: Text(resume.uploadedAt != null ? 'Uploaded ${resume.uploadedAt!.toLocal()}' : 'Awaiting timestamp'),
-                trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => _deleteResume(resume)),
-                onTap: () => _openLink(resume.url),
-              );
-            },
-            separatorBuilder: (_, __) => const Divider(),
-          ),
         ),
       ),
     );
@@ -1744,7 +2075,8 @@ class SettingsPreferencesScreen extends StatefulWidget {
   final Student student;
 
   @override
-  State<SettingsPreferencesScreen> createState() => _SettingsPreferencesScreenState();
+  State<SettingsPreferencesScreen> createState() =>
+      _SettingsPreferencesScreenState();
 }
 
 class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
@@ -1777,7 +2109,9 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -1792,7 +2126,9 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           SwitchListTile(
             value: _resumePublic,
             title: const Text('Public Resumes'),
-            subtitle: const Text('Allow companies to view your generated resumes.'),
+            subtitle: const Text(
+              'Allow companies to view your generated resumes.',
+            ),
             onChanged: (value) => setState(() => _resumePublic = value),
           ),
           SwitchListTile(
@@ -1805,7 +2141,11 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ElevatedButton(
             onPressed: _saving ? null : _save,
             child: _saving
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Save Changes'),
           ),
         ],
@@ -1826,9 +2166,11 @@ class ChangePasswordScreen extends StatefulWidget {
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final AuthService _authService = AuthService();
-  final TextEditingController _currentPasswordController = TextEditingController();
+  final TextEditingController _currentPasswordController =
+      TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   bool _submitting = false;
   bool _sendingReset = false;
 
@@ -1842,7 +2184,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _hasSymbol = false;
   bool _is8CharsLong = false;
   bool _hasNoSpaces = true;
-  bool get _isPasswordValid => _is8CharsLong && _hasUppercase && _hasLowercase && _hasNumber && _hasSymbol && _hasNoSpaces;
+  bool get _isPasswordValid =>
+      _is8CharsLong &&
+      _hasUppercase &&
+      _hasLowercase &&
+      _hasNumber &&
+      _hasSymbol &&
+      _hasNoSpaces;
 
   @override
   void initState() {
@@ -1880,14 +2228,21 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _submitting = true);
     try {
-      await _authService.updateStudentPassword(_currentPasswordController.text, _newPasswordController.text);
+      await _authService.updateStudentPassword(
+        _currentPasswordController.text,
+        _newPasswordController.text,
+      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated successfully.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password updated successfully.')),
+      );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -1897,7 +2252,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final email = user?.email;
     if (email == null || email.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No email is associated with this account.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No email is associated with this account.'),
+        ),
+      );
       return;
     }
 
@@ -1905,10 +2264,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     try {
       await _authService.resetPassword(email);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Reset link sent to $email.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Reset link sent to $email.')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) setState(() => _sendingReset = false);
     }
@@ -1925,7 +2288,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             size: 16,
           ),
           const SizedBox(width: 8),
-          Text(text, style: TextStyle(color: met ? Colors.black87 : Colors.grey)),
+          Text(
+            text,
+            style: TextStyle(color: met ? Colors.black87 : Colors.grey),
+          ),
         ],
       ),
     );
@@ -1948,7 +2314,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     return Colors.green;
   }
 
-
   @override
   Widget build(BuildContext context) {
     final passwordStrength = _calculatePasswordStrength();
@@ -1966,8 +2331,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               TextFormField(
                 controller: _currentPasswordController,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Current Password'),
-                validator: (value) => (value == null || value.isEmpty) ? 'Enter your current password' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Current Password',
+                ),
+                validator: (value) => (value == null || value.isEmpty)
+                    ? 'Enter your current password'
+                    : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -1977,31 +2346,60 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 decoration: InputDecoration(
                   labelText: 'New Password',
                   suffixIcon: IconButton(
-                    icon: Icon(_obscureNewPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
-                    onPressed: () => setState(() => _obscureNewPassword = !_obscureNewPassword),
+                    icon: Icon(
+                      _obscureNewPassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    onPressed: () => setState(
+                      () => _obscureNewPassword = !_obscureNewPassword,
+                    ),
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter new password';
-                  if (value.contains(' ')) return 'Password cannot contain spaces';
-                  if (!_isPasswordValid) return 'Please meet all password requirements';
+                  if (value == null || value.isEmpty)
+                    return 'Please enter new password';
+                  if (value.contains(' '))
+                    return 'Password cannot contain spaces';
+                  if (!_isPasswordValid)
+                    return 'Please meet all password requirements';
                   return null;
                 },
               ),
-              if ((_isPasswordFocused || _newPasswordController.text.isNotEmpty) && !_isPasswordValid)
+              if ((_isPasswordFocused ||
+                      _newPasswordController.text.isNotEmpty) &&
+                  !_isPasswordValid)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildPasswordCriteriaRow('At least 8 characters', _is8CharsLong),
-                      _buildPasswordCriteriaRow('Contains an uppercase letter', _hasUppercase),
-                      _buildPasswordCriteriaRow('Contains a lowercase letter', _hasLowercase),
-                      _buildPasswordCriteriaRow('Contains a number', _hasNumber),
-                      _buildPasswordCriteriaRow('Contains a symbol (!@#\$&*~)', _hasSymbol),
-                      _buildPasswordCriteriaRow('Does not contain spaces', _hasNoSpaces),
+                      _buildPasswordCriteriaRow(
+                        'At least 8 characters',
+                        _is8CharsLong,
+                      ),
+                      _buildPasswordCriteriaRow(
+                        'Contains an uppercase letter',
+                        _hasUppercase,
+                      ),
+                      _buildPasswordCriteriaRow(
+                        'Contains a lowercase letter',
+                        _hasLowercase,
+                      ),
+                      _buildPasswordCriteriaRow(
+                        'Contains a number',
+                        _hasNumber,
+                      ),
+                      _buildPasswordCriteriaRow(
+                        'Contains a symbol (!@#\$&*~)',
+                        _hasSymbol,
+                      ),
+                      _buildPasswordCriteriaRow(
+                        'Does not contain spaces',
+                        _hasNoSpaces,
+                      ),
                       const SizedBox(height: 8),
-                      if(!_isPasswordValid)
+                      if (!_isPasswordValid)
                         ClipRRect(
                           borderRadius: BorderRadius.circular(10),
                           child: LinearProgressIndicator(
@@ -2021,26 +2419,46 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 decoration: InputDecoration(
                   labelText: 'Confirm New Password',
                   suffixIcon: IconButton(
-                    icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
-                    onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                    icon: Icon(
+                      _obscureConfirmPassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    onPressed: () => setState(
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                    ),
                   ),
                 ),
-                validator: (value) => (value != _newPasswordController.text) ? 'Passwords do not match' : null,
+                validator: (value) => (value != _newPasswordController.text)
+                    ? 'Passwords do not match'
+                    : null,
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Update Password'),
               ),
               const SizedBox(height: 16),
               TextButton.icon(
                 onPressed: _sendingReset ? null : _sendResetEmail,
                 icon: _sendingReset
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.email_outlined),
-                label: Text(_sendingReset ? 'Sending reset email...' : 'Email me a reset link'),
+                label: Text(
+                  _sendingReset
+                      ? 'Sending reset email...'
+                      : 'Email me a reset link',
+                ),
               ),
             ],
           ),
@@ -2079,7 +2497,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Are you absolutely sure?'),
-        content: const Text('This action is irreversible. All your data, including your profile, documents, and resumes, will be permanently deleted.'),
+        content: const Text(
+          'This action is irreversible. All your data, including your profile, documents, and resumes, will be permanently deleted.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -2110,26 +2530,28 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
       await _authService.deleteStudentAccount(_passwordController.text);
 
       if (!mounted) return;
-      messenger.showSnackBar(const SnackBar(
-        content: Text('Your account has been permanently deleted.'),
-        backgroundColor: Colors.green,
-      ));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Your account has been permanently deleted.'),
+          backgroundColor: Colors.green,
+        ),
+      );
 
       // Pop all routes and push a new root route (e.g., a login or splash screen).
       // Replace '/login' with your actual initial route name.
       navigator.pushNamedAndRemoveUntil('/login', (route) => false);
-
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(
-        content: Text("Deletion failed: ${e.toString()}"),
-        backgroundColor: Colors.red,
-      ));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text("Deletion failed: ${e.toString()}"),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _deleting = false);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -2143,11 +2565,19 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 50),
+              const Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.red,
+                size: 50,
+              ),
               const SizedBox(height: 16),
               const Text(
                 'Delete Your Account Permanently',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.red),
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
@@ -2170,11 +2600,18 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                 decoration: InputDecoration(
                   labelText: 'Current Password',
                   suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
-                validator: (value) => (value == null || value.isEmpty) ? 'Please enter your password' : null,
+                validator: (value) => (value == null || value.isEmpty)
+                    ? 'Please enter your password'
+                    : null,
               ),
               const SizedBox(height: 32),
               ElevatedButton(
@@ -2186,11 +2623,17 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                 ),
                 child: _deleting
                     ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-                    : const Text('Delete Account Permanently', style: TextStyle(fontWeight: FontWeight.bold)),
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Delete Account Permanently',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
               ),
             ],
           ),
@@ -2239,12 +2682,18 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
         newEmail: _emailController.text,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email updated. Please verify the new address.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Email updated. Please verify the new address.'),
+        ),
+      );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -2262,20 +2711,28 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(labelText: 'New Email'),
-                validator: (value) => (value == null || !value.contains('@')) ? 'Enter a valid email' : null,
+                validator: (value) => (value == null || !value.contains('@'))
+                    ? 'Enter a valid email'
+                    : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Password'),
-                validator: (value) => (value == null || value.isEmpty) ? 'Enter your password' : null,
+                validator: (value) => (value == null || value.isEmpty)
+                    ? 'Enter your password'
+                    : null,
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Update Email'),
               ),
             ],

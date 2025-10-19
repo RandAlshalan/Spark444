@@ -48,7 +48,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     'Accepted',
     'Rejected',
     'Withdrawn',
-    'Draft'
+    'Draft',
   ];
 
   @override
@@ -80,14 +80,16 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
           .toList();
 
       if (applications.isNotEmpty) {
-        final opportunityIds =
-            applications.map((app) => app.opportunityId).toSet().toList();
+        final opportunityIds = applications
+            .map((app) => app.opportunityId)
+            .toSet()
+            .toList();
         final oppDocs = await FirebaseFirestore.instance
             .collection('opportunities')
             .where(FieldPath.documentId, whereIn: opportunityIds)
             .get();
         _opportunityDetailsCache = {
-          for (var doc in oppDocs.docs) doc.id: Opportunity.fromFirestore(doc)
+          for (var doc in oppDocs.docs) doc.id: Opportunity.fromFirestore(doc),
         };
       }
 
@@ -102,7 +104,8 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
               .where(FieldPath.documentId, whereIn: companyIds)
               .get();
           _companyDetailsCache = {
-            for (var doc in companyDocs.docs) doc.id: Company.fromFirestore(doc)
+            for (var doc in companyDocs.docs)
+              doc.id: Company.fromFirestore(doc),
           };
         }
       }
@@ -151,7 +154,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       results = results.where((app) {
         final opportunity = _opportunityDetailsCache[app.opportunityId];
         if (opportunity == null) return false;
-        
+
         final company = _companyDetailsCache[opportunity.companyId];
         final bool roleMatch = opportunity.role.toLowerCase().contains(query);
         final bool companyMatch =
@@ -171,7 +174,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
   void _showApplicationList() {
     setState(() => _selectedApplication = null);
   }
-  
+
   void _navigateToCompanyProfile(String companyId) {
     Navigator.push(
       context,
@@ -187,15 +190,16 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Withdraw Application?'),
         content: const Text(
-            'This will update your application status to "Withdrawn". You cannot undo this.'),
+          'This will update your application status to "Withdrawn". You cannot undo this.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child:
-                const Text('Withdraw', style: TextStyle(color: Colors.red)),
+            child: const Text('Withdraw', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -204,16 +208,23 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     if (confirm == true) {
       try {
         await _applicationService.withdrawApplication(
-            applicationId: application.id);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          applicationId: application.id,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
             content: Text('Application withdrawn.'),
-            backgroundColor: Colors.green));
+            backgroundColor: Colors.green,
+          ),
+        );
         _showApplicationList();
         _loadApplications();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
             content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red));
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -224,11 +235,13 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Delete Permanently?'),
         content: const Text(
-            'This action is irreversible and will permanently remove this application record.'),
+          'This action is irreversible and will permanently remove this application record.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -240,21 +253,27 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     if (confirm == true) {
       try {
         await _applicationService.deleteApplication(
-            applicationId: application.id);
+          applicationId: application.id,
+        );
 
         setState(() {
           _allApplications.removeWhere((app) => app.id == application.id);
-          _filteredApplications
-              .removeWhere((app) => app.id == application.id);
+          _filteredApplications.removeWhere((app) => app.id == application.id);
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
             content: Text('Application permanently deleted.'),
-            backgroundColor: Colors.green));
+            backgroundColor: Colors.green,
+          ),
+        );
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
             content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red));
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -284,14 +303,16 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       leading: _selectedApplication != null
           ? IconButton(
               icon: const Icon(Icons.arrow_back),
-              onPressed: _showApplicationList)
+              onPressed: _showApplicationList,
+            )
           : null,
       automaticallyImplyLeading: _selectedApplication == null,
       title: Text(
-          _selectedApplication == null
-              ? 'My Applications'
-              : 'Application Details',
-          style: GoogleFonts.lato(fontWeight: FontWeight.bold)),
+        _selectedApplication == null
+            ? 'My Applications'
+            : 'Application Details',
+        style: GoogleFonts.lato(fontWeight: FontWeight.bold),
+      ),
       backgroundColor: _profileBackgroundColor,
       elevation: 0,
       foregroundColor: _profileTextColor,
@@ -302,7 +323,8 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
-          child: CircularProgressIndicator(color: _sparkPrimaryPurple));
+        child: CircularProgressIndicator(color: _sparkPrimaryPurple),
+      );
     }
 
     if (_allApplications.isEmpty) return _buildEmptyState();
@@ -325,10 +347,13 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
           Expanded(
             child: _filteredApplications.isEmpty
                 ? const Center(
-                    child: Text('No applications match your criteria.'))
+                    child: Text('No applications match your criteria.'),
+                  )
                 : ListView.builder(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     itemCount: _filteredApplications.length,
                     itemBuilder: (context, index) {
                       final app = _filteredApplications[index];
@@ -351,20 +376,21 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
   }
 
   Widget _buildSearchBar() => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        child: TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: 'Search by role or company...',
-            prefixIcon: const Icon(Icons.search),
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none),
-          ),
+    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+    child: TextField(
+      controller: _searchController,
+      decoration: InputDecoration(
+        hintText: 'Search by role or company...',
+        prefixIcon: const Icon(Icons.search),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
-      );
+      ),
+    ),
+  );
 
   Widget _buildFilterButtons() {
     return SizedBox(
@@ -428,9 +454,10 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
                           Text(
                             'Status:',
                             style: GoogleFonts.lato(
-                                fontSize: 16,
-                                color: Colors.grey.shade700,
-                                fontWeight: FontWeight.w600),
+                              fontSize: 16,
+                              color: Colors.grey.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           _buildStatusChip(application.status),
@@ -440,8 +467,9 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
                       _buildInfoTile(
                         icon: Icons.event_note_outlined,
                         title: 'Applied On',
-                        value: DateFormat('MMMM d, yyyy')
-                            .format(application.appliedDate.toDate()),
+                        value: DateFormat(
+                          'MMMM d, yyyy',
+                        ).format(application.appliedDate.toDate()),
                       ),
                     ],
                   ),
@@ -451,23 +479,32 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
                 if (opportunity.description != null &&
                     opportunity.description!.isNotEmpty)
                   _buildDetailSection(
-                      title: 'Description',
-                      content: Text(opportunity.description!,
-                          style: GoogleFonts.lato(
-                              height: 1.6,
-                              fontSize: 15,
-                              color: Colors.black87))),
-                if (opportunity.skills != null && opportunity.skills!.isNotEmpty)
+                    title: 'Description',
+                    content: Text(
+                      opportunity.description!,
+                      style: GoogleFonts.lato(
+                        height: 1.6,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                if (opportunity.skills != null &&
+                    opportunity.skills!.isNotEmpty)
                   _buildDetailSection(
-                      title: 'Key Skills',
-                      content: _buildChipList(opportunity.skills!)),
+                    title: 'Key Skills',
+                    content: _buildChipList(opportunity.skills!),
+                  ),
                 if (opportunity.requirements != null &&
                     opportunity.requirements!.isNotEmpty)
                   _buildDetailSection(
-                      title: 'Requirements',
-                      content: _buildRequirementList(opportunity.requirements!)),
+                    title: 'Requirements',
+                    content: _buildRequirementList(opportunity.requirements!),
+                  ),
                 _buildDetailSection(
-                    title: 'More Info', content: _buildMoreInfo(opportunity)),
+                  title: 'More Info',
+                  content: _buildMoreInfo(opportunity),
+                ),
               ],
             ),
           ),
@@ -486,12 +523,16 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
         children: [
           const Icon(Icons.inbox_outlined, size: 80, color: Colors.grey),
           const SizedBox(height: 16),
-          Text('No Applications Yet',
-              style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(
+            'No Applications Yet',
+            style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          Text('Your submitted applications will appear here.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.lato(color: Colors.grey)),
+          Text(
+            'Your submitted applications will appear here.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.lato(color: Colors.grey),
+          ),
         ],
       ),
     );
@@ -514,11 +555,19 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
                   CircleAvatar(
                     radius: 32,
                     backgroundColor: Colors.grey.shade200,
-                    backgroundImage: (snapshot.data?.logoUrl != null && snapshot.data!.logoUrl!.isNotEmpty)
+                    backgroundImage:
+                        (snapshot.data?.logoUrl != null &&
+                            snapshot.data!.logoUrl!.isNotEmpty)
                         ? NetworkImage(snapshot.data!.logoUrl!)
                         : null,
-                    child: (snapshot.data?.logoUrl == null || snapshot.data!.logoUrl!.isEmpty)
-                        ? const Icon(Icons.business, size: 30, color: Colors.grey)
+                    child:
+                        (snapshot.data?.logoUrl == null ||
+                            snapshot.data!.logoUrl!.isEmpty)
+                        ? const Icon(
+                            Icons.business,
+                            size: 30,
+                            color: Colors.grey,
+                          )
                         : null,
                   ),
                   const SizedBox(width: 16),
@@ -529,15 +578,18 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
                         Text(
                           opportunity.role,
                           style: GoogleFonts.lato(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: _sparkPrimaryPurple),
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: _sparkPrimaryPurple,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           snapshot.data?.companyName ?? 'Loading...',
                           style: GoogleFonts.lato(
-                              fontSize: 16, color: Colors.grey.shade700),
+                            fontSize: 16,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
                       ],
                     ),
@@ -558,45 +610,57 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     return Column(
       children: [
         _buildInfoTile(
-            icon: Icons.apartment_outlined,
-            title: 'Location / Work Mode',
-            value:
-                '${opportunity.workMode?.capitalize() ?? ''} · ${opportunity.location ?? 'Remote'}'),
+          icon: Icons.apartment_outlined,
+          title: 'Location / Work Mode',
+          value:
+              '${opportunity.workMode?.capitalize() ?? ''} · ${opportunity.location ?? 'Remote'}',
+        ),
         _buildInfoTile(
-            icon: Icons.calendar_today_outlined,
-            title: 'Duration',
-            value:
-                '${formatDate(opportunity.startDate?.toDate())} - ${formatDate(opportunity.endDate?.toDate())}'),
+          icon: Icons.calendar_today_outlined,
+          title: 'Duration',
+          value:
+              '${formatDate(opportunity.startDate?.toDate())} - ${formatDate(opportunity.endDate?.toDate())}',
+        ),
         _buildInfoTile(
-            icon: Icons.event_available_outlined,
-            title: 'Apply Before',
-            value: formatDate(opportunity.applicationDeadline?.toDate()),
-            valueColor: Colors.red.shade700),
+          icon: Icons.event_available_outlined,
+          title: 'Apply Before',
+          value: formatDate(opportunity.applicationDeadline?.toDate()),
+          valueColor: Colors.red.shade700,
+        ),
       ],
     );
   }
 
-  Widget _buildInfoTile(
-      {required IconData icon,
-      required String title,
-      required String value,
-      Color? valueColor}) {
+  Widget _buildInfoTile({
+    required IconData icon,
+    required String title,
+    required String value,
+    Color? valueColor,
+  }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 0,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: Colors.grey.shade200)),
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
       child: ListTile(
         leading: Icon(icon, color: _sparkPrimaryPurple),
-        title: Text(title,
-            style: GoogleFonts.lato(
-                fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
-        subtitle: Text(value,
-            style: GoogleFonts.lato(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: valueColor ?? _profileTextColor)),
+        title: Text(
+          title,
+          style: GoogleFonts.lato(
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        subtitle: Text(
+          value,
+          style: GoogleFonts.lato(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: valueColor ?? _profileTextColor,
+          ),
+        ),
       ),
     );
   }
@@ -607,11 +671,14 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: GoogleFonts.lato(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: _sparkPrimaryPurple)),
+          Text(
+            title,
+            style: GoogleFonts.lato(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: _sparkPrimaryPurple,
+            ),
+          ),
           const SizedBox(height: 12),
           content,
         ],
@@ -624,12 +691,16 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       spacing: 8.0,
       runSpacing: 8.0,
       children: items
-          .map((item) => Chip(
-                label: Text(item),
-                backgroundColor: _sparkPrimaryPurple.withOpacity(0.1),
-                labelStyle: const TextStyle(
-                    color: _sparkPrimaryPurple, fontWeight: FontWeight.w600),
-              ))
+          .map(
+            (item) => Chip(
+              label: Text(item),
+              backgroundColor: _sparkPrimaryPurple.withOpacity(0.1),
+              labelStyle: const TextStyle(
+                color: _sparkPrimaryPurple,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          )
           .toList(),
     );
   }
@@ -638,59 +709,87 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: items
-          .map((req) => Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.check_circle_outline,
-                        color: Colors.green, size: 20),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        child: Text(req,
-                            style: GoogleFonts.lato(fontSize: 15, height: 1.5))),
-                  ],
-                ),
-              ))
+          .map(
+            (req) => Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline,
+                    color: Colors.green,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      req,
+                      style: GoogleFonts.lato(fontSize: 15, height: 1.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
           .toList(),
     );
   }
 
   Widget _buildMoreInfo(Opportunity opportunity) {
     return Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-            side: BorderSide(color: Colors.grey.shade200)),
-        child: Column(children: [
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
           _buildMoreInfoRow(Icons.badge_outlined, 'Type', opportunity.type),
           if (opportunity.preferredMajor != null)
-            _buildMoreInfoRow(Icons.school_outlined, 'Preferred Major',
-                opportunity.preferredMajor!),
-          _buildMoreInfoRow(Icons.attach_money_outlined, 'Payment',
-              opportunity.isPaid ? 'Paid' : 'Unpaid'),
-        ]));
+            _buildMoreInfoRow(
+              Icons.school_outlined,
+              'Preferred Major',
+              opportunity.preferredMajor!,
+            ),
+          _buildMoreInfoRow(
+            Icons.attach_money_outlined,
+            'Payment',
+            opportunity.isPaid ? 'Paid' : 'Unpaid',
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMoreInfoRow(IconData icon, String title, String value) =>
       ListTile(
         leading: Icon(icon, color: Colors.grey.shade600),
-        title: Text(title, style: GoogleFonts.lato(fontWeight: FontWeight.w600)),
-        trailing: Text(value,
-            style: GoogleFonts.lato(fontSize: 15, fontWeight: FontWeight.w500)),
+        title: Text(
+          title,
+          style: GoogleFonts.lato(fontWeight: FontWeight.w600),
+        ),
+        trailing: Text(
+          value,
+          style: GoogleFonts.lato(fontSize: 15, fontWeight: FontWeight.w500),
+        ),
       );
 
   Widget _buildWithdrawButton(Application application) {
     return Container(
       padding: EdgeInsets.fromLTRB(
-          16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
+        16,
+        12,
+        16,
+        12 + MediaQuery.of(context).padding.bottom,
+      ),
       decoration: BoxDecoration(
         color: _profileBackgroundColor,
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, -2))
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
         ],
       ),
       child: SizedBox(
@@ -703,8 +802,9 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
             backgroundColor: Colors.red.shade700,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 16),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
       ),
@@ -788,8 +888,9 @@ class _ApplicationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formattedAppliedDate =
-        DateFormat('MMM d, yyyy').format(application.appliedDate.toDate());
+    final formattedAppliedDate = DateFormat(
+      'MMM d, yyyy',
+    ).format(application.appliedDate.toDate());
 
     return Card(
       margin: const EdgeInsets.only(bottom: 20),
@@ -806,17 +907,23 @@ class _ApplicationCard extends StatelessWidget {
             Row(
               children: [
                 _buildDateInfo(
-                    Icons.calendar_today_outlined,
-                    'Duration',
-                    '${formatDate(opportunity.startDate?.toDate())} - ${formatDate(opportunity.endDate?.toDate())}'),
+                  Icons.calendar_today_outlined,
+                  'Duration',
+                  '${formatDate(opportunity.startDate?.toDate())} - ${formatDate(opportunity.endDate?.toDate())}',
+                ),
                 const SizedBox(width: 16),
-                _buildDateInfo(Icons.event_note_outlined, 'Applied On',
-                    formattedAppliedDate),
+                _buildDateInfo(
+                  Icons.event_note_outlined,
+                  'Applied On',
+                  formattedAppliedDate,
+                ),
               ],
             ),
             if (!isDetailView) ...[
               const Padding(
-                  padding: EdgeInsets.only(top: 12.0), child: Divider()),
+                padding: EdgeInsets.only(top: 12.0),
+                child: Divider(),
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -824,21 +931,28 @@ class _ApplicationCard extends StatelessWidget {
                       application.status.toLowerCase() == 'reviewed')
                     TextButton(
                       onPressed: onWithdraw,
-                      child: const Text('Withdraw',
-                          style: TextStyle(
-                              color: Colors.red, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Withdraw',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   const SizedBox(width: 8),
                   TextButton(
                     onPressed: onViewMore,
-                    child: const Text('View More',
-                        style: TextStyle(
-                            color: _sparkPrimaryPurple,
-                            fontWeight: FontWeight.bold)),
-                  )
+                    child: const Text(
+                      'View More',
+                      style: TextStyle(
+                        color: _sparkPrimaryPurple,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ],
-              )
-            ]
+              ),
+            ],
           ],
         ),
       ),
@@ -855,11 +969,13 @@ class _ApplicationCard extends StatelessWidget {
             CircleAvatar(
               radius: 28,
               backgroundColor: Colors.grey.shade200,
-              backgroundImage: (snapshot.data?.logoUrl != null &&
+              backgroundImage:
+                  (snapshot.data?.logoUrl != null &&
                       snapshot.data!.logoUrl!.isNotEmpty)
                   ? NetworkImage(snapshot.data!.logoUrl!)
                   : null,
-              child: (snapshot.data?.logoUrl == null ||
+              child:
+                  (snapshot.data?.logoUrl == null ||
                       snapshot.data!.logoUrl!.isEmpty)
                   ? const Icon(Icons.business, color: Colors.grey)
                   : null,
@@ -869,13 +985,21 @@ class _ApplicationCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(opportunity.role,
-                      style: GoogleFonts.lato(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    opportunity.role,
+                    style: GoogleFonts.lato(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(snapshot.data?.companyName ?? "...",
-                      style: GoogleFonts.lato(
-                          fontSize: 14, color: Colors.grey.shade700)),
+                  Text(
+                    snapshot.data?.companyName ?? "...",
+                    style: GoogleFonts.lato(
+                      fontSize: 14,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -916,17 +1040,21 @@ class _ApplicationCard extends StatelessWidget {
             children: [
               Icon(icon, size: 16, color: Colors.grey.shade600),
               const SizedBox(width: 6),
-              Text(title,
-                  style: GoogleFonts.lato(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.bold)),
+              Text(
+                title,
+                style: GoogleFonts.lato(
+                  fontSize: 13,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
-          Text(value,
-              style:
-                  GoogleFonts.lato(fontSize: 14, fontWeight: FontWeight.w600)),
+          Text(
+            value,
+            style: GoogleFonts.lato(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );

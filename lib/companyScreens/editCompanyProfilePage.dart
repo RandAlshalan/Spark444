@@ -140,12 +140,18 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
                 ),
                 const SizedBox(height: 20),
                 ListTile(
-                  leading: const Icon(Icons.photo_library, color: Color(0xFF6B4791)),
+                  leading: const Icon(
+                    Icons.photo_library,
+                    color: Color(0xFF6B4791),
+                  ),
                   title: const Text('Photo Gallery'),
                   onTap: () => Navigator.pop(context, ImageSource.gallery),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.camera_alt, color: Color(0xFF6B4791)),
+                  leading: const Icon(
+                    Icons.camera_alt,
+                    color: Color(0xFF6B4791),
+                  ),
                   title: const Text('Camera'),
                   onTap: () => Navigator.pop(context, ImageSource.camera),
                 ),
@@ -200,7 +206,9 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
         final storageRef = FirebaseStorage.instance
             .ref()
             .child('company_logos')
-            .child('${widget.company.uid}_${DateTime.now().millisecondsSinceEpoch}.$extension');
+            .child(
+              '${widget.company.uid}_${DateTime.now().millisecondsSinceEpoch}.$extension',
+            );
 
         String contentType = 'image/jpeg';
         if (extension == 'png') {
@@ -302,8 +310,8 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
 
       final String combinedContactInfo =
           _contactNumberController.text.trim().isNotEmpty
-              ? '${_contactNameController.text.trim()} - +966${_contactNumberController.text.trim()}'
-              : _contactNameController.text.trim();
+          ? '${_contactNameController.text.trim()} - +966${_contactNumberController.text.trim()}'
+          : _contactNameController.text.trim();
 
       final String finalSector = _selectedSector == 'Other'
           ? _sectorController.text.trim()
@@ -334,9 +342,9 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error updating profile: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error updating profile: $e')));
         }
       } finally {
         if (mounted) setState(() => _isLoading = false);
@@ -374,16 +382,14 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
                 hintText: 'Company Name',
                 icon: Icons.business_outlined,
                 // MODIFIED: Removed character filter to allow numbers and special characters
-                inputFormatters: [
-                  LengthLimitingTextInputFormatter(40),
-                ],
+                inputFormatters: [LengthLimitingTextInputFormatter(40)],
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Company name is required.';
                   }
                   if (value.startsWith(' ')) {
-  return 'Name cannot start with a space';
-}
+                    return 'Name cannot start with a space';
+                  }
                   if (value.length > 40) {
                     return 'Company name cannot exceed 40 characters.';
                   }
@@ -399,12 +405,14 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
                   LengthLimitingTextInputFormatter(50),
                   FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
                 ],
-                
-                          validator: (value) {
-            if (value == null || value.trim().isEmpty) return 'Please enter a contact name';
-              if (value.startsWith(' ')) {
-  return 'Name cannot start with a space';
-} }
+
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty)
+                    return 'Please enter a contact name';
+                  if (value.startsWith(' ')) {
+                    return 'Name cannot start with a space';
+                  }
+                },
               ),
               _buildPhoneFormField(),
               _buildDescriptionField(),
@@ -418,10 +426,12 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
                       fontSize: 12,
                       color: _descriptionCharCount > _maxDescriptionLength
                           ? Colors.red
-                          : _descriptionCharCount > (_maxDescriptionLength * 0.9)
-                              ? const Color(0xFFF99D46)
-                              : Colors.grey,
-                      fontWeight: _descriptionCharCount > (_maxDescriptionLength * 0.9)
+                          : _descriptionCharCount >
+                                (_maxDescriptionLength * 0.9)
+                          ? const Color(0xFFF99D46)
+                          : Colors.grey,
+                      fontWeight:
+                          _descriptionCharCount > (_maxDescriptionLength * 0.9)
                           ? FontWeight.w600
                           : FontWeight.normal,
                     ),
@@ -462,12 +472,13 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
             controller: _descriptionController,
             maxLines: 5,
             maxLength: _maxDescriptionLength,
-            buildCounter: (BuildContext context, {
-            required int currentLength,
-            required bool isFocused,
-            required int? maxLength,
-          }) =>
-                const SizedBox.shrink(),
+            buildCounter:
+                (
+                  BuildContext context, {
+                  required int currentLength,
+                  required bool isFocused,
+                  required int? maxLength,
+                }) => const SizedBox.shrink(),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Company description is required.';
@@ -492,13 +503,18 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF422F5D).withOpacity(0.8),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 minimumSize: Size.zero,
               ),
-              child: const Text('Done',
-                  style: TextStyle(color: Colors.white, fontSize: 12)),
+              child: const Text(
+                'Done',
+                style: TextStyle(color: Colors.white, fontSize: 12),
+              ),
             ),
           ),
         ],
@@ -518,9 +534,10 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
               backgroundImage: _logoPath != null
                   ? FileImage(File(_logoPath!))
                   : _logoUrl != null && _logoUrl!.isNotEmpty
-                      ? NetworkImage(_logoUrl!)
-                      : null,
-              child: (_logoPath == null && (_logoUrl == null || _logoUrl!.isEmpty))
+                  ? NetworkImage(_logoUrl!)
+                  : null,
+              child:
+                  (_logoPath == null && (_logoUrl == null || _logoUrl!.isEmpty))
                   ? const Icon(
                       Icons.apartment_outlined,
                       color: Color(0xFF6B4791),
@@ -621,10 +638,7 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
             icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF422F5D)),
             decoration: const InputDecoration(
               hintText: 'Sector',
-              prefixIcon: Icon(
-                Icons.category_outlined,
-                color: Colors.grey,
-              ),
+              prefixIcon: Icon(Icons.category_outlined, color: Colors.grey),
               contentPadding: EdgeInsets.symmetric(
                 horizontal: 20,
                 vertical: 15,
@@ -711,10 +725,7 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
             color: Colors.black,
             fontWeight: FontWeight.w500,
           ),
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 15,
-          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           border: InputBorder.none,
         ),
       ),

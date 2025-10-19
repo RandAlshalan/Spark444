@@ -12,14 +12,16 @@ import '../services/authService.dart';
 class PhoneNumberFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     // Get digits only
     final newText = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
 
     if (newText.isEmpty) {
       return const TextEditingValue();
     }
-    
+
     final buffer = StringBuffer();
     for (int i = 0; i < newText.length; i++) {
       // Add space after the 3rd and 6th digit
@@ -51,13 +53,14 @@ class _StudentSignupState extends State<StudentSignup> {
   // --- Lists from Firestore ---
   List<String> _universitiesList = [];
   List<String> _majorsList = [];
-  List<String> _locationsList = []; 
+  List<String> _locationsList = [];
   late Future<void> _loadListsFuture;
 
   // Controllers
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
@@ -65,9 +68,11 @@ class _StudentSignupState extends State<StudentSignup> {
   final TextEditingController _graduationController = TextEditingController();
   final TextEditingController _gpaController = TextEditingController();
   final TextEditingController _skillsController = TextEditingController();
-  final TextEditingController _otherUniversityController = TextEditingController();
+  final TextEditingController _otherUniversityController =
+      TextEditingController();
   final TextEditingController _otherMajorController = TextEditingController();
-  final TextEditingController _otherLocationController = TextEditingController();
+  final TextEditingController _otherLocationController =
+      TextEditingController();
 
   // State
   String? _selectedUniversity;
@@ -75,7 +80,6 @@ class _StudentSignupState extends State<StudentSignup> {
   String? _gpaScale;
   String? _selectedLevel;
   String? _selectedLocation;
-
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -92,24 +96,39 @@ class _StudentSignupState extends State<StudentSignup> {
   bool _hasSymbol = false;
   bool _is8CharsLong = false;
   bool _hasNoSpaces = true;
-  bool get _isPasswordValid => _is8CharsLong && _hasUppercase && _hasLowercase && _hasNumber && _hasSymbol && _hasNoSpaces;
+  bool get _isPasswordValid =>
+      _is8CharsLong &&
+      _hasUppercase &&
+      _hasLowercase &&
+      _hasNumber &&
+      _hasSymbol &&
+      _hasNoSpaces;
 
   // Async username validation State
   bool _isCheckingUsername = false;
 
   final List<String> _universityDomains = [
-    '.edu', '.ac.uk', '.edu.sa', '.edu.au', '.edu.ca', '.edu.cn',
+    '.edu',
+    '.ac.uk',
+    '.edu.sa',
+    '.edu.au',
+    '.edu.ca',
+    '.edu.cn',
   ];
 
   final List<String> _academicLevels = [
-    'Freshman (Level 1-2)', 'Sophomore (Level 3-4)', 'Junior (Level 5-6)',
-    'Senior (Level 7-8)', 'Senior (Level +9)', 'Graduate Student'
+    'Freshman (Level 1-2)',
+    'Sophomore (Level 3-4)',
+    'Junior (Level 5-6)',
+    'Senior (Level 7-8)',
+    'Senior (Level +9)',
+    'Graduate Student',
   ];
 
   String? _usernameError;
   Timer? _debounce;
   final FocusNode _passwordFocusNode = FocusNode();
-  
+
   // --- Centralized color constants ---
   static const Color primaryColor = Color(0xFF422F5D);
   static const Color secondaryColor = Color(0xFFF99D46);
@@ -135,7 +154,7 @@ class _StudentSignupState extends State<StudentSignup> {
       setState(() {
         _universitiesList = [...lists['universities'] ?? [], "Other"];
         _majorsList = [...lists['majors'] ?? [], "Other"];
-        _locationsList = [...lists['cities'] ?? [], "Other"]; 
+        _locationsList = [...lists['cities'] ?? [], "Other"];
       });
     }
   }
@@ -186,7 +205,9 @@ class _StudentSignupState extends State<StudentSignup> {
 
   void _addSkill() {
     final skill = _skillsController.text.trim();
-    if (skill.isNotEmpty && !_selectedSkills.contains(skill) && skill.length <= 15) {
+    if (skill.isNotEmpty &&
+        !_selectedSkills.contains(skill) &&
+        skill.length <= 15) {
       setState(() {
         _selectedSkills.add(skill);
         _skillsController.clear();
@@ -199,7 +220,7 @@ class _StudentSignupState extends State<StudentSignup> {
       _selectedSkills.remove(skill);
     });
   }
-  
+
   Future<bool> _showManualReviewDialog() async {
     bool proceed = false;
     await showDialog(
@@ -207,24 +228,47 @@ class _StudentSignupState extends State<StudentSignup> {
       builder: (context) => AlertDialog(
         backgroundColor: backgroundColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Unrecognized University Email', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
-        content: const Text('Your account will be unauthorized, and some features may not be available.', style: TextStyle(color: Colors.black54)),
+        title: const Text(
+          'Unrecognized University Email',
+          style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Your account will be unauthorized, and some features may not be available.',
+          style: TextStyle(color: Colors.black54),
+        ),
         actions: [
           TextButton(
-            child: const Text('Cancel', style: TextStyle(color: secondaryColor, fontWeight: FontWeight.bold)),
-            onPressed: () { proceed = false; Navigator.of(context).pop(); }
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                color: secondaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            onPressed: () {
+              proceed = false;
+              Navigator.of(context).pop();
+            },
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
             child: const Text('Proceed', style: TextStyle(color: Colors.white)),
-            onPressed: () { proceed = true; Navigator.of(context).pop(); }
+            onPressed: () {
+              proceed = true;
+              Navigator.of(context).pop();
+            },
           ),
         ],
       ),
     );
     return proceed;
   }
-  
+
   Future<void> _selectGraduationDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -232,7 +276,7 @@ class _StudentSignupState extends State<StudentSignup> {
       firstDate: DateTime(2024),
       lastDate: DateTime(DateTime.now().year + 10),
       initialDatePickerMode: DatePickerMode.year,
-       builder: (context, child) {
+      builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
@@ -241,9 +285,7 @@ class _StudentSignupState extends State<StudentSignup> {
               onSurface: Colors.black,
             ),
             textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: secondaryColor,
-              ),
+              style: TextButton.styleFrom(foregroundColor: secondaryColor),
             ),
           ),
           child: child!,
@@ -256,7 +298,6 @@ class _StudentSignupState extends State<StudentSignup> {
       });
     }
   }
-
 
   Future<void> _goToNextStep() async {
     if (!_formKey.currentState!.validate()) {
@@ -305,21 +346,33 @@ class _StudentSignupState extends State<StudentSignup> {
         phoneNumber: "+966${_phoneController.text.trim().replaceAll(' ', '')}",
         userType: 'student',
         level: _selectedLevel,
-        expectedGraduationDate: _graduationController.text.isNotEmpty ? _graduationController.text.trim() : null,
-        gpa: _gpaController.text.isNotEmpty ? double.tryParse(_gpaController.text.trim()) : null,
+        expectedGraduationDate: _graduationController.text.isNotEmpty
+            ? _graduationController.text.trim()
+            : null,
+        gpa: _gpaController.text.isNotEmpty
+            ? double.tryParse(_gpaController.text.trim())
+            : null,
         skills: _selectedSkills,
-        location: finalLocation, id: '',
+        location: finalLocation,
+        id: '',
       );
 
-      await _authService.signUpStudent(student, _passwordController.text.trim());
+      await _authService.signUpStudent(
+        student,
+        _passwordController.text.trim(),
+      );
 
       if (!mounted) return;
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const StudentEmailVerification()),
+        MaterialPageRoute(
+          builder: (context) => const StudentEmailVerification(),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -362,12 +415,30 @@ class _StudentSignupState extends State<StudentSignup> {
           fillColor: Colors.white,
           labelText: labelText,
           prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF422F5D))),
-          errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 1.5)),
-          focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 2)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 15,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF422F5D)),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red, width: 1.5),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red, width: 2),
+          ),
           suffixIcon: suffixIcon,
           errorText: errorText,
           helperText: helperText,
@@ -376,7 +447,7 @@ class _StudentSignupState extends State<StudentSignup> {
       ),
     );
   }
-  
+
   Widget _buildPhoneFormField() {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -386,7 +457,11 @@ class _StudentSignupState extends State<StudentSignup> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: const Text(
               '+966',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black54,
+              ),
             ),
           ),
           Container(height: 30, width: 1, color: Colors.grey.shade300),
@@ -399,7 +474,8 @@ class _StudentSignupState extends State<StudentSignup> {
                 PhoneNumberFormatter(),
               ],
               validator: (value) {
-                if (value == null || value.isEmpty) return 'Please enter phone number';
+                if (value == null || value.isEmpty)
+                  return 'Please enter phone number';
                 final digitsOnly = value.replaceAll(' ', '');
                 if (digitsOnly.length != 9) return 'Must be 9 digits';
                 if (!digitsOnly.startsWith('5')) return 'Must start with 5';
@@ -416,7 +492,10 @@ class _StudentSignupState extends State<StudentSignup> {
                 enabledBorder: InputBorder.none,
                 errorBorder: InputBorder.none,
                 focusedErrorBorder: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 15,
+                ),
               ),
             ),
           ),
@@ -450,9 +529,14 @@ class _StudentSignupState extends State<StudentSignup> {
   void _checkUsernameUniqueness(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () async {
-      if (mounted) setState(() { _isCheckingUsername = true; });
+      if (mounted)
+        setState(() {
+          _isCheckingUsername = true;
+        });
       if (_usernameError != null) {
-        setState(() { _usernameError = null; });
+        setState(() {
+          _usernameError = null;
+        });
       }
       if (value.isNotEmpty && !value.contains(' ')) {
         final isUnique = await _authService.isUsernameUnique(value);
@@ -462,7 +546,10 @@ class _StudentSignupState extends State<StudentSignup> {
           });
         }
       }
-      if (mounted) setState(() { _isCheckingUsername = false; });
+      if (mounted)
+        setState(() {
+          _isCheckingUsername = false;
+        });
     });
   }
 
@@ -485,10 +572,22 @@ class _StudentSignupState extends State<StudentSignup> {
           fillColor: Colors.white,
           labelText: labelText,
           prefixIcon: Icon(icon, color: Colors.grey),
-          suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF422F5D)),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF422F5D))),
+          suffixIcon: const Icon(
+            Icons.arrow_drop_down,
+            color: Color(0xFF422F5D),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF422F5D)),
+          ),
         ),
       ),
     );
@@ -510,8 +609,16 @@ class _StudentSignupState extends State<StudentSignup> {
           builder: (context, setDialogState) {
             return AlertDialog(
               backgroundColor: backgroundColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Text('Select $title', style: const TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Text(
+                'Select $title',
+                style: const TextStyle(
+                  color: primaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               content: SizedBox(
                 width: double.maxFinite,
                 child: Column(
@@ -522,16 +629,29 @@ class _StudentSignupState extends State<StudentSignup> {
                       autofocus: true,
                       decoration: InputDecoration(
                         hintText: 'Search for a $title...',
-                        prefixIcon: const Icon(Icons.search, color: primaryColor),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: primaryColor,
+                        ),
                         filled: true,
                         fillColor: Colors.white,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: primaryColor)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: primaryColor),
+                        ),
                       ),
                       onChanged: (value) {
                         setDialogState(() {
                           filteredItems = items
-                              .where((item) => item.toLowerCase().contains(value.toLowerCase()))
+                              .where(
+                                (item) => item.toLowerCase().contains(
+                                  value.toLowerCase(),
+                                ),
+                              )
                               .toList();
                         });
                       },
@@ -544,8 +664,13 @@ class _StudentSignupState extends State<StudentSignup> {
                         itemBuilder: (context, index) {
                           final item = filteredItems[index];
                           return ListTile(
-                            title: Text(item, style: const TextStyle(color: Colors.black87)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            title: Text(
+                              item,
+                              style: const TextStyle(color: Colors.black87),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                             onTap: () {
                               onItemSelected(item);
                               Navigator.of(context).pop();
@@ -560,14 +685,20 @@ class _StudentSignupState extends State<StudentSignup> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Close', style: TextStyle(color: secondaryColor, fontWeight: FontWeight.bold)),
-                )
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(
+                      color: secondaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ],
             );
           },
         );
       },
-  );
+    );
   }
 
   Widget _buildDropdownFormField({
@@ -592,27 +723,50 @@ class _StudentSignupState extends State<StudentSignup> {
           fillColor: Colors.white,
           labelText: labelText,
           prefixIcon: Icon(icon, color: Colors.grey),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF422F5D))),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 15,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF422F5D)),
+          ),
         ),
         items: items.map<DropdownMenuItem<String>>((String value) {
           return DropdownMenuItem<String>(
             value: value,
-            child: Text(value, style: const TextStyle(color: Color(0xFF422F5D), fontSize: 14), overflow: TextOverflow.ellipsis),
+            child: Text(
+              value,
+              style: const TextStyle(color: Color(0xFF422F5D), fontSize: 14),
+              overflow: TextOverflow.ellipsis,
+            ),
           );
         }).toList(),
       ),
     );
   }
 
-  Widget _buildGradientButton({required String text, required VoidCallback onPressed}) {
+  Widget _buildGradientButton({
+    required String text,
+    required VoidCallback onPressed,
+  }) {
     return SizedBox(
       width: double.infinity,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFFF99D46), Color(0xFFD64483)], begin: Alignment.centerLeft, end: Alignment.centerRight),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFF99D46), Color(0xFFD64483)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
           borderRadius: BorderRadius.circular(30),
         ),
         child: ElevatedButton(
@@ -621,10 +775,20 @@ class _StudentSignupState extends State<StudentSignup> {
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
             padding: const EdgeInsets.symmetric(vertical: 18),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
           ),
-          child: _isLoading ? const CircularProgressIndicator(color: Colors.white)
-              : Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          child: _isLoading
+              ? const CircularProgressIndicator(color: Colors.white)
+              : Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
         ),
       ),
     );
@@ -643,9 +807,7 @@ class _StudentSignupState extends State<StudentSignup> {
           const SizedBox(width: 8),
           Text(
             text,
-            style: TextStyle(
-              color: met ? Colors.black87 : Colors.grey,
-            ),
+            style: TextStyle(color: met ? Colors.black87 : Colors.grey),
           ),
         ],
       ),
@@ -678,11 +840,10 @@ class _StudentSignupState extends State<StudentSignup> {
           controller: _firstNameController,
           labelText: 'First Name',
           icon: Icons.person_outline,
-          inputFormatters: [
-            LengthLimitingTextInputFormatter(15),
-          ],
+          inputFormatters: [LengthLimitingTextInputFormatter(15)],
           validator: (value) {
-            if (value == null || value.trim().isEmpty) return 'Please enter first name';
+            if (value == null || value.trim().isEmpty)
+              return 'Please enter first name';
 
             if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
               return 'Names cannot contain numbers or symbols';
@@ -694,11 +855,10 @@ class _StudentSignupState extends State<StudentSignup> {
           controller: _lastNameController,
           labelText: 'Last Name',
           icon: Icons.person_outline,
-          inputFormatters: [
-            LengthLimitingTextInputFormatter(15),
-          ],
+          inputFormatters: [LengthLimitingTextInputFormatter(15)],
           validator: (value) {
-            if (value == null || value.trim().isEmpty) return 'Please enter last name';
+            if (value == null || value.trim().isEmpty)
+              return 'Please enter last name';
 
             if (RegExp(r'[0-9!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
               return 'Names cannot contain numbers or symbols';
@@ -717,11 +877,13 @@ class _StudentSignupState extends State<StudentSignup> {
               ? const Icon(Icons.check_circle, color: Colors.green)
               : const Icon(Icons.warning_amber_rounded, color: Colors.orange),
           validator: (value) {
-            if (value == null || value.isEmpty) return 'Please enter university email';
+            if (value == null || value.isEmpty)
+              return 'Please enter university email';
             if (value.contains(' ')) {
-      return 'email cannot contain spaces';
-    }
-            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Invalid email format';
+              return 'email cannot contain spaces';
+            }
+            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value))
+              return 'Invalid email format';
             return null;
           },
         ),
@@ -732,39 +894,64 @@ class _StudentSignupState extends State<StudentSignup> {
           obscureText: _obscurePassword,
           focusNode: _passwordFocusNode,
           suffixIcon: IconButton(
-            icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
-            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            icon: Icon(
+              _obscurePassword
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+            ),
+            onPressed: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
           ),
           validator: (value) {
             if (value == null || value.isEmpty) return 'Please enter password';
             if (value.contains(' ')) return 'Password cannot contain spaces';
-            if (!_isPasswordValid) return 'Please meet all password requirements';
+            if (!_isPasswordValid)
+              return 'Please meet all password requirements';
             return null;
           },
         ),
-        if ((_isPasswordFocused || _passwordController.text.isNotEmpty) && !_isPasswordValid)
+        if ((_isPasswordFocused || _passwordController.text.isNotEmpty) &&
+            !_isPasswordValid)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12.0,
+              vertical: 8.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildPasswordCriteriaRow('At least 8 characters', _is8CharsLong),
-                _buildPasswordCriteriaRow('Contains an uppercase letter', _hasUppercase),
-                _buildPasswordCriteriaRow('Contains a lowercase letter', _hasLowercase),
-                _buildPasswordCriteriaRow('Contains a number', _hasNumber),
-                _buildPasswordCriteriaRow('Contains a symbol (!@#\$&*~)', _hasSymbol),
-                _buildPasswordCriteriaRow('Does not contain spaces', _hasNoSpaces),
-                const SizedBox(height: 8),
-                if(!_isPasswordValid)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: passwordStrength,
-                    minHeight: 6,
-                    backgroundColor: Colors.grey.shade300,
-                    color: _getPasswordStrengthColor(passwordStrength),
-                  ),
+                _buildPasswordCriteriaRow(
+                  'At least 8 characters',
+                  _is8CharsLong,
                 ),
+                _buildPasswordCriteriaRow(
+                  'Contains an uppercase letter',
+                  _hasUppercase,
+                ),
+                _buildPasswordCriteriaRow(
+                  'Contains a lowercase letter',
+                  _hasLowercase,
+                ),
+                _buildPasswordCriteriaRow('Contains a number', _hasNumber),
+                _buildPasswordCriteriaRow(
+                  'Contains a symbol (!@#\$&*~)',
+                  _hasSymbol,
+                ),
+                _buildPasswordCriteriaRow(
+                  'Does not contain spaces',
+                  _hasNoSpaces,
+                ),
+                const SizedBox(height: 8),
+                if (!_isPasswordValid)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: LinearProgressIndicator(
+                      value: passwordStrength,
+                      minHeight: 6,
+                      backgroundColor: Colors.grey.shade300,
+                      color: _getPasswordStrengthColor(passwordStrength),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -774,12 +961,20 @@ class _StudentSignupState extends State<StudentSignup> {
           icon: Icons.lock_outline,
           obscureText: _obscureConfirmPassword,
           suffixIcon: IconButton(
-            icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
-            onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+            icon: Icon(
+              _obscureConfirmPassword
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+            ),
+            onPressed: () => setState(
+              () => _obscureConfirmPassword = !_obscureConfirmPassword,
+            ),
           ),
           validator: (value) {
-            if (value == null || value.isEmpty) return 'Please confirm your password';
-            if (value != _passwordController.text) return 'Passwords do not match';
+            if (value == null || value.isEmpty)
+              return 'Please confirm your password';
+            if (value != _passwordController.text)
+              return 'Passwords do not match';
             return null;
           },
         ),
@@ -787,15 +982,20 @@ class _StudentSignupState extends State<StudentSignup> {
           controller: _usernameController,
           labelText: 'Username',
           icon: Icons.person_pin_outlined,
-          inputFormatters: [
-            LengthLimitingTextInputFormatter(15),
-          ],
+          inputFormatters: [LengthLimitingTextInputFormatter(15)],
           validator: _usernameManualValidator,
           onChanged: _checkUsernameUniqueness,
           errorText: _usernameError,
-          suffixIcon: _isCheckingUsername 
-            ? const Padding(padding: EdgeInsets.all(12.0), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.0)))
-            : null,
+          suffixIcon: _isCheckingUsername
+              ? const Padding(
+                  padding: EdgeInsets.all(12.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2.0),
+                  ),
+                )
+              : null,
         ),
         _buildPhoneFormField(),
         _buildSearchableDropdown(
@@ -803,8 +1003,11 @@ class _StudentSignupState extends State<StudentSignup> {
           selectedValue: _selectedUniversity,
           icon: Icons.school_outlined,
           validator: (value) {
-            if (value == null || value.isEmpty) return 'Please select a university';
-            if (value == 'Other' && _otherUniversityController.text.trim().isEmpty) return 'Please specify your university';
+            if (value == null || value.isEmpty)
+              return 'Please select a university';
+            if (value == 'Other' &&
+                _otherUniversityController.text.trim().isEmpty)
+              return 'Please specify your university';
             return null;
           },
           onTap: () async {
@@ -826,7 +1029,8 @@ class _StudentSignupState extends State<StudentSignup> {
             icon: Icons.school,
             inputFormatters: [LengthLimitingTextInputFormatter(15)],
             validator: (value) {
-              if (value == null || value.trim().isEmpty) return 'This field is required';
+              if (value == null || value.trim().isEmpty)
+                return 'This field is required';
               if (value.length > 15) return 'Cannot exceed 15 characters';
               return null;
             },
@@ -835,9 +1039,10 @@ class _StudentSignupState extends State<StudentSignup> {
           labelText: 'Major',
           selectedValue: _selectedMajor,
           icon: Icons.book_outlined,
-           validator: (value) {
+          validator: (value) {
             if (value == null || value.isEmpty) return 'Please select a major';
-            if (value == 'Other' && _otherMajorController.text.trim().isEmpty) return 'Please specify your major';
+            if (value == 'Other' && _otherMajorController.text.trim().isEmpty)
+              return 'Please specify your major';
             return null;
           },
           onTap: () async {
@@ -853,13 +1058,14 @@ class _StudentSignupState extends State<StudentSignup> {
           },
         ),
         if (_selectedMajor == 'Other')
-           _buildStyledTextFormField(
+          _buildStyledTextFormField(
             controller: _otherMajorController,
             labelText: 'Please specify your major',
             icon: Icons.book,
             inputFormatters: [LengthLimitingTextInputFormatter(15)],
             validator: (value) {
-              if (value == null || value.trim().isEmpty) return 'This field is required';
+              if (value == null || value.trim().isEmpty)
+                return 'This field is required';
               if (value.length > 15) return 'Cannot exceed 15 characters';
               return null;
             },
@@ -869,8 +1075,11 @@ class _StudentSignupState extends State<StudentSignup> {
           selectedValue: _selectedLocation,
           icon: Icons.location_on_outlined,
           validator: (value) {
-            if (value == null || value.isEmpty) return 'Please select your city';
-            if (value == 'Other' && _otherLocationController.text.trim().isEmpty) return 'Please specify your city';
+            if (value == null || value.isEmpty)
+              return 'Please select your city';
+            if (value == 'Other' &&
+                _otherLocationController.text.trim().isEmpty)
+              return 'Please specify your city';
             return null;
           },
           onTap: () async {
@@ -892,7 +1101,8 @@ class _StudentSignupState extends State<StudentSignup> {
             icon: Icons.location_on,
             inputFormatters: [LengthLimitingTextInputFormatter(15)],
             validator: (value) {
-              if (value == null || value.trim().isEmpty) return 'This field is required';
+              if (value == null || value.trim().isEmpty)
+                return 'This field is required';
               if (value.length > 15) return 'Cannot exceed 15 characters';
               return null;
             },
@@ -909,7 +1119,11 @@ class _StudentSignupState extends State<StudentSignup> {
       children: [
         const Text(
           'You can skip these fields for now!',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey,
+          ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 15),
@@ -917,7 +1131,8 @@ class _StudentSignupState extends State<StudentSignup> {
           labelText: 'Academic Level',
           items: _academicLevels,
           selectedValue: _selectedLevel,
-          onChanged: (String? newValue) => setState(() => _selectedLevel = newValue),
+          onChanged: (String? newValue) =>
+              setState(() => _selectedLevel = newValue),
           icon: Icons.trending_up,
           validator: null, // Optional
         ),
@@ -951,8 +1166,10 @@ class _StudentSignupState extends State<StudentSignup> {
               if (value == null || value.isEmpty) return null;
               final gpa = double.tryParse(value);
               if (gpa == null) return 'Invalid GPA format';
-              if (_gpaScale == '4.0' && (gpa < 0 || gpa > 4.0)) return 'GPA must be between 0 and 4.0';
-              if (_gpaScale == '5.0' && (gpa < 0 || gpa > 5.0)) return 'GPA must be between 0 and 5.0';
+              if (_gpaScale == '4.0' && (gpa < 0 || gpa > 4.0))
+                return 'GPA must be between 0 and 4.0';
+              if (_gpaScale == '5.0' && (gpa < 0 || gpa > 5.0))
+                return 'GPA must be between 0 and 5.0';
               return null;
             },
           ),
@@ -961,9 +1178,7 @@ class _StudentSignupState extends State<StudentSignup> {
           labelText: 'Add a Skill',
           icon: Icons.lightbulb_outline,
           onFieldSubmitted: (value) => _addSkill(),
-          inputFormatters: [
-            LengthLimitingTextInputFormatter(15),
-          ],
+          inputFormatters: [LengthLimitingTextInputFormatter(15)],
           validator: (value) {
             if (value != null && value.length > 15) {
               return 'Skill cannot exceed 15 characters';
@@ -977,20 +1192,23 @@ class _StudentSignupState extends State<StudentSignup> {
         ),
         Wrap(
           spacing: 8.0,
-          children: _selectedSkills.map((skill) => Chip(
-            label: Text(skill),
-            backgroundColor: const Color(0xFFF99D46).withOpacity(0.8),
-            labelStyle: const TextStyle(color: Colors.white),
-            onDeleted: () => _removeSkill(skill),
-            deleteIconColor: Colors.white,
-          )).toList(),
+          children: _selectedSkills
+              .map(
+                (skill) => Chip(
+                  label: Text(skill),
+                  backgroundColor: const Color(0xFFF99D46).withOpacity(0.8),
+                  labelStyle: const TextStyle(color: Colors.white),
+                  onDeleted: () => _removeSkill(skill),
+                  deleteIconColor: Colors.white,
+                ),
+              )
+              .toList(),
         ),
         const SizedBox(height: 30),
         _buildGradientButton(text: 'Sign Up', onPressed: _signUpStudent),
       ],
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -1000,31 +1218,53 @@ class _StudentSignupState extends State<StudentSignup> {
         future: _loadListsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: primaryColor));
+            return const Center(
+              child: CircularProgressIndicator(color: primaryColor),
+            );
           }
 
-          if (snapshot.hasError || _universitiesList.length <= 1) { // length <= 1 because "Other" is always there
+          if (snapshot.hasError || _universitiesList.length <= 1) {
+            // length <= 1 because "Other" is always there
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 60),
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 60,
+                    ),
                     const SizedBox(height: 20),
-                    const Text('Failed to load data', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                    const Text(
+                      'Failed to load data',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 10),
-                    const Text('Please check your internet connection and try again.', textAlign: TextAlign.center),
+                    const Text(
+                      'Please check your internet connection and try again.',
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 20),
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                      ),
                       onPressed: () {
                         setState(() {
                           _loadListsFuture = _loadLists();
                         });
                       },
-                      child: const Text('Retry', style: TextStyle(color: Colors.white)),
-                    )
+                      child: const Text(
+                        'Retry',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1039,11 +1279,28 @@ class _StudentSignupState extends State<StudentSignup> {
                 children: [
                   Image.asset('assets/spark_logo.png', height: 120),
                   const SizedBox(height: 5),
-                  const Text('SPARK', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF422F5D))),
-                  const Text('Ignite your future', style: TextStyle(color: Color(0xFFF99D46), fontStyle: FontStyle.italic, fontSize: 14)),
+                  const Text(
+                    'SPARK',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF422F5D),
+                    ),
+                  ),
+                  const Text(
+                    'Ignite your future',
+                    style: TextStyle(
+                      color: Color(0xFFF99D46),
+                      fontStyle: FontStyle.italic,
+                      fontSize: 14,
+                    ),
+                  ),
                   const SizedBox(height: 30),
                   Container(
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Row(
                       children: [
                         Expanded(
@@ -1053,11 +1310,28 @@ class _StudentSignupState extends State<StudentSignup> {
                               duration: const Duration(milliseconds: 200),
                               padding: const EdgeInsets.symmetric(vertical: 15),
                               decoration: BoxDecoration(
-                                gradient: _currentStep == 0 ? const LinearGradient(colors: [Color(0xFFF99D46), Color(0xFFD64483)]) : null,
+                                gradient: _currentStep == 0
+                                    ? const LinearGradient(
+                                        colors: [
+                                          Color(0xFFF99D46),
+                                          Color(0xFFD64483),
+                                        ],
+                                      )
+                                    : null,
                                 color: _currentStep == 0 ? null : Colors.white,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Center(child: Text('Step 1', style: TextStyle(fontWeight: FontWeight.bold, color: _currentStep == 0 ? Colors.white : Colors.grey[700]))),
+                              child: Center(
+                                child: Text(
+                                  'Step 1',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: _currentStep == 0
+                                        ? Colors.white
+                                        : Colors.grey[700],
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -1067,18 +1341,41 @@ class _StudentSignupState extends State<StudentSignup> {
                               if (_formKey.currentState?.validate() ?? false) {
                                 setState(() => _currentStep = 1);
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please complete Step 1 correctly.')));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Please complete Step 1 correctly.',
+                                    ),
+                                  ),
+                                );
                               }
                             },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               padding: const EdgeInsets.symmetric(vertical: 15),
                               decoration: BoxDecoration(
-                                gradient: _currentStep == 1 ? const LinearGradient(colors: [Color(0xFFF99D46), Color(0xFFD64483)]) : null,
+                                gradient: _currentStep == 1
+                                    ? const LinearGradient(
+                                        colors: [
+                                          Color(0xFFF99D46),
+                                          Color(0xFFD64483),
+                                        ],
+                                      )
+                                    : null,
                                 color: _currentStep == 1 ? null : Colors.white,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Center(child: Text('Step 2', style: TextStyle(fontWeight: FontWeight.bold, color: _currentStep == 1 ? Colors.white : Colors.grey[700]))),
+                              child: Center(
+                                child: Text(
+                                  'Step 2',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: _currentStep == 1
+                                        ? Colors.white
+                                        : Colors.grey[700],
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -1088,7 +1385,9 @@ class _StudentSignupState extends State<StudentSignup> {
                   const SizedBox(height: 30),
                   Form(
                     key: _formKey,
-                    child: _currentStep == 0 ? _buildStep1Form() : _buildStep2Form(),
+                    child: _currentStep == 0
+                        ? _buildStep1Form()
+                        : _buildStep2Form(),
                   ),
                   const SizedBox(height: 20),
                   Row(
@@ -1098,11 +1397,19 @@ class _StudentSignupState extends State<StudentSignup> {
                       TextButton(
                         onPressed: () {
                           Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            MaterialPageRoute(
+                              builder: (context) => const LoginScreen(),
+                            ),
                             (Route<dynamic> route) => false,
                           );
                         },
-                        child: const Text('Login Page', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF422F5D))),
+                        child: const Text(
+                          'Login Page',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF422F5D),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1113,11 +1420,19 @@ class _StudentSignupState extends State<StudentSignup> {
                       TextButton(
                         onPressed: () {
                           Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+                            MaterialPageRoute(
+                              builder: (context) => const WelcomeScreen(),
+                            ),
                             (Route<dynamic> route) => false,
                           );
                         },
-                        child: const Text('Welcome Page', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF422F5D))),
+                        child: const Text(
+                          'Welcome Page',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF422F5D),
+                          ),
+                        ),
                       ),
                     ],
                   ),

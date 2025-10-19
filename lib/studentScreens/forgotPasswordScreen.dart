@@ -114,7 +114,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     if (trimmed.isEmpty) return "Please enter email address";
 
     final normalized = trimmed.replaceAll(' ', '');
-    if (!_emailRegex.hasMatch(normalized)) return "Please enter a valid email address";
+    if (!_emailRegex.hasMatch(normalized))
+      return "Please enter a valid email address";
 
     return null;
   }
@@ -142,21 +143,25 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
       debugPrint('Sending password reset email to: $normalizedEmail');
 
       // Add timeout for the request
-      await FirebaseAuth.instance.sendPasswordResetEmail(
-        email: normalizedEmail,
-        // You can add custom ActionCodeSettings if needed
-        // actionCodeSettings: ActionCodeSettings(
-        //   url: 'https://your-app.com/reset-password',
-        //   handleCodeInApp: true,
-        //   androidPackageName: 'com.your.package',
-        //   iOSBundleId: 'com.your.bundle',
-        // ),
-      ).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw Exception('Request timed out. Please check your internet connection.');
-        },
-      );
+      await FirebaseAuth.instance
+          .sendPasswordResetEmail(
+            email: normalizedEmail,
+            // You can add custom ActionCodeSettings if needed
+            // actionCodeSettings: ActionCodeSettings(
+            //   url: 'https://your-app.com/reset-password',
+            //   handleCodeInApp: true,
+            //   androidPackageName: 'com.your.package',
+            //   iOSBundleId: 'com.your.bundle',
+            // ),
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw Exception(
+                'Request timed out. Please check your internet connection.',
+              );
+            },
+          );
 
       debugPrint('Password reset email sent successfully');
 
@@ -199,7 +204,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           );
         },
       );
-
     } catch (e) {
       debugPrint('Password reset error: $e');
 
@@ -228,7 +232,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
             break;
           case 'configuration-not-found':
           case 'project-not-found':
-            errorMessage = "Service configuration error. Please contact support.";
+            errorMessage =
+                "Service configuration error. Please contact support.";
             break;
           default:
             errorMessage = "Error: ${e.message ?? e.code}";
@@ -248,9 +253,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text('Debug Information'),
-            content: SingleChildScrollView(
-              child: Text('Error details:\n$e'),
-            ),
+            content: SingleChildScrollView(child: Text('Error details:\n$e')),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -260,7 +263,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           );
         },
       );
-
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -316,10 +318,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
               const Text(
                 "Enter your email address and we'll send you a link to reset your password",
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF666666),
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Color(0xFF666666), fontSize: 16),
               ),
               const SizedBox(height: 30),
 

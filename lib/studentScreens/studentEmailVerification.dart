@@ -7,13 +7,14 @@ class StudentEmailVerification extends StatefulWidget {
   const StudentEmailVerification({super.key});
 
   @override
-  _StudentEmailVerificationState createState() => _StudentEmailVerificationState();
+  _StudentEmailVerificationState createState() =>
+      _StudentEmailVerificationState();
 }
 
 class _StudentEmailVerificationState extends State<StudentEmailVerification> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final AuthService _authService = AuthService();
-  
+
   bool _isChecking = false;
   bool _isResending = false;
   bool _isGoingBack = false;
@@ -33,7 +34,11 @@ class _StudentEmailVerificationState extends State<StudentEmailVerification> {
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email not verified yet. Please check your inbox (and spam folder).')),
+        const SnackBar(
+          content: Text(
+            'Email not verified yet. Please check your inbox (and spam folder).',
+          ),
+        ),
       );
     }
 
@@ -70,9 +75,9 @@ class _StudentEmailVerificationState extends State<StudentEmailVerification> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
       }
     }
     if (mounted) {
@@ -90,14 +95,30 @@ class _StudentEmailVerificationState extends State<StudentEmailVerification> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.mark_email_read_outlined, size: 100, color: Color(0xFF422F5D)),
+              const Icon(
+                Icons.mark_email_read_outlined,
+                size: 100,
+                color: Color(0xFF422F5D),
+              ),
               const SizedBox(height: 20),
-              const Text('Verify Your Email', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF422F5D)), textAlign: TextAlign.center),
+              const Text(
+                'Verify Your Email',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF422F5D),
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 10),
               Text(
                 'A verification link has been sent to:\n${_auth.currentUser?.email ?? 'your email address.'}',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade700, height: 1.5),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade700,
+                  height: 1.5,
+                ),
               ),
               const SizedBox(height: 40),
 
@@ -109,11 +130,27 @@ class _StudentEmailVerificationState extends State<StudentEmailVerification> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFF99D46),
                     padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
                   ),
                   child: _isChecking
-                      ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
-                      : const Text("I've Verified, Continue", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 3,
+                          ),
+                        )
+                      : const Text(
+                          "I've Verified, Continue",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -125,14 +162,28 @@ class _StudentEmailVerificationState extends State<StudentEmailVerification> {
                   TextButton(
                     onPressed: _isGoingBack ? null : _goBackAndCancel,
                     child: _isGoingBack
-                        ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator())
-                        : const Text('Go Back & Edit Info', style: TextStyle(color: Color(0xFF422F5D))),
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(),
+                          )
+                        : const Text(
+                            'Go Back & Edit Info',
+                            style: TextStyle(color: Color(0xFF422F5D)),
+                          ),
                   ),
                   TextButton(
                     onPressed: _isResending ? null : _resendVerificationEmail,
                     child: _isResending
-                        ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator())
-                        : const Text('Resend Email', style: TextStyle(color: Color(0xFF422F5D))),
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(),
+                          )
+                        : const Text(
+                            'Resend Email',
+                            style: TextStyle(color: Color(0xFF422F5D)),
+                          ),
                   ),
                 ],
               ),

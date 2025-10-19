@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/opportunity.dart';
 
 class OpportunityService {
-  //`withConverter` 
+  //`withConverter`
   final CollectionReference<Opportunity> _opportunitiesRef = FirebaseFirestore
       .instance
       .collection('opportunities')
@@ -11,7 +11,6 @@ class OpportunityService {
         toFirestore: (opportunity, _) => opportunity.toFirestore(),
       );
 
-  
   Future<List<Opportunity>> getOpportunities({
     String? searchQuery,
     String? type,
@@ -46,7 +45,6 @@ class OpportunityService {
     return snapshot.docs.map((doc) => doc.data()).toList();
   }
 
-
   Future<List<Opportunity>> getCompanyOpportunities(String companyId) async {
     if (companyId.isEmpty) {
       return [];
@@ -63,36 +61,29 @@ class OpportunityService {
     }
   }
 
-
   Future<void> addOpportunity(Opportunity opportunity) async {
     try {
-
       final data = opportunity.toFirestore();
-      
 
-      data['postedDate'] = FieldValue.serverTimestamp(); 
-      
- 
+      data['postedDate'] = FieldValue.serverTimestamp();
+
       await FirebaseFirestore.instance.collection('opportunities').add(data);
-
     } catch (e) {
       print('Error adding opportunity: $e');
       rethrow;
     }
   }
 
-
-
-
   Future<void> updateOpportunity(Opportunity opportunity) async {
     try {
-      await _opportunitiesRef.doc(opportunity.id).update(opportunity.toFirestore());
+      await _opportunitiesRef
+          .doc(opportunity.id)
+          .update(opportunity.toFirestore());
     } catch (e) {
       print('Error updating opportunity: $e');
       rethrow;
     }
   }
-
 
   Future<void> deleteOpportunity(String opportunityId) async {
     try {

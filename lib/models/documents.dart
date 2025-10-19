@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 class documents {
   final String title;
   final String fileUrl;
@@ -13,16 +14,16 @@ class documents {
   });
 
   Map<String, dynamic> toMap() => {
-        'title': title,
-        'fileUrl': fileUrl,
-        'groupName': groupName,
-        'createdAt': createdAt,
-      };
+    'title': title,
+    'fileUrl': fileUrl,
+    'groupName': groupName,
+    'createdAt': createdAt,
+  };
 
   factory documents.fromMap(Map<String, dynamic> map) => documents(
-        title: map['title'],
-        fileUrl: map['fileUrl'],
-        groupName: map['groupName'],
-        createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
-      );
+    title: map['title'],
+    fileUrl: map['fileUrl'],
+    groupName: map['groupName'],
+    createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
+  );
 }

@@ -72,5 +72,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'spark-22564.firebasestorage.app',
     measurementId: 'G-J7BRF5FTQC',
   );
-
 }
