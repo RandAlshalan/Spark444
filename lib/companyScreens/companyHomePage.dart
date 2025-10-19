@@ -26,6 +26,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   bool _isLoading = true;
   final double _headerHeight = 20.0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -217,11 +218,44 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  void _onNavigationTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    switch (index) {
+      case 0:
+        // Already on home, scroll to top
+        break;
+      case 1:
+        // Scroll to opportunities section
+        break;
+      case 2:
+        _navigateToPostOpportunityPage();
+        break;
+      case 3:
+        _navigateToAllApplicants();
+        break;
+      case 4:
+        // Profile - scroll to company info or open edit profile
+        if (_company != null) {
+          Navigator.of(context)
+              .push(
+                MaterialPageRoute(
+                  builder: (_) => EditCompanyProfilePage(company: _company!),
+                ),
+              )
+              .then((_) => _fetchCompanyData());
+        }
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFFEFE8E2), // Updated background color
+      backgroundColor: CompanyColors.background,
       drawer: _buildDrawer(),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -234,17 +268,143 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 ),
               ],
             ),
+      floatingActionButton: _buildFloatingActionButton(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: _buildBottomNavigationBar(),
+    );
+  }
+
+  Widget _buildBottomNavigationBar() {
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: BottomAppBar(
+        color: CompanyColors.surface,
+        elevation: 0,
+        notchMargin: 8,
+        shape: const CircularNotchedRectangle(),
+        child: SizedBox(
+          height: 60,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(
+                index: 0,
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home,
+                label: 'Home',
+              ),
+              _buildNavItem(
+                index: 1,
+                icon: Icons.work_outline,
+                activeIcon: Icons.work,
+                label: 'Opportunities',
+              ),
+              const SizedBox(width: 80), // Space for FAB
+              _buildNavItem(
+                index: 3,
+                icon: Icons.people_outline,
+                activeIcon: Icons.people,
+                label: 'Applicants',
+              ),
+              _buildNavItem(
+                index: 4,
+                icon: Icons.person_outline,
+                activeIcon: Icons.person,
+                label: 'Profile',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required int index,
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+  }) {
+    final isSelected = _selectedIndex == index;
+    return Expanded(
+      child: InkWell(
+        onTap: () => _onNavigationTapped(index),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isSelected ? activeIcon : icon,
+              color: isSelected ? CompanyColors.secondary : CompanyColors.muted,
+              size: 22,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                color: isSelected ? CompanyColors.secondary : CompanyColors.muted,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingActionButton() {
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [CompanyColors.secondary, CompanyColors.accent],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: CompanyColors.secondary.withValues(alpha: 0.4),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _onNavigationTapped(1),
+          borderRadius: BorderRadius.circular(32),
+          child: const Icon(
+            Icons.add,
+            color: Colors.white,
+            size: 32,
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildSliverAppBar() {
     return SliverAppBar(
-      backgroundColor: const Color(0xFFEFE8E2),
+      backgroundColor: CompanyColors.background,
       expandedHeight: _headerHeight,
       pinned: true,
       floating: false,
       leading: IconButton(
-        icon: const Icon(Icons.menu, color: Color(0xFF422F5D)),
+        icon: const Icon(Icons.menu, color: CompanyColors.primary),
         onPressed: () => _scaffoldKey.currentState?.openDrawer(),
       ),
       flexibleSpace: FlexibleSpaceBar(
@@ -254,7 +414,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         background: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFFF99D46), Color(0xFFD64483)],
+              colors: [CompanyColors.accent, CompanyColors.secondary],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -274,9 +434,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           constraints: const BoxConstraints(maxWidth: 90),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.white.withOpacity(0.35)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
           ),
           child: const Text(
             'Profile',
@@ -305,9 +465,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-      color: const Color(0xFFFBFAFF),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      elevation: 4,
+      color: CompanyColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
+      elevation: CompanySpacing.cardElevation,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
         child: Column(
@@ -318,7 +478,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
               children: [
                 CircleAvatar(
                   radius: 34,
-                  backgroundColor: const Color(0xFFEDE7F6),
+                  backgroundColor: CompanyColors.primary.withValues(alpha: 0.1),
                   backgroundImage:
                       company.logoUrl != null && company.logoUrl!.isNotEmpty
                       ? NetworkImage(company.logoUrl!)
@@ -326,7 +486,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   child: (company.logoUrl == null || company.logoUrl!.isEmpty)
                       ? const Icon(
                           Icons.apartment_outlined,
-                          color: Color(0xFF6B4791),
+                          color: CompanyColors.primary,
                           size: 30,
                         )
                       : null,
@@ -341,7 +501,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF422F5D),
+                          color: CompanyColors.primary,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -353,7 +513,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                             : 'Sector not specified',
                         style: const TextStyle(
                           fontSize: 14,
-                          color: Color(0xFF6B4791),
+                          color: CompanyColors.secondary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -361,7 +521,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.edit, color: Color(0xFF6B4791)),
+                  icon: const Icon(Icons.edit, color: CompanyColors.secondary),
                   tooltip: 'Edit Company Profile',
                   onPressed: () {
                     Navigator.of(context)
@@ -384,9 +544,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             _buildInfoPill(
               Icons.alternate_email_outlined,
               email.isNotEmpty ? email : 'Email not provided',
-              background: const Color.fromRGBO(232, 234, 246, 1),
-              iconColor: const Color(0xFF5E35B1),
-              textColor: const Color(0xFF4527A0),
+              background: CompanyColors.primary.withValues(alpha: 0.08),
+              iconColor: CompanyColors.primary,
+              textColor: CompanyColors.primary,
             ),
             if (description.isNotEmpty) ...[
               const SizedBox(height: 18),
@@ -395,7 +555,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF422F5D),
+                  color: CompanyColors.primary,
                 ),
               ),
               const SizedBox(height: 6),
@@ -403,7 +563,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 description,
                 style: const TextStyle(
                   fontSize: 13,
-                  color: Color(0xFF4A4A4A),
+                  color: CompanyColors.muted,
                   height: 1.5,
                 ),
               ),
@@ -488,9 +648,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 20),
-      elevation: 4,
+      elevation: CompanySpacing.cardElevation,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
+      color: CompanyColors.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -498,11 +659,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             width: double.infinity,
             padding: const EdgeInsets.all(18),
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF422F5D), Color(0xFFD64483)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: CompanyColors.heroGradient,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -562,7 +719,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF422F5D),
+                      color: CompanyColors.primary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -576,15 +733,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                               skill,
                               style: const TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF422F5D),
+                                color: CompanyColors.primary,
                               ),
                             ),
-                            backgroundColor: const Color.fromRGBO(
-                              66,
-                              47,
-                              93,
-                              0.12,
-                            ),
+                            backgroundColor: CompanyColors.primary.withValues(alpha: 0.12),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 2,
@@ -785,14 +937,14 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   Widget _buildDrawer() {
     return Drawer(
       child: Container(
-        color: const Color(0xFF422F5D),
+        color: CompanyColors.primary,
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFFF99D46), Color(0xFFD64483)],
+                  colors: [CompanyColors.accent, CompanyColors.secondary],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -813,7 +965,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                             _company!.logoUrl!.isEmpty)
                         ? const Icon(
                             Icons.apartment_outlined,
-                            color: Color(0xFF6B4791),
+                            color: CompanyColors.primary,
                             size: 32,
                           )
                         : null,
@@ -910,7 +1062,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFFF99D46), Color(0xFFD64483)],
+            colors: [CompanyColors.accent, CompanyColors.secondary],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
