@@ -5,13 +5,12 @@ class Company {
   final String email;
   final String companyName;
   final String sector;
-  final String
-  contactInfo; // Could be a contact person's name or a general contact email/phone
+  final String contactInfo;
   final String? logoUrl;
   final String? description;
   final String userType;
   final DateTime? createdAt;
-  final bool isVerified; // For business email domain verification
+  final bool isVerified;
   final List<String>
   opportunitiesPosted; // To keep track of posted opportunities IDs
   final List<String> studentReviews; // To store IDs of reviews left by students
@@ -35,6 +34,7 @@ class Company {
     return {
       'email': email,
       'companyName': companyName,
+      'companyNameLower': companyName.toLowerCase(),
       'sector': sector,
       'contactInfo': contactInfo,
       'logoUrl': logoUrl,
