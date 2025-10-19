@@ -9,6 +9,10 @@ import 'package:my_app/models/student.dart';
 // These are defined here so we can reuse them easily
 const Color _primaryColor = Color(0xFF422F5D);
 const Color _backgroundColor = Color(0xFFF8F9FA);
+// --- MODIFICATION: Request 1 (Save Button Color) ---
+// Added a color for the save button
+const Color _saveButtonColor = Colors.teal;
+// --------------------------------------------------
 
 // -------------------------------------------------------------------
 // 1. THE MAIN SCREEN WIDGET
@@ -64,6 +68,11 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
 
   // A flag to show a loading spinner when saving to the database
   bool _isLoading = false;
+
+  // --- MODIFICATION: Request 3 (Back Warning) ---
+  // Tracks if the user has made any changes to the form.
+  bool _isDirty = false;
+  // ----------------------------------------------
 
   // --- LIFECYCLE METHODS ---
 
@@ -166,12 +175,32 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
         );
       }
     }
+
+    // --- MODIFICATION: Request 3 (Back Warning) ---
+    // Add listeners to all text controllers to track changes
+    _titleController.addListener(_markDirty);
+    _firstNameController.addListener(_markDirty);
+    _lastNameController.addListener(_markDirty);
+    _emailController.addListener(_markDirty);
+    _phoneController.addListener(_markDirty);
+    _summaryController.addListener(_markDirty);
+    // ----------------------------------------------
   }
 
   /// This cleans up the controllers when the screen is closed
   /// to prevent memory leaks.
   @override
   void dispose() {
+    // --- MODIFICATION: Request 3 (Back Warning) ---
+    // Remove listeners to prevent memory leaks
+    _titleController.removeListener(_markDirty);
+    _firstNameController.removeListener(_markDirty);
+    _lastNameController.removeListener(_markDirty);
+    _emailController.removeListener(_markDirty);
+    _phoneController.removeListener(_markDirty);
+    _summaryController.removeListener(_markDirty);
+    // ----------------------------------------------
+
     _titleController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
@@ -182,6 +211,17 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
   }
 
   // --- CORE LOGIC (SAVING & NAVIGATION) ---
+
+  // --- MODIFICATION: Request 3 (Back Warning) ---
+  /// Sets the `_isDirty` flag to true when any change is made.
+  void _markDirty() {
+    if (!_isDirty) {
+      setState(() {
+        _isDirty = true;
+      });
+    }
+  }
+  // ----------------------------------------------
 
   /// This is called when the user presses the "Save" icon in the app bar.
   Future<void> _saveResume() async {
@@ -196,6 +236,43 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
       );
       return;
     }
+
+    // --- MODIFICATION: Request 4 (Unique Title) ---
+    // Check if the resume title is unique for this student
+    final title = _titleController.text.trim();
+
+    final query = FirebaseFirestore.instance
+        .collection('resumes')
+        .where('studentId', isEqualTo: widget.student.id)
+        .where('title', isEqualTo: title);
+
+    final snapshot = await query.get();
+
+    bool isDuplicate = false;
+    if (snapshot.docs.isNotEmpty) {
+      if (widget.resume == null) {
+        // CREATE MODE: Any result is a duplicate
+        isDuplicate = true;
+      } else {
+        // EDIT MODE: It's a duplicate ONLY if the found doc ID is DIFFERENT
+        // from the one we are editing.
+        isDuplicate = snapshot.docs.any((doc) => doc.id != widget.resume!.id);
+      }
+    }
+
+    if (isDuplicate) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'A resume with this title already exists. Please use a unique title.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return; // Stop the save
+    }
+    // --- End of unique title check ---
 
     // Show the loading spinner
     setState(() => _isLoading = true);
@@ -271,6 +348,15 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
           'createdAt': FieldValue.serverTimestamp(), // Add a 'createdAt' time
         });
       }
+
+      // --- MODIFICATION: Request 3 (Back Warning) ---
+      // Mark as no longer dirty after a successful save
+      if (mounted) {
+        setState(() {
+          _isDirty = false;
+        });
+      }
+      // ----------------------------------------------
     } catch (e) {
       // Show an error if saving fails
       if (mounted) {
@@ -286,9 +372,35 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
 
   /// This function is called when the user presses the phone's back button.
   Future<bool> _onWillPop() async {
-    // We automatically save their changes as a draft before leaving the screen.
-    await _saveDraft();
-    return true; // 'true' allows the screen to pop (close)
+    // --- MODIFICATION: Request 3 (Back Warning) ---
+    // If the form isn't dirty, just let the user leave.
+    if (!_isDirty) {
+      return true;
+    }
+
+    // If the form IS dirty, show a confirmation dialog.
+    final shouldPop = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unsaved Changes'),
+        content: const Text(
+            "You didn't save. If you go back, your changes will be lost."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false), // Stay
+            child: const Text('Stay'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true), // Leave
+            child: const Text('Leave', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    // If shouldPop is null (e.g., dialog dismissed), default to false (stay)
+    return shouldPop ?? false;
+    // --- End of Modification ---
   }
 
   // --- MAIN BUILD METHOD (The UI) ---
@@ -326,11 +438,26 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                         ),
                       ),
                     )
-                  : IconButton(
-                      icon: const Icon(Icons.save_outlined),
-                      onPressed: _saveResume, // Call our save function
-                      tooltip: 'Save Resume',
+                  // --- MODIFICATION: Request 1 (Save Button) ---
+                  // Replaced IconButton with a styled ElevatedButton
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: ElevatedButton(
+                        onPressed: _saveResume,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _saveButtonColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Save',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ),
+              // --- End of Modification ---
             ),
           ],
         ),
@@ -345,6 +472,9 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                 labelText: 'Resume Title',
                 hintText: 'e.g., "Software Engineering Resume"',
                 icon: Icons.title,
+                // --- MODIFICATION: Request 2 (Title Length) ---
+                maxLength: 40,
+                // --- End of Modification ---
                 validator: (value) =>
                     value!.trim().isEmpty ? 'Please enter a title' : null,
               ),
@@ -392,9 +522,9 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                     Text(
                       "Primary Education",
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: _primaryColor.withOpacity(0.8),
-                      ),
+                            fontWeight: FontWeight.bold,
+                            color: _primaryColor.withOpacity(0.8),
+                          ),
                     ),
                     const SizedBox(height: 8),
                     _buildEntryCard(
@@ -407,8 +537,12 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                         index: 0,
                       ),
                       // Tapping 'delete' removes it from the list
-                      onDelete: () =>
-                          setState(() => _educationEntries.removeAt(0)),
+                      onDelete: () => setState(() {
+                        _educationEntries.removeAt(0);
+                        // --- MODIFICATION: Request 3 (Back Warning) ---
+                        _isDirty = true;
+                        // ----------------------------------------------
+                      }),
                     ),
                   ],
                 ],
@@ -430,8 +564,12 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                         educationToEdit: edu,
                         index: index,
                       ),
-                      onDelete: () =>
-                          setState(() => _educationEntries.removeAt(index)),
+                      onDelete: () => setState(() {
+                        _educationEntries.removeAt(index);
+                        // --- MODIFICATION: Request 3 (Back Warning) ---
+                        _isDirty = true;
+                        // ----------------------------------------------
+                      }),
                     );
                   }),
                   if (_educationEntries.length > 1) const Divider(height: 32),
@@ -441,7 +579,12 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                       // This is the callback function!
                       // The `_EducationAddForm` sends the new item back here.
                       // We just add it to our main list and `setState`.
-                      setState(() => _educationEntries.add(newEducation));
+                      setState(() {
+                        _educationEntries.add(newEducation);
+                        // --- MODIFICATION: Request 3 (Back Warning) ---
+                        _isDirty = true;
+                        // ----------------------------------------------
+                      });
                     },
                   ),
                 ],
@@ -463,15 +606,24 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                         experienceToEdit: exp,
                         index: index,
                       ),
-                      onDelete: () =>
-                          setState(() => _experienceEntries.removeAt(index)),
+                      onDelete: () => setState(() {
+                        _experienceEntries.removeAt(index);
+                        // --- MODIFICATION: Request 3 (Back Warning) ---
+                        _isDirty = true;
+                        // ----------------------------------------------
+                      }),
                     );
                   }),
                   if (_experienceEntries.isNotEmpty) const Divider(height: 32),
                   // The "Add New" form
                   _ExperienceAddForm(
                     onAdd: (newExperience) {
-                      setState(() => _experienceEntries.add(newExperience));
+                      setState(() {
+                        _experienceEntries.add(newExperience);
+                        // --- MODIFICATION: Request 3 (Back Warning) ---
+                        _isDirty = true;
+                        // ----------------------------------------------
+                      });
                     },
                   ),
                 ],
@@ -496,7 +648,12 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                         index: index,
                       ),
                       onDelete: () => setState(
-                        () => _extracurricularEntries.removeAt(index),
+                        () {
+                          _extracurricularEntries.removeAt(index);
+                          // --- MODIFICATION: Request 3 (Back Warning) ---
+                          _isDirty = true;
+                          // ----------------------------------------------
+                        },
                       ),
                     );
                   }),
@@ -504,7 +661,12 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                     const Divider(height: 32),
                   _ExtracurricularAddForm(
                     onAdd: (newExtra) {
-                      setState(() => _extracurricularEntries.add(newExtra));
+                      setState(() {
+                        _extracurricularEntries.add(newExtra);
+                        // --- MODIFICATION: Request 3 (Back Warning) ---
+                        _isDirty = true;
+                        // ----------------------------------------------
+                      });
                     },
                   ),
                 ],
@@ -526,14 +688,23 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                       subtitle: subtitle,
                       onEdit: () =>
                           _showProjectForm(projectToEdit: proj, index: index),
-                      onDelete: () =>
-                          setState(() => _projectEntries.removeAt(index)),
+                      onDelete: () => setState(() {
+                        _projectEntries.removeAt(index);
+                        // --- MODIFICATION: Request 3 (Back Warning) ---
+                        _isDirty = true;
+                        // ----------------------------------------------
+                      }),
                     );
                   }),
                   if (_projectEntries.isNotEmpty) const Divider(height: 32),
                   _ProjectAddForm(
                     onAdd: (newProject) {
-                      setState(() => _projectEntries.add(newProject));
+                      setState(() {
+                        _projectEntries.add(newProject);
+                        // --- MODIFICATION: Request 3 (Back Warning) ---
+                        _isDirty = true;
+                        // ----------------------------------------------
+                      });
                     },
                   ),
                 ],
@@ -568,14 +739,23 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                         licenseToEdit: license,
                         index: index,
                       ),
-                      onDelete: () =>
-                          setState(() => _licenseEntries.removeAt(index)),
+                      onDelete: () => setState(() {
+                        _licenseEntries.removeAt(index);
+                        // --- MODIFICATION: Request 3 (Back Warning) ---
+                        _isDirty = true;
+                        // ----------------------------------------------
+                      }),
                     );
                   }),
                   if (_licenseEntries.isNotEmpty) const Divider(height: 32),
                   _LicenseAddForm(
                     onAdd: (newLicense) {
-                      setState(() => _licenseEntries.add(newLicense));
+                      setState(() {
+                        _licenseEntries.add(newLicense);
+                        // --- MODIFICATION: Request 3 (Back Warning) ---
+                        _isDirty = true;
+                        // ----------------------------------------------
+                      });
                     },
                   ),
                 ],
@@ -594,14 +774,23 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                           '${award.organization}\n${DateFormat.yMMMd().format(award.issueDate)}',
                       onEdit: () =>
                           _showAwardForm(awardToEdit: award, index: index),
-                      onDelete: () =>
-                          setState(() => _awardEntries.removeAt(index)),
+                      onDelete: () => setState(() {
+                        _awardEntries.removeAt(index);
+                        // --- MODIFICATION: Request 3 (Back Warning) ---
+                        _isDirty = true;
+                        // ----------------------------------------------
+                      }),
                     );
                   }),
                   if (_awardEntries.isNotEmpty) const Divider(height: 32),
                   _AwardAddForm(
                     onAdd: (newAward) {
-                      setState(() => _awardEntries.add(newAward));
+                      setState(() {
+                        _awardEntries.add(newAward);
+                        // --- MODIFICATION: Request 3 (Back Warning) ---
+                        _isDirty = true;
+                        // ----------------------------------------------
+                      });
                     },
                   ),
                 ],
@@ -655,9 +844,14 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                                   ),
                                   // This button deletes the WHOLE section
                                   onPressed: () => setState(
-                                    () => _customSections.removeAt(
-                                      currentSectionIndex,
-                                    ),
+                                    () {
+                                      _customSections.removeAt(
+                                        currentSectionIndex,
+                                      );
+                                      // --- MODIFICATION: Request 3 (Back Warning) ---
+                                      _isDirty = true;
+                                      // ----------------------------------------------
+                                    },
                                   ),
                                   tooltip: 'Delete Section',
                                 ),
@@ -679,10 +873,10 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                                 String endDateStr = entry.currently
                                     ? 'Present'
                                     : (entry.endDate != null
-                                          ? DateFormat.yMMMd().format(
-                                              entry.endDate!,
-                                            )
-                                          : '');
+                                        ? DateFormat.yMMMd().format(
+                                            entry.endDate!,
+                                          )
+                                        : '');
                                 if (endDateStr.isNotEmpty) {
                                   subtitleParts.add(
                                     '$startDateStr - $endDateStr',
@@ -706,9 +900,14 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                                   entryIndex: entryIndex,
                                 ),
                                 onDelete: () => setState(
-                                  () => _customSections[currentSectionIndex]
-                                      .entries
-                                      .removeAt(entryIndex),
+                                  () {
+                                    _customSections[currentSectionIndex]
+                                        .entries
+                                        .removeAt(entryIndex);
+                                    // --- MODIFICATION: Request 3 (Back Warning) ---
+                                    _isDirty = true;
+                                    // ----------------------------------------------
+                                  },
                                 ),
                               );
                             }),
@@ -758,14 +957,23 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                       subtitle: lang.proficiency,
                       onEdit: () =>
                           _showLanguageForm(languageToEdit: lang, index: index),
-                      onDelete: () =>
-                          setState(() => _languageEntries.removeAt(index)),
+                      onDelete: () => setState(() {
+                        _languageEntries.removeAt(index);
+                        // --- MODIFICATION: Request 3 (Back Warning) ---
+                        _isDirty = true;
+                        // ----------------------------------------------
+                      }),
                     );
                   }),
                   if (_languageEntries.isNotEmpty) const Divider(height: 32),
                   _LanguageAddForm(
                     onAdd: (newLang) {
-                      setState(() => _languageEntries.add(newLang));
+                      setState(() {
+                        _languageEntries.add(newLang);
+                        // --- MODIFICATION: Request 3 (Back Warning) ---
+                        _isDirty = true;
+                        // ----------------------------------------------
+                      });
                     },
                   ),
                 ],
@@ -803,7 +1011,12 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                 (skill) => Chip(
                   label: Text(skill),
                   // This adds the little 'x' button to delete the chip
-                  onDeleted: () => setState(() => _skills.remove(skill)),
+                  onDeleted: () => setState(() {
+                    _skills.remove(skill);
+                    // --- MODIFICATION: Request 3 (Back Warning) ---
+                    _isDirty = true;
+                    // ----------------------------------------------
+                  }),
                 ),
               )
               .toList(),
@@ -832,6 +1045,9 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                     // Check for duplicates before adding
                     if (!_skills.contains(skill)) {
                       _skills.add(skill);
+                      // --- MODIFICATION: Request 3 (Back Warning) ---
+                      _isDirty = true;
+                      // ----------------------------------------------
                     }
                     skillController.clear();
                   });
@@ -952,6 +1168,9 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
           controller: _titleController,
           autofocus: true,
           decoration: const InputDecoration(labelText: 'Section Title'),
+          // --- MODIFICATION: Title Length ---
+          maxLength: 40,
+          // ----------------------------------
         ),
         actions: [
           TextButton(
@@ -977,6 +1196,9 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
             CustomSection(sectionTitle: newTitle, entries: []),
           );
         }
+        // --- MODIFICATION: Request 3 (Back Warning) ---
+        _isDirty = true;
+        // ----------------------------------------------
       });
     }
   }
@@ -1005,6 +1227,9 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
               if (index != null) {
                 // We replace the old item with the updated one
                 _educationEntries[index] = updatedEducation;
+                // --- MODIFICATION: Request 3 (Back Warning) ---
+                _isDirty = true;
+                // ----------------------------------------------
               }
             });
             Navigator.of(context).pop(); // Close the modal
@@ -1032,6 +1257,9 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
             setState(() {
               if (index != null) {
                 _experienceEntries[index] = updatedExperience;
+                // --- MODIFICATION: Request 3 (Back Warning) ---
+                _isDirty = true;
+                // ----------------------------------------------
               }
             });
             Navigator.of(context).pop();
@@ -1059,6 +1287,9 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
             setState(() {
               if (index != null) {
                 _awardEntries[index] = updatedAward;
+                // --- MODIFICATION: Request 3 (Back Warning) ---
+                _isDirty = true;
+                // ----------------------------------------------
               }
             });
             Navigator.of(context).pop();
@@ -1086,6 +1317,9 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
             setState(() {
               if (index != null) {
                 _languageEntries[index] = updatedLanguage;
+                // --- MODIFICATION: Request 3 (Back Warning) ---
+                _isDirty = true;
+                // ----------------------------------------------
               }
             });
             Navigator.of(context).pop();
@@ -1113,6 +1347,9 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
             setState(() {
               if (index != null) {
                 _projectEntries[index] = updatedProject;
+                // --- MODIFICATION: Request 3 (Back Warning) ---
+                _isDirty = true;
+                // ----------------------------------------------
               }
             });
             Navigator.of(context).pop();
@@ -1149,6 +1386,9 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
               } else {
                 _customSections[sectionIndex].entries.add(updatedEntry);
               }
+              // --- MODIFICATION: Request 3 (Back Warning) ---
+              _isDirty = true;
+              // ----------------------------------------------
             });
             Navigator.of(context).pop();
           },
@@ -1175,6 +1415,9 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
             setState(() {
               if (index != null) {
                 _extracurricularEntries[index] = updatedExtra;
+                // --- MODIFICATION: Request 3 (Back Warning) ---
+                _isDirty = true;
+                // ----------------------------------------------
               }
             });
             Navigator.of(context).pop();
@@ -1202,6 +1445,9 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
             setState(() {
               if (index != null) {
                 _licenseEntries[index] = updatedLicense;
+                // --- MODIFICATION: Request 3 (Back Warning) ---
+                _isDirty = true;
+                // ----------------------------------------------
               }
             });
             Navigator.of(context).pop();
@@ -1295,10 +1541,16 @@ class _EducationAddFormState extends State<_EducationAddForm> {
         _buildStyledTextFormField(
           controller: _instituteController,
           labelText: 'University/Institute*',
+          // --- MODIFICATION: Title Length ---
+          maxLength: 40,
+          // ----------------------------------
         ),
         _buildStyledTextFormField(
           controller: _degreeController,
           labelText: 'Major/Degree Name*',
+          // --- MODIFICATION: Title Length ---
+          maxLength: 40,
+          // ----------------------------------
         ),
         Row(
           children: [
@@ -1444,10 +1696,16 @@ class _ExperienceAddFormState extends State<_ExperienceAddForm> {
         _buildStyledTextFormField(
           controller: _titleController,
           labelText: 'Title*',
+          // --- MODIFICATION: Title Length ---
+          maxLength: 40,
+          // ----------------------------------
         ),
         _buildStyledTextFormField(
           controller: _orgController,
           labelText: 'Organization*',
+          // --- MODIFICATION: Title Length ---
+          maxLength: 40,
+          // ----------------------------------
         ),
         DropdownButtonFormField<String>(
           value: _type,
@@ -1616,14 +1874,23 @@ class _ExtracurricularAddFormState extends State<_ExtracurricularAddForm> {
         _buildStyledTextFormField(
           controller: _orgController,
           labelText: 'Organization Name*',
+          // --- MODIFICATION: Title Length ---
+          maxLength: 40,
+          // ----------------------------------
         ),
         _buildStyledTextFormField(
           controller: _eventController,
           labelText: 'Event Name (Optional)',
+          // --- MODIFICATION: Title Length ---
+          maxLength: 40,
+          // ----------------------------------
         ),
         _buildStyledTextFormField(
           controller: _roleController,
           labelText: 'Role*',
+          // --- MODIFICATION: Title Length ---
+          maxLength: 40,
+          // ----------------------------------
         ),
         _buildStyledTextFormField(
           controller: _descController,
@@ -1759,6 +2026,9 @@ class _ProjectAddFormState extends State<_ProjectAddForm> {
         _buildStyledTextFormField(
           controller: _titleController,
           labelText: 'Project Title*',
+          // --- MODIFICATION: Title Length ---
+          maxLength: 40,
+          // ----------------------------------
         ),
         _buildStyledTextFormField(
           controller: _descController,
@@ -1845,10 +2115,16 @@ class _LicenseAddFormState extends State<_LicenseAddForm> {
         _buildStyledTextFormField(
           controller: _nameController,
           labelText: 'Certification Name*',
+          // --- MODIFICATION: Title Length ---
+          maxLength: 40,
+          // ----------------------------------
         ),
         _buildStyledTextFormField(
           controller: _orgController,
           labelText: 'Issuing Organization*',
+          // --- MODIFICATION: Title Length ---
+          maxLength: 40,
+          // ----------------------------------
         ),
         Row(
           children: [
@@ -1968,10 +2244,16 @@ class _AwardAddFormState extends State<_AwardAddForm> {
         _buildStyledTextFormField(
           controller: _titleController,
           labelText: 'Title*',
+          // --- MODIFICATION: Title Length ---
+          maxLength: 40,
+          // ----------------------------------
         ),
         _buildStyledTextFormField(
           controller: _orgController,
           labelText: 'Issuing Organization*',
+          // --- MODIFICATION: Title Length ---
+          maxLength: 40,
+          // ----------------------------------
         ),
         Row(
           children: [
@@ -2058,6 +2340,9 @@ class _LanguageAddFormState extends State<_LanguageAddForm> {
         _buildStyledTextFormField(
           controller: _nameController,
           labelText: 'Language*',
+          // --- MODIFICATION: Title Length ---
+          maxLength: 40,
+          // ----------------------------------
         ),
         DropdownButtonFormField<String>(
           value: _proficiency,
@@ -2096,7 +2381,7 @@ class _LanguageAddFormState extends State<_LanguageAddForm> {
 class _EducationEditForm extends StatefulWidget {
   final Education? education; // The item to edit
   final Function(Education)
-  onSave; // The callback to send the updated item back
+      onSave; // The callback to send the updated item back
 
   const _EducationEditForm({this.education, required this.onSave});
 
@@ -2177,10 +2462,16 @@ class _EducationEditFormState extends State<_EducationEditForm> {
           _buildStyledTextFormField(
             controller: _instituteController,
             labelText: 'University/Institute*',
+            // --- MODIFICATION: Title Length ---
+            maxLength: 40,
+            // ----------------------------------
           ),
           _buildStyledTextFormField(
             controller: _degreeController,
             labelText: 'Major/Degree Name*',
+            // --- MODIFICATION: Title Length ---
+            maxLength: 40,
+            // ----------------------------------
           ),
           Row(
             children: [
@@ -2329,10 +2620,16 @@ class _ExperienceEditFormState extends State<_ExperienceEditForm> {
           _buildStyledTextFormField(
             controller: _titleController,
             labelText: 'Title*',
+            // --- MODIFICATION: Title Length ---
+            maxLength: 40,
+            // ----------------------------------
           ),
           _buildStyledTextFormField(
             controller: _orgController,
             labelText: 'Organization*',
+            // --- MODIFICATION: Title Length ---
+            maxLength: 40,
+            // ----------------------------------
           ),
           DropdownButtonFormField<String>(
             value: _type,
@@ -2500,14 +2797,23 @@ class _ExtracurricularEditFormState extends State<_ExtracurricularEditForm> {
           _buildStyledTextFormField(
             controller: _orgController,
             labelText: 'Organization Name*',
+            // --- MODIFICATION: Title Length ---
+            maxLength: 40,
+            // ----------------------------------
           ),
           _buildStyledTextFormField(
             controller: _eventController,
             labelText: 'Event Name (Optional)',
+            // --- MODIFICATION: Title Length ---
+            maxLength: 40,
+            // ----------------------------------
           ),
           _buildStyledTextFormField(
             controller: _roleController,
             labelText: 'Role*',
+            // --- MODIFICATION: Title Length ---
+            maxLength: 40,
+            // ----------------------------------
           ),
           _buildStyledTextFormField(
             controller: _descController,
@@ -2655,10 +2961,16 @@ class _LicenseEditFormState extends State<_LicenseEditForm> {
           _buildStyledTextFormField(
             controller: _nameController,
             labelText: 'Certification Name*',
+            // --- MODIFICATION: Title Length ---
+            maxLength: 40,
+            // ----------------------------------
           ),
           _buildStyledTextFormField(
             controller: _orgController,
             labelText: 'Issuing Organization*',
+            // --- MODIFICATION: Title Length ---
+            maxLength: 40,
+            // ----------------------------------
           ),
           Row(
             children: [
@@ -2788,10 +3100,16 @@ class _AwardEditFormState extends State<_AwardEditForm> {
           _buildStyledTextFormField(
             controller: _titleController,
             labelText: 'Title*',
+            // --- MODIFICATION: Title Length ---
+            maxLength: 40,
+            // ----------------------------------
           ),
           _buildStyledTextFormField(
             controller: _orgController,
             labelText: 'Issuing Organization*',
+            // --- MODIFICATION: Title Length ---
+            maxLength: 40,
+            // ----------------------------------
           ),
           _buildStyledTextFormField(
             controller: _descController,
@@ -2893,6 +3211,9 @@ class _LanguageEditFormState extends State<_LanguageEditForm> {
           _buildStyledTextFormField(
             controller: _nameController,
             labelText: 'Language*',
+            // --- MODIFICATION: Title Length ---
+            maxLength: 40,
+            // ----------------------------------
           ),
           DropdownButtonFormField<String>(
             value: _proficiency,
@@ -2983,6 +3304,9 @@ class _ProjectEditFormState extends State<_ProjectEditForm> {
           _buildStyledTextFormField(
             controller: _titleController,
             labelText: 'Project Title*',
+            // --- MODIFICATION: Title Length ---
+            maxLength: 40,
+            // ----------------------------------
           ),
           _buildStyledTextFormField(
             controller: _descController,
@@ -3078,6 +3402,9 @@ class _CustomFieldEntryFormState extends State<_CustomFieldEntryForm> {
           _buildStyledTextFormField(
             controller: _titleController,
             labelText: 'Title (Optional)',
+            // --- MODIFICATION: Title Length ---
+            maxLength: 40,
+            // ----------------------------------
           ),
           _buildStyledTextFormField(
             controller: _descController,
@@ -3175,6 +3502,9 @@ Widget _buildStyledTextFormField({
   int maxLines = 1,
   TextInputType? keyboardType,
   String? Function(String?)? validator,
+  // --- MODIFICATION: Request 2 (Title Length) ---
+  int? maxLength,
+  // --- End of Modification ---
 }) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -3191,6 +3521,9 @@ Widget _buildStyledTextFormField({
       maxLines: maxLines,
       keyboardType: keyboardType,
       validator: validator, // Used by the `_formKey` to check for errors
+      // --- MODIFICATION: Request 2 (Title Length) ---
+      maxLength: maxLength,
+      // --- End of Modification ---
     ),
   );
 }
