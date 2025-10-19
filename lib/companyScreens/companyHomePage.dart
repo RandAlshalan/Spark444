@@ -58,7 +58,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       int activeOps = 0;
 
       for (final opp in opportunities) {
-        activeOps++;
+        // Only count opportunities that are actually active
+        if (opp.isActive) {
+          activeOps++;
+        }
         final applications = await _applicationService
             .getApplicationsForOpportunity(opp.id);
         totalApplicants += applications.length;
@@ -318,11 +321,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   padding: const EdgeInsets.all(16.0),
                   sliver: _buildCurrentSection(),
                 ),
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  fillOverscroll: false,
-                  child: Container(height: 80),
-                ),
+                const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
               ],
             ),
       floatingActionButton: _buildFloatingActionButton(),
@@ -1174,32 +1173,6 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     );
   }
 
-  Widget _buildOpportunitySection() {
-    return SliverList(
-      delegate: SliverChildListDelegate([
-        const Text(
-          'Dashboard',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: CompanyColors.primary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Welcome back, ${_company?.companyName ?? ""}',
-          style: const TextStyle(fontSize: 16, color: CompanyColors.muted),
-        ),
-        const SizedBox(height: 24),
-        _buildAnalyticsCards(),
-        const SizedBox(height: 32),
-        _buildQuickActions(),
-        const SizedBox(height: 32),
-        _buildRecentActivity(),
-      ]),
-    );
-  }
-
   Widget _buildAnalyticsCards() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1213,26 +1186,28 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildAnalyticCard(
-                icon: Icons.work_outline,
-                title: 'Active Opportunities',
-                value: _activeOpportunities.toString(),
-                color: CompanyColors.primary,
+        IntrinsicHeight(
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildAnalyticCard(
+                  icon: Icons.work_outline,
+                  title: 'Active Opportunities',
+                  value: _activeOpportunities.toString(),
+                  color: CompanyColors.primary,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildAnalyticCard(
-                icon: Icons.people_outline,
-                title: 'Total Applicants',
-                value: _totalApplicants.toString(),
-                color: CompanyColors.secondary,
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildAnalyticCard(
+                  icon: Icons.people_outline,
+                  title: 'Total Applicants',
+                  value: _totalApplicants.toString(),
+                  color: CompanyColors.secondary,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -1249,11 +1224,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       elevation: CompanySpacing.cardElevation,
       shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
       child: Container(
-        height: 160,
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               padding: const EdgeInsets.all(12),
@@ -1263,6 +1237,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
               ),
               child: Icon(icon, color: color, size: 28),
             ),
+            const SizedBox(height: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
