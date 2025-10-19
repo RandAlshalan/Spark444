@@ -27,7 +27,7 @@ class OpportunityDetailsContent extends StatelessWidget {
 
   final AuthService _authService = AuthService();
 
-   OpportunityDetailsContent({
+  OpportunityDetailsContent({
     super.key,
     required this.opportunity,
     required this.onNavigateToCompany,
@@ -62,23 +62,32 @@ class OpportunityDetailsContent extends StatelessWidget {
                 if (opportunity.description != null &&
                     opportunity.description!.isNotEmpty)
                   _buildDetailSection(
-                      title: 'Description',
-                      content: Text(opportunity.description!,
-                          style: GoogleFonts.lato(
-                              height: 1.6,
-                              fontSize: 15,
-                              color: Colors.black87))),
-                if (opportunity.skills != null && opportunity.skills!.isNotEmpty)
+                    title: 'Description',
+                    content: Text(
+                      opportunity.description!,
+                      style: GoogleFonts.lato(
+                        height: 1.6,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                if (opportunity.skills != null &&
+                    opportunity.skills!.isNotEmpty)
                   _buildDetailSection(
-                      title: 'Key Skills',
-                      content: _buildChipList(opportunity.skills!)),
+                    title: 'Key Skills',
+                    content: _buildChipList(opportunity.skills!),
+                  ),
                 if (opportunity.requirements != null &&
                     opportunity.requirements!.isNotEmpty)
                   _buildDetailSection(
-                      title: 'Requirements',
-                      content: _buildRequirementList(opportunity.requirements!)),
+                    title: 'Requirements',
+                    content: _buildRequirementList(opportunity.requirements!),
+                  ),
                 _buildDetailSection(
-                    title: 'More Info', content: _buildMoreInfo(opportunity)),
+                  title: 'More Info',
+                  content: _buildMoreInfo(opportunity),
+                ),
               ],
             ),
           ),
@@ -133,14 +142,19 @@ class OpportunityDetailsContent extends StatelessWidget {
   }) {
     return Container(
       padding: EdgeInsets.fromLTRB(
-          16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
+        16,
+        12,
+        16,
+        12 + MediaQuery.of(context).padding.bottom,
+      ),
       decoration: BoxDecoration(
         color: _profileBackgroundColor,
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, -2))
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
         ],
       ),
       child: SizedBox(
@@ -153,8 +167,9 @@ class OpportunityDetailsContent extends StatelessWidget {
             backgroundColor: color,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 16),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
       ),
@@ -175,9 +190,10 @@ class OpportunityDetailsContent extends StatelessWidget {
               Text(
                 'Status:',
                 style: GoogleFonts.lato(
-                    fontSize: 16,
-                    color: Colors.grey.shade700,
-                    fontWeight: FontWeight.w600),
+                  fontSize: 16,
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(width: 8),
               _buildStatusChip(app.status),
@@ -187,8 +203,7 @@ class OpportunityDetailsContent extends StatelessWidget {
           _buildInfoTile(
             icon: Icons.event_note_outlined,
             title: 'Applied On',
-            value:
-                DateFormat('MMMM d, yyyy').format(app.appliedDate.toDate()),
+            value: DateFormat('MMMM d, yyyy').format(app.appliedDate.toDate()),
           ),
         ],
       ),
@@ -213,14 +228,19 @@ class OpportunityDetailsContent extends StatelessWidget {
                   CircleAvatar(
                     radius: 32,
                     backgroundColor: Colors.grey.shade200,
-                    backgroundImage: (snapshot.data?.logoUrl != null &&
+                    backgroundImage:
+                        (snapshot.data?.logoUrl != null &&
                             snapshot.data!.logoUrl!.isNotEmpty)
                         ? NetworkImage(snapshot.data!.logoUrl!)
                         : null,
-                    child: (snapshot.data?.logoUrl == null ||
+                    child:
+                        (snapshot.data?.logoUrl == null ||
                             snapshot.data!.logoUrl!.isEmpty)
-                        ? const Icon(Icons.business,
-                            size: 30, color: Colors.grey)
+                        ? const Icon(
+                            Icons.business,
+                            size: 30,
+                            color: Colors.grey,
+                          )
                         : null,
                   ),
                   const SizedBox(width: 16),
@@ -231,15 +251,18 @@ class OpportunityDetailsContent extends StatelessWidget {
                         Text(
                           opportunity.role,
                           style: GoogleFonts.lato(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: _sparkPrimaryPurple),
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: _sparkPrimaryPurple,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           snapshot.data?.companyName ?? 'Loading...',
                           style: GoogleFonts.lato(
-                              fontSize: 16, color: Colors.grey.shade700),
+                            fontSize: 16,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
                       ],
                     ),
@@ -261,47 +284,68 @@ class OpportunityDetailsContent extends StatelessWidget {
     return Column(
       children: [
         _buildInfoTile(
-            icon: Icons.apartment_outlined,
-            title: 'Location / Work Mode',
-            value:
-                '${opportunity.workMode?.capitalize() ?? ''} · ${opportunity.location ?? 'Remote'}'),
+          icon: Icons.apartment_outlined,
+          title: 'Location / Work Mode',
+          value:
+              '${opportunity.workMode?.capitalize() ?? ''} · ${opportunity.location ?? 'Remote'}',
+        ),
         _buildInfoTile(
-            icon: Icons.calendar_today_outlined,
-            title: 'Duration',
-            value:
-                '${formatDate(opportunity.startDate?.toDate())} - ${formatDate(opportunity.endDate?.toDate())}'),
+          icon: Icons.calendar_today_outlined,
+          title: 'Duration',
+          value:
+              '${formatDate(opportunity.startDate?.toDate())} - ${formatDate(opportunity.endDate?.toDate())}',
+        ),
         _buildInfoTile(
-            icon: Icons.event_available_outlined,
-            title: 'Apply Before',
-            value: formatDate(opportunity.applicationDeadline?.toDate()),
-            valueColor: Colors.red.shade700),
+          icon: Icons.event_available_outlined,
+          title: 'Apply Before',
+          value: formatDate(opportunity.applicationDeadline?.toDate()),
+          valueColor: Colors.red.shade700,
+        ),
+        // Show response deadline only if it's visible and exists
+        if (opportunity.responseDeadlineVisible == true &&
+            opportunity.responseDeadline != null)
+          _buildInfoTile(
+            icon: Icons.schedule_outlined,
+            title: 'Company Response By',
+            value: formatDate(opportunity.responseDeadline?.toDate()),
+            valueColor: Colors.orange.shade700,
+          ),
       ],
     );
   }
 
   // --- Reusable Helper Widgets ---
 
-  Widget _buildInfoTile(
-      {required IconData icon,
-      required String title,
-      required String value,
-      Color? valueColor}) {
+  Widget _buildInfoTile({
+    required IconData icon,
+    required String title,
+    required String value,
+    Color? valueColor,
+  }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 0,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: Colors.grey.shade200)),
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
       child: ListTile(
         leading: Icon(icon, color: _sparkPrimaryPurple),
-        title: Text(title,
-            style: GoogleFonts.lato(
-                fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
-        subtitle: Text(value,
-            style: GoogleFonts.lato(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: valueColor ?? _profileTextColor)),
+        title: Text(
+          title,
+          style: GoogleFonts.lato(
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        subtitle: Text(
+          value,
+          style: GoogleFonts.lato(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: valueColor ?? _profileTextColor,
+          ),
+        ),
       ),
     );
   }
@@ -312,11 +356,14 @@ class OpportunityDetailsContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: GoogleFonts.lato(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: _sparkPrimaryPurple)),
+          Text(
+            title,
+            style: GoogleFonts.lato(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: _sparkPrimaryPurple,
+            ),
+          ),
           const SizedBox(height: 12),
           content,
         ],
@@ -329,12 +376,16 @@ class OpportunityDetailsContent extends StatelessWidget {
       spacing: 8.0,
       runSpacing: 8.0,
       children: items
-          .map((item) => Chip(
-                label: Text(item),
-                backgroundColor: _sparkPrimaryPurple.withOpacity(0.1),
-                labelStyle: const TextStyle(
-                    color: _sparkPrimaryPurple, fontWeight: FontWeight.w600),
-              ))
+          .map(
+            (item) => Chip(
+              label: Text(item),
+              backgroundColor: _sparkPrimaryPurple.withOpacity(0.1),
+              labelStyle: const TextStyle(
+                color: _sparkPrimaryPurple,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          )
           .toList(),
     );
   }
@@ -343,46 +394,69 @@ class OpportunityDetailsContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: items
-          .map((req) => Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.check_circle_outline,
-                        color: Colors.green, size: 20),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        child: Text(req,
-                            style: GoogleFonts.lato(fontSize: 15, height: 1.5))),
-                  ],
-                ),
-              ))
+          .map(
+            (req) => Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline,
+                    color: Colors.green,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      req,
+                      style: GoogleFonts.lato(fontSize: 15, height: 1.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
           .toList(),
     );
   }
 
   Widget _buildMoreInfo(Opportunity opportunity) {
     return Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-            side: BorderSide(color: Colors.grey.shade200)),
-        child: Column(children: [
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
           _buildMoreInfoRow(Icons.badge_outlined, 'Type', opportunity.type),
           if (opportunity.preferredMajor != null)
-            _buildMoreInfoRow(Icons.school_outlined, 'Preferred Major',
-                opportunity.preferredMajor!),
-          _buildMoreInfoRow(Icons.attach_money_outlined, 'Payment',
-              opportunity.isPaid ? 'Paid' : 'Unpaid'),
-        ]));
+            _buildMoreInfoRow(
+              Icons.school_outlined,
+              'Preferred Major',
+              opportunity.preferredMajor!,
+            ),
+          _buildMoreInfoRow(
+            Icons.attach_money_outlined,
+            'Payment',
+            opportunity.isPaid ? 'Paid' : 'Unpaid',
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMoreInfoRow(IconData icon, String title, String value) =>
       ListTile(
         leading: Icon(icon, color: Colors.grey.shade600),
-        title: Text(title, style: GoogleFonts.lato(fontWeight: FontWeight.w600)),
-        trailing: Text(value,
-            style: GoogleFonts.lato(fontSize: 15, fontWeight: FontWeight.w500)),
+        title: Text(
+          title,
+          style: GoogleFonts.lato(fontWeight: FontWeight.w600),
+        ),
+        trailing: Text(
+          value,
+          style: GoogleFonts.lato(fontSize: 15, fontWeight: FontWeight.w500),
+        ),
       );
 
   Widget _buildStatusChip(String status) {

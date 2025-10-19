@@ -23,7 +23,6 @@ import '../widgets/CustomBottomNavBar.dart';
 import '../studentScreens/studentSavedOpp.dart';
 import '../studentScreens/studentOppDetails.dart';
 
-
 // --- COLOR CONSTANTS ---
 const Color _sparkPrimaryPurple = Color(0xFF422F5D);
 const Color _pageBackgroundColor = Color(0xFFF8F9FA);
@@ -53,19 +52,22 @@ class _studentOppPgaeState extends State<studentOppPgae> {
   String? _studentId; // Stores the logged-in student's ID
 
   // UI State
-  ScreenState _state = ScreenState.initialLoading; // Current state of the screen
+  ScreenState _state =
+      ScreenState.initialLoading; // Current state of the screen
   String? _errorMessage; // Stores error message if something goes wrong
   int _currentIndex = 2; // Current active index for the bottom navigation bar
 
   // In-page Detail View State
   Opportunity? _selectedOpportunity; // Holds the opportunity being viewed
-  Application? _currentApplication; // Holds application for the selected opportunity
+  Application?
+  _currentApplication; // Holds application for the selected opportunity
   bool _isApplying = false; // Tracks if an application is being submitted
 
   // Controllers
   final _searchController = TextEditingController();
   final _cityController = TextEditingController();
-  Timer? _debounce; // Timer for search input to avoid searching on every keystroke
+  Timer?
+  _debounce; // Timer for search input to avoid searching on every keystroke
 
   // Filter State
   String _activeTypeFilter = 'All'; // Filter by type (e.g., Internship, Co-op)
@@ -81,7 +83,9 @@ class _studentOppPgaeState extends State<studentOppPgae> {
     super.initState();
     // This method is called once when the widget is first created
     _loadInitialData(); // Load the initial data needed for the page
-    _searchController.addListener(_onSearchChanged); // Listen for changes in the search bar
+    _searchController.addListener(
+      _onSearchChanged,
+    ); // Listen for changes in the search bar
   }
 
   @override
@@ -142,8 +146,10 @@ class _studentOppPgaeState extends State<studentOppPgae> {
 
       // 2. Fetch company data for all unique company IDs (Caching)
       if (opportunities.isNotEmpty) {
-        final companyIds =
-            opportunities.map((opp) => opp.companyId).toSet().toList();
+        final companyIds = opportunities
+            .map((opp) => opp.companyId)
+            .toSet()
+            .toList();
         if (companyIds.isNotEmpty) {
           final companyDocs = await FirebaseFirestore.instance
               .collection('companies')
@@ -168,15 +174,18 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         final company = _companyCache[opp.companyId];
         final companyNameMatch =
             company?.companyName.toLowerCase().contains(query) ?? false;
-        final matchesSearch = query.isEmpty ||
+        final matchesSearch =
+            query.isEmpty ||
             opp.role.toLowerCase().contains(query) ||
             opp.name.toLowerCase().contains(query) ||
             companyNameMatch;
 
         // Check other filters
-        final matchesCity = _selectedCity == null ||
+        final matchesCity =
+            _selectedCity == null ||
             (opp.location?.toLowerCase() == _selectedCity?.toLowerCase());
-        final matchesLocation = _selectedLocationType == null ||
+        final matchesLocation =
+            _selectedLocationType == null ||
             (opp.workMode?.toLowerCase() ==
                 _selectedLocationType?.toLowerCase());
         final matchesPaid = _isPaid == null || (opp.isPaid == _isPaid);
@@ -364,7 +373,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
   // --- 5. Navigation & View Switching ---
 
   /// Switches the view to show details for a specific opportunity
-/// Switches the view to show details for a specific opportunity
+  /// Switches the view to show details for a specific opportunity
   void _viewOpportunityDetails(Opportunity opportunity) async {
     setState(() {
       _selectedOpportunity = opportunity;
@@ -390,7 +399,8 @@ class _studentOppPgaeState extends State<studentOppPgae> {
 
       // (4) Now set the application and stop loading
       setState(() {
-        _currentApplication = app as Application?; // Store the application (or null)
+        _currentApplication =
+            app as Application?; // Store the application (or null)
         _isApplying = false; // Stop loading
       });
     } catch (e) {
@@ -604,7 +614,8 @@ class _studentOppPgaeState extends State<studentOppPgae> {
     return OpportunityDetailsContent(
       opportunity: opportunity,
       application: _currentApplication, // Pass the application (if it exists)
-      onNavigateToCompany: _navigateToCompanyProfile, // Pass navigation function
+      onNavigateToCompany:
+          _navigateToCompanyProfile, // Pass navigation function
       onApply: _applyNow, // Pass apply function
       onWithdraw: _withdrawApplication, // Pass withdraw function
     );
@@ -674,7 +685,8 @@ class _studentOppPgaeState extends State<studentOppPgae> {
 
   /// Shows the small chips for active filters (e.g., "City: Riyadh", "Paid")
   Widget _buildActiveFiltersBar() {
-    final hasActiveFilters = _selectedCity != null ||
+    final hasActiveFilters =
+        _selectedCity != null ||
         _selectedLocationType != null ||
         _isPaid != null ||
         _selectedDuration != null;
@@ -707,8 +719,9 @@ class _studentOppPgaeState extends State<studentOppPgae> {
           if (_isPaid != null)
             Chip(
               label: Text(_isPaid! ? 'Paid' : 'Unpaid'),
-              backgroundColor:
-                  _isPaid! ? Colors.green.shade100 : Colors.orange.shade100,
+              backgroundColor: _isPaid!
+                  ? Colors.green.shade100
+                  : Colors.orange.shade100,
               onDeleted: () {
                 setState(() => _isPaid = null);
                 _fetchOpportunities();
@@ -927,7 +940,8 @@ class _studentOppPgaeState extends State<studentOppPgae> {
                       options: [true, false],
                       selectedValue: _isPaid,
                       labelBuilder: (p) => p ? 'Paid' : 'Unpaid',
-                      onSelected: (value) => setModalState(() => _isPaid = value),
+                      onSelected: (value) =>
+                          setModalState(() => _isPaid = value),
                     ),
                     const SizedBox(height: 24),
                     // Duration Filter
@@ -979,8 +993,8 @@ class _studentOppPgaeState extends State<studentOppPgae> {
                               setState(
                                 () => _selectedCity =
                                     _cityController.text.trim().isEmpty
-                                        ? null
-                                        : _cityController.text.trim(),
+                                    ? null
+                                    : _cityController.text.trim(),
                               );
                               _fetchOpportunities(); // Re-fetch data
                               Navigator.pop(context); // Close the modal
@@ -1019,8 +1033,9 @@ class _studentOppPgaeState extends State<studentOppPgae> {
   String getDurationCategory(dynamic start, dynamic end) {
     if (start == null || end == null) return "Unknown";
     // Convert to DateTime objects
-    final DateTime startDate =
-        start is DateTime ? start : (start as dynamic).toDate();
+    final DateTime startDate = start is DateTime
+        ? start
+        : (start as dynamic).toDate();
     final DateTime endDate = end is DateTime ? end : (end as dynamic).toDate();
     final durationDays = endDate.difference(startDate).inDays;
 
@@ -1115,12 +1130,13 @@ class _OpportunityCard extends StatelessWidget {
                   CircleAvatar(
                     radius: 28,
                     backgroundColor: Colors.grey.shade200,
-                    backgroundImage: (company?.logoUrl != null &&
+                    backgroundImage:
+                        (company?.logoUrl != null &&
                             company!.logoUrl!.isNotEmpty)
                         ? NetworkImage(company!.logoUrl!)
                         : null,
-                    child: (company?.logoUrl == null ||
-                            company!.logoUrl!.isEmpty)
+                    child:
+                        (company?.logoUrl == null || company!.logoUrl!.isEmpty)
                         ? const Icon(Icons.business, color: Colors.grey)
                         : null,
                   ),
@@ -1170,19 +1186,37 @@ class _OpportunityCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Row(
+              Column(
                 children: [
-                  _buildDateInfo(
-                    Icons.calendar_today_outlined,
-                    'Duration',
-                    '${formatDate(opportunity.startDate?.toDate())} - ${formatDate(opportunity.endDate?.toDate())}',
+                  Row(
+                    children: [
+                      _buildDateInfo(
+                        Icons.calendar_today_outlined,
+                        'Duration',
+                        '${formatDate(opportunity.startDate?.toDate())} - ${formatDate(opportunity.endDate?.toDate())}',
+                      ),
+                      const SizedBox(width: 16),
+                      _buildDateInfo(
+                        Icons.event_available_outlined,
+                        'Apply By',
+                        formatDate(opportunity.applicationDeadline?.toDate()),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  _buildDateInfo(
-                    Icons.event_available_outlined,
-                    'Apply By',
-                    formatDate(opportunity.applicationDeadline?.toDate()),
-                  ),
+                  // Show response deadline if visible and exists
+                  if (opportunity.responseDeadlineVisible == true &&
+                      opportunity.responseDeadline != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _buildDateInfo(
+                          Icons.schedule_outlined,
+                          'Response By',
+                          formatDate(opportunity.responseDeadline?.toDate()),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 12),
@@ -1194,11 +1228,15 @@ class _OpportunityCard extends StatelessWidget {
                   if (opportunity.location != null &&
                       opportunity.location!.isNotEmpty)
                     _buildInfoChip(
-                        Icons.location_on_outlined, opportunity.location!),
+                      Icons.location_on_outlined,
+                      opportunity.location!,
+                    ),
                   if (opportunity.workMode != null &&
                       opportunity.workMode!.isNotEmpty)
-                    _buildInfoChip(Icons.laptop_chromebook_outlined,
-                        opportunity.workMode!),
+                    _buildInfoChip(
+                      Icons.laptop_chromebook_outlined,
+                      opportunity.workMode!,
+                    ),
                   _buildInfoChip(
                     opportunity.isPaid
                         ? Icons.attach_money_outlined
