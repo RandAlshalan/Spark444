@@ -114,8 +114,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Opportunity'),
-        content: const Text(
-          'Are you sure you want to permanently delete this opportunity?',
+        content: const SingleChildScrollView(
+          child: Text(
+            'Are you sure you want to permanently delete this opportunity?',
+          ),
         ),
         actions: [
           TextButton(
@@ -599,40 +601,43 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            child: Row(
-              children: [
-                TextButton.icon(
-                  onPressed: () => _navigateToApplicantsList(opportunity),
-                  icon: const Icon(Icons.people_outline, size: 20),
-                  label: const Text('View Applicants'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: CompanyColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  TextButton.icon(
+                    onPressed: () => _navigateToApplicantsList(opportunity),
+                    icon: const Icon(Icons.people_outline, size: 20),
+                    label: const Text('View Applicants'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: CompanyColors.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
                   ),
-                ),
-                TextButton.icon(
-                  onPressed: () => _navigateToAnalytics(opportunity),
-                  icon: const Icon(Icons.auto_graph_outlined, size: 20),
-                  label: const Text('Analytics'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: CompanyColors.secondary,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  TextButton.icon(
+                    onPressed: () => _navigateToAnalytics(opportunity),
+                    icon: const Icon(Icons.auto_graph_outlined, size: 20),
+                    label: const Text('Analytics'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: CompanyColors.secondary,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
                   ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blueGrey),
-                  tooltip: 'Edit Opportunity',
-                  onPressed: () => _showSnackBar(
-                    'Editing ${opportunity.name} (coming soon)',
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.blueGrey),
+                    tooltip: 'Edit Opportunity',
+                    onPressed: () => _showSnackBar(
+                      'Editing ${opportunity.name} (coming soon)',
+                    ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Color(0xFFC62828)),
-                  tooltip: 'Delete Opportunity',
-                  onPressed: () => _deleteOpportunity(opportunity.id),
-                ),
-              ],
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Color(0xFFC62828)),
+                    tooltip: 'Delete Opportunity',
+                    onPressed: () => _deleteOpportunity(opportunity.id),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

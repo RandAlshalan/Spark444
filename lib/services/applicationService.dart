@@ -116,4 +116,22 @@ class ApplicationService {
       'lastStatusUpdateDate': Timestamp.now(), // Good practice to track this
     });
   }
+
+  /// Updates an application's status (for company to accept/reject applicants).
+  Future<void> updateApplicationStatus({
+    required String applicationId,
+    required String status,
+    String? feedback,
+  }) async {
+    final updateData = <String, dynamic>{
+      'status': status,
+      'lastStatusUpdateDate': Timestamp.now(),
+    };
+
+    if (feedback != null) {
+      updateData['companyFeedback'] = feedback;
+    }
+
+    await _applicationsCollection.doc(applicationId).update(updateData);
+  }
 }

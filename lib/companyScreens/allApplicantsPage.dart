@@ -623,7 +623,7 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
   }
 }
 
-class _OverviewHeader extends StatelessWidget {
+class _OverviewHeader extends StatefulWidget {
   final _ApplicantsSnapshot snapshot;
   final double maxWidth;
   final Opportunity? opportunity;
@@ -635,34 +635,45 @@ class _OverviewHeader extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final widgets = <Widget>[];
+  State<_OverviewHeader> createState() => _OverviewHeaderState();
+}
 
-    if (opportunity != null) {
-      widgets
-        ..add(
-          Card(
-            color: CompanyColors.surface,
-            elevation: CompanySpacing.cardElevation,
-            shape: RoundedRectangleBorder(
-              borderRadius: CompanySpacing.cardRadius,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    opportunity!.name,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: CompanyColors.primary,
-                    ),
+class _OverviewHeaderState extends State<_OverviewHeader> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.opportunity == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: SizedBox(
+        width: widget.maxWidth,
+        child: Card(
+          color: CompanyColors.surface,
+          elevation: CompanySpacing.cardElevation,
+          shape: RoundedRectangleBorder(
+            borderRadius: CompanySpacing.cardRadius,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.opportunity!.name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: CompanyColors.primary,
                   ),
+                ),
+                if (_isExpanded) ...[
                   const SizedBox(height: 4),
                   Text(
-                    opportunity!.role,
+                    widget.opportunity!.role,
                     style: const TextStyle(
                       fontSize: 14,
                       color: CompanyColors.muted,
@@ -673,57 +684,52 @@ class _OverviewHeader extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _buildChip(Icons.badge_outlined, opportunity!.type),
-                      if (opportunity!.workMode != null &&
-                          opportunity!.workMode!.trim().isNotEmpty)
+                      _buildChip(Icons.badge_outlined, widget.opportunity!.type),
+                      if (widget.opportunity!.workMode != null &&
+                          widget.opportunity!.workMode!.trim().isNotEmpty)
                         _buildChip(
                           Icons.apartment_outlined,
-                          opportunity!.workMode!,
+                          widget.opportunity!.workMode!,
                         ),
-                      if (opportunity!.location != null &&
-                          opportunity!.location!.trim().isNotEmpty)
+                      if (widget.opportunity!.location != null &&
+                          widget.opportunity!.location!.trim().isNotEmpty)
                         _buildChip(
                           Icons.location_on_outlined,
-                          opportunity!.location!,
+                          widget.opportunity!.location!,
                         ),
                     ],
                   ),
                 ],
-              ),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _isExpanded = !_isExpanded;
+                    });
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _isExpanded ? 'View Less' : 'View More',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: CompanyColors.secondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        _isExpanded ? Icons.expand_less : Icons.expand_more,
+                        color: CompanyColors.secondary,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-        )
-        ..add(const SizedBox(height: 16));
-    }
-
-    widgets.add(
-      Wrap(
-        spacing: 16,
-        runSpacing: 16,
-        children: [
-          _SummaryCard(
-            icon: Icons.business_outlined,
-            color: CompanyColors.primary,
-            label: 'Active Opportunities',
-            value: snapshot.opportunityCount.toString(),
-          ),
-          _SummaryCard(
-            icon: Icons.people_alt_outlined,
-            color: CompanyColors.secondary,
-            label: 'Total Applicants',
-            value: snapshot.records.length.toString(),
-          ),
-        ],
-      ),
-    );
-
-    return Align(
-      alignment: Alignment.topCenter,
-      child: SizedBox(
-        width: maxWidth,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: widgets,
         ),
       ),
     );
@@ -743,74 +749,91 @@ class _OverviewHeader extends StatelessWidget {
   }
 }
 
-class _SummaryCard extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String label;
-  final String value;
-
-  const _SummaryCard({
-    required this.icon,
-    required this.color,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: CompanyColors.surface,
-      elevation: CompanySpacing.cardElevation,
-      shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: color.withOpacity(0.12),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: CompanyColors.primary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: CompanyColors.muted,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ApplicantCard extends StatelessWidget {
+class _ApplicantCard extends StatefulWidget {
   final _ApplicantRecord record;
 
   const _ApplicantCard({required this.record});
 
   @override
+  State<_ApplicantCard> createState() => _ApplicantCardState();
+}
+
+class _ApplicantCardState extends State<_ApplicantCard> {
+  final ApplicationService _applicationService = ApplicationService();
+  bool _isUpdating = false;
+
+  Future<void> _updateStatus(String newStatus) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Update Status to $newStatus?'),
+        content: SingleChildScrollView(
+          child: Text(
+            'Are you sure you want to change the application status to $newStatus?',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: newStatus == 'Accepted'
+                  ? Colors.green
+                  : Colors.red,
+            ),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isUpdating = true);
+
+    try {
+      await _applicationService.updateApplicationStatus(
+        applicationId: widget.record.application.id,
+        status: newStatus,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Application status updated to $newStatus'),
+          backgroundColor: newStatus == 'Accepted' ? Colors.green : Colors.red,
+        ),
+      );
+
+      // Reload the page to reflect changes
+      if (context.mounted) {
+        final state = context.findAncestorStateOfType<_AllApplicantsPageState>();
+        state?._reload();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating status: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdating = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final student = record.student;
-    final application = record.application;
-    final opportunity = record.opportunity;
+    final student = widget.record.student;
+    final application = widget.record.application;
+    final opportunity = widget.record.opportunity;
     final majorDisplay = _presentMajor(student);
     final levelDisplay = _presentLevel(student);
     final gpaValue = student.gpa;
@@ -818,6 +841,8 @@ class _ApplicantCard extends StatelessWidget {
     final appliedLabel = DateFormat(
       'MMM d, yyyy • h:mm a',
     ).format(application.appliedDate.toDate());
+
+    final isPending = application.status.toLowerCase() == 'pending';
 
     return Card(
       color: CompanyColors.surface,
@@ -922,6 +947,50 @@ class _ApplicantCard extends StatelessWidget {
                       .toList(),
                 ),
               ),
+            if (isPending) ...[
+              const Divider(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isUpdating ? null : () => _updateStatus('Accepted'),
+                      icon: _isUpdating
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.check_circle_outline),
+                      label: const Text('Accept'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isUpdating ? null : () => _updateStatus('Rejected'),
+                      icon: _isUpdating
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.cancel_outlined),
+                      label: const Text('Reject'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
