@@ -9,16 +9,14 @@ import '../services/companyService.dart';
 import '../models/company.dart';
 
 // --- NAV BAR IMPORTS START ---
-// Imports extracted from studentOppPage.dart
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/CustomBottomNavBar.dart';
 import '../studentScreens/studentViewProfile.dart';
 import '../studentScreens/studentSavedOpp.dart';
-import '../studentScreens/studentOppPage.dart'; // For navigating to opportunities
+import '../studentScreens/studentOppPage.dart';
 // --- NAV BAR IMPORTS END ---
 
 const _purple = Color(0xFF422F5D);
-
 const String kStudentsCollection = 'student';
 
 class StudentCompaniesPage extends StatefulWidget {
@@ -29,7 +27,6 @@ class StudentCompaniesPage extends StatefulWidget {
 }
 
 class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
-  // Original state variables
   final _service = CompanyService();
   final _searchCtrl = TextEditingController();
   final _auth = FirebaseAuth.instance;
@@ -41,8 +38,7 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
   String _query = '';
 
   // --- NAV BAR STATE START ---
-  // This page corresponds to index 1 (Companies)
-  int _currentIndex = 1;
+  int _currentIndex = 1; // Companies tab
   // --- NAV BAR STATE END ---
 
   @override
@@ -87,25 +83,20 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
   }
 
   // --- NAV BAR HANDLERS START ---
-
   void _onNavigationTap(int index) {
-    if (index == _currentIndex) return; // Do nothing if same tab is tapped
+    if (index == _currentIndex) return;
 
     switch (index) {
       case 0:
-        // This case was a "Coming soon!" message (e.g., Home/Chat)
         _showInfoMessage('Coming soon!');
         break;
-      // case 1: (Current Page) - is handled by the initial `if` check.
       case 2:
-        // Navigate to Opportunities Page
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const studentOppPgae()),
         );
         break;
       case 3:
-        // Navigate to Profile Page
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const StudentViewProfile()),
@@ -115,9 +106,7 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
   }
 
   void _navigateToSaved() {
-    // Use the existing _auth service to get the current user's ID
     final studentId = _auth.currentUser?.uid;
-
     if (studentId != null) {
       Navigator.push(
         context,
@@ -128,6 +117,31 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
     } else {
       _showInfoMessage("Could not open saved items. User ID not found.");
     }
+  }
+
+  Future<void> _backfillCompanyNameLowerOnce() async {
+    final col = FirebaseFirestore.instance.collection('companies');
+    final qs = await col.get();
+
+    int updated = 0;
+    for (final d in qs.docs) {
+      final data = d.data();
+      final name = (data['companyName'] ?? '').toString();
+      final hasLower = (data['companyNameLower'] ?? '').toString().isNotEmpty;
+
+      // نتخطى اللي ما له اسم، أو اللي انضاف له الحقل من قبل
+      if (name.isEmpty || hasLower) continue;
+
+      await d.reference.set({
+        'companyNameLower': name.toLowerCase(),
+      }, SetOptions(merge: true));
+      updated++;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Backfill done ✅ (updated $updated companies)')),
+    );
   }
 
   void _showInfoMessage(String message) {
@@ -148,7 +162,6 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
   Widget build(BuildContext context) {
     final studentId = _auth.currentUser?.uid;
 
-    // احتياط: لو ما فيه مستخدم (حالة نادرة)
     if (studentId == null) {
       return const Scaffold(
         body: Center(child: Text('You must be logged in.')),
@@ -159,42 +172,58 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
     final studentDocStream = _db
         .collection(kStudentsCollection)
         .doc(studentId)
-        // نقرأ تغييرات الميتاداتا (محلي/أونلاين) لتسريع التحديث
         .snapshots(includeMetadataChanges: true);
 
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pop(context, _modified); // نرجّع النتيجة
+        Navigator.pop(context, _modified);
         return false;
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Companies'),
-          leading: BackButton(
-            onPressed: () => Navigator.pop(context, _modified),
+          centerTitle: true,
+          title: const Text(
+            'Companies',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
           ),
-          // --- APP BAR ACTION ADDED ---
+          backgroundColor: Colors.white,
+          elevation: 0,
+          automaticallyImplyLeading: false,
           actions: [
             IconButton(
-              icon: const Icon(Icons.bookmarks_outlined),
+              icon: const Icon(Icons.bookmarks_outlined, color: Colors.black),
               onPressed: _navigateToSaved,
               tooltip: 'Saved',
             ),
           ],
-          // ---
         ),
+
         body: Column(
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: TextField(
                 controller: _searchCtrl,
-                decoration: const InputDecoration(
+                textInputAction: TextInputAction.search,
+                onChanged: (v) =>
+                    setState(() => _query = v.toLowerCase().trim()),
+                decoration: InputDecoration(
                   hintText: 'Search by company name…',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.search),
+                  filled: true,
+                  fillColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceVariant.withOpacity(0.35),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
-                onChanged: (v) => setState(() => _query = v),
               ),
             ),
             Expanded(
@@ -209,7 +238,6 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
                     return const Center(child: Text('No companies found.'));
                   }
 
-                  // نقرأ لائحة المتابعات للطالب كستريم واحد
                   return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                     stream: studentDocStream,
                     builder: (context, stuSnap) {
@@ -229,12 +257,10 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
             ),
           ],
         ),
-        // --- BOTTOM NAV BAR ADDED ---
         bottomNavigationBar: CustomBottomNavBar(
           currentIndex: _currentIndex,
           onTap: _onNavigationTap,
         ),
-        // ---
       ),
     );
   }
@@ -251,12 +277,9 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
         final c = companies[i];
         final id = c.uid ?? '';
 
-        // الحالة القادمة من الستريم
         final isFollowingStream = id.isNotEmpty && followed.contains(id);
-        // لو عندنا قرار تفاؤلي، يطغى على الستريم مؤقتًا
         final optimistic = _optimisticFollowing[id];
         final isFollowing = optimistic ?? isFollowingStream;
-
         final pending = _pendingToggles.contains(id);
 
         return ListTile(
@@ -280,6 +303,7 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -314,8 +338,6 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
                         )
                       : Text(isFollowing ? 'Following' : 'Follow'),
                 ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right),
             ],
           ),
           onTap: () {

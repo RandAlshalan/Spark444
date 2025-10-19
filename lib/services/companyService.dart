@@ -6,7 +6,7 @@ class CompanyService {
       .instance
       .collection('companies');
 
-  /// يعرض كل الشركات مرتبة بالاسم
+  /// list all companies
   Stream<List<Company>> streamAll({int limit = 50}) {
     return _col
         .orderBy('companyName')
@@ -18,14 +18,15 @@ class CompanyService {
         );
   }
 
-  /// بحث prefix مطابق لأوّل الحروف في companyName
+  /// search by name
   Stream<List<Company>> searchByName(String q, {int limit = 50}) {
-    final query = q.trim();
-    if (query.isEmpty) return streamAll(limit: limit);
-    final end = '$query\uf8ff';
+    final queryLower = q.toLowerCase().trim();
+    if (queryLower.isEmpty) return streamAll(limit: limit);
+
+    final end = '$queryLower\uf8ff';
     return _col
-        .orderBy('companyName')
-        .startAt([query])
+        .orderBy('companyNameLower')
+        .startAt([queryLower])
         .endAt([end])
         .limit(limit)
         .snapshots()
@@ -33,12 +34,5 @@ class CompanyService {
           (snap) =>
               snap.docs.map((d) => Company.fromMap(d.id, d.data())).toList(),
         );
-  }
-
-  /// (اختياري) قراءة شركة وحده بالآي دي
-  Future<Company?> getById(String id) async {
-    final doc = await _col.doc(id).get();
-    if (!doc.exists || doc.data() == null) return null;
-    return Company.fromMap(doc.id, doc.data()!);
   }
 }
