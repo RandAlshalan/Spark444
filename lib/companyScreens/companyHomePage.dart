@@ -6,6 +6,7 @@ import '../services/opportunityService.dart';
 import '../services/applicationService.dart';
 import 'editCompanyProfilePage.dart';
 import 'PostOpportunityPage.dart';
+import 'EditOpportunityPage.dart';
 import 'opportunityAnalyticsPage.dart';
 import 'allApplicantsPage.dart';
 import 'followersPage.dart';
@@ -58,9 +59,12 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
       for (final opp in opportunities) {
         activeOps++;
-        final applications = await _applicationService.getApplicationsForOpportunity(opp.id);
+        final applications = await _applicationService
+            .getApplicationsForOpportunity(opp.id);
         totalApplicants += applications.length;
-        pendingApplicants += applications.where((app) => app.status.toLowerCase() == 'pending').length;
+        pendingApplicants += applications
+            .where((app) => app.status.toLowerCase() == 'pending')
+            .length;
       }
 
       if (!mounted) return;
@@ -120,6 +124,21 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     _fetchCompanyData();
   }
 
+  Future<void> _navigateToEditOpportunity(Opportunity opportunity) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditOpportunityPage(opportunity: opportunity),
+      ),
+    );
+
+    // If the edit was successful, refresh the opportunities list
+    if (result == true && mounted) {
+      _fetchCompanyData();
+      _showSnackBar('Opportunity updated successfully!');
+    }
+  }
+
   Future<void> _navigateToAllApplicants() async {
     final company = _company;
     if (company == null) {
@@ -145,7 +164,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const NotificationsPage(),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const NotificationsPage(),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
@@ -301,9 +321,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 SliverFillRemaining(
                   hasScrollBody: false,
                   fillOverscroll: false,
-                  child: Container(
-                    height: 80,
-                  ),
+                  child: Container(height: 80),
                 ),
               ],
             ),
@@ -383,7 +401,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
   Widget _buildProfileSection() {
     final company = _company;
-    if (company == null) return SliverList(delegate: SliverChildListDelegate([]));
+    if (company == null)
+      return SliverList(delegate: SliverChildListDelegate([]));
 
     final contact = (company.contactInfo).trim();
     final email = company.email.trim();
@@ -411,7 +430,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 Navigator.of(context)
                     .push(
                       MaterialPageRoute(
-                        builder: (_) => EditCompanyProfilePage(company: company),
+                        builder: (_) =>
+                            EditCompanyProfilePage(company: company),
                       ),
                     )
                     .then((_) => _fetchCompanyData());
@@ -423,7 +443,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         Card(
           color: CompanyColors.surface,
           elevation: CompanySpacing.cardElevation,
-          shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
+          shape: RoundedRectangleBorder(
+            borderRadius: CompanySpacing.cardRadius,
+          ),
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -432,8 +454,11 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 Center(
                   child: CircleAvatar(
                     radius: 50,
-                    backgroundColor: CompanyColors.primary.withValues(alpha: 0.1),
-                    backgroundImage: company.logoUrl != null && company.logoUrl!.isNotEmpty
+                    backgroundColor: CompanyColors.primary.withValues(
+                      alpha: 0.1,
+                    ),
+                    backgroundImage:
+                        company.logoUrl != null && company.logoUrl!.isNotEmpty
                         ? NetworkImage(company.logoUrl!)
                         : null,
                     child: (company.logoUrl == null || company.logoUrl!.isEmpty)
@@ -460,13 +485,18 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 const SizedBox(height: 8),
                 Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: CompanyColors.secondary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      company.sector.isNotEmpty ? company.sector : 'Sector not specified',
+                      company.sector.isNotEmpty
+                          ? company.sector
+                          : 'Sector not specified',
                       style: const TextStyle(
                         fontSize: 14,
                         color: CompanyColors.secondary,
@@ -502,7 +532,11 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   const SizedBox(height: 24),
                   const Row(
                     children: [
-                      Icon(Icons.info_outline, color: CompanyColors.primary, size: 20),
+                      Icon(
+                        Icons.info_outline,
+                        color: CompanyColors.primary,
+                        size: 20,
+                      ),
                       SizedBox(width: 12),
                       Text(
                         'About the Company',
@@ -546,11 +580,16 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         Card(
           color: CompanyColors.surface,
           elevation: CompanySpacing.cardElevation,
-          shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
+          shape: RoundedRectangleBorder(
+            borderRadius: CompanySpacing.cardRadius,
+          ),
           child: Column(
             children: [
               ListTile(
-                leading: const Icon(Icons.logout, color: CompanyColors.secondary),
+                leading: const Icon(
+                  Icons.logout,
+                  color: CompanyColors.secondary,
+                ),
                 title: const Text(
                   'Log Out',
                   style: TextStyle(
@@ -559,11 +598,17 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                     color: CompanyColors.primary,
                   ),
                 ),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: CompanyColors.muted),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: CompanyColors.muted,
+                ),
                 onTap: () async {
                   await _authService.signOut();
                   if (!mounted) return;
-                  Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                  Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/', (route) => false);
                 },
               ),
               const Divider(height: 1),
@@ -577,7 +622,11 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                     color: Colors.red,
                   ),
                 ),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: CompanyColors.muted),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: CompanyColors.muted,
+                ),
                 onTap: _showDeleteConfirmationDialog,
               ),
             ],
@@ -606,7 +655,11 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             color: CompanyColors.primary,
           ),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: CompanyColors.muted),
+        trailing: const Icon(
+          Icons.arrow_forward_ios,
+          size: 16,
+          color: CompanyColors.muted,
+        ),
         onTap: onTap,
       ),
     );
@@ -637,14 +690,15 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 ),
               ),
               const SizedBox(height: 6),
-              customWidget ?? Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: CompanyColors.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              customWidget ??
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: CompanyColors.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
             ],
           ),
         ),
@@ -654,8 +708,12 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
   Widget _buildOpportunitiesListSection() {
     // Separate active and past opportunities
-    var activeOpportunities = _opportunities.where((opp) => opp.isActive).toList();
-    var pastOpportunities = _opportunities.where((opp) => !opp.isActive).toList();
+    var activeOpportunities = _opportunities
+        .where((opp) => opp.isActive)
+        .toList();
+    var pastOpportunities = _opportunities
+        .where((opp) => !opp.isActive)
+        .toList();
 
     // Apply sorting to both lists
     void sortOpportunities(List<Opportunity> opportunities) {
@@ -710,11 +768,17 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                       width: 1,
                     ),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _sortBy,
-                      icon: const Icon(Icons.arrow_drop_down, color: CompanyColors.primary),
+                      icon: const Icon(
+                        Icons.arrow_drop_down,
+                        color: CompanyColors.primary,
+                      ),
                       style: const TextStyle(
                         fontSize: 14,
                         color: CompanyColors.primary,
@@ -722,8 +786,14 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                       ),
                       dropdownColor: Colors.white,
                       items: const [
-                        DropdownMenuItem(value: 'newest', child: Text('Newest')),
-                        DropdownMenuItem(value: 'oldest', child: Text('Oldest')),
+                        DropdownMenuItem(
+                          value: 'newest',
+                          child: Text('Newest'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'oldest',
+                          child: Text('Oldest'),
+                        ),
                       ],
                       onChanged: (value) {
                         if (value != null) {
@@ -764,10 +834,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   const SizedBox(height: 16),
                   const Text(
                     'No opportunities posted yet',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: CompanyColors.muted,
-                    ),
+                    style: TextStyle(fontSize: 16, color: CompanyColors.muted),
                   ),
                   const SizedBox(height: 8),
                   TextButton.icon(
@@ -872,7 +939,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             children: [
               Icon(
                 isSelected ? activeIcon : icon,
-                color: isSelected ? CompanyColors.secondary : CompanyColors.muted,
+                color: isSelected
+                    ? CompanyColors.secondary
+                    : CompanyColors.muted,
                 size: 22,
               ),
               const SizedBox(height: 2),
@@ -883,7 +952,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 9,
-                  color: isSelected ? CompanyColors.secondary : CompanyColors.muted,
+                  color: isSelected
+                      ? CompanyColors.secondary
+                      : CompanyColors.muted,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
@@ -918,11 +989,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         child: InkWell(
           onTap: () => _onNavigationTapped(1),
           borderRadius: BorderRadius.circular(32),
-          child: const Icon(
-            Icons.add,
-            color: Colors.white,
-            size: 32,
-          ),
+          child: const Icon(Icons.add, color: Colors.white, size: 32),
         ),
       ),
     );
@@ -940,9 +1007,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         titlePadding: const EdgeInsets.only(left: 16.0, bottom: 16.0),
         title: null,
         background: Container(
-          decoration: const BoxDecoration(
-            gradient: CompanyColors.heroGradient,
-          ),
+          decoration: const BoxDecoration(gradient: CompanyColors.heroGradient),
           child: _buildProfileHeaderContent(),
         ),
       ),
@@ -1123,10 +1188,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         const SizedBox(height: 8),
         Text(
           'Welcome back, ${_company?.companyName ?? ""}',
-          style: const TextStyle(
-            fontSize: 16,
-            color: CompanyColors.muted,
-          ),
+          style: const TextStyle(fontSize: 16, color: CompanyColors.muted),
         ),
         const SizedBox(height: 24),
         _buildAnalyticsCards(),
@@ -1340,10 +1402,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   const SizedBox(height: 16),
                   const Text(
                     'No opportunities posted yet',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: CompanyColors.muted,
-                    ),
+                    style: TextStyle(fontSize: 16, color: CompanyColors.muted),
                   ),
                   const SizedBox(height: 8),
                   TextButton.icon(
@@ -1380,11 +1439,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   gradient: CompanyColors.heroGradient,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  Icons.work,
-                  color: Colors.white,
-                  size: 24,
-                ),
+                child: const Icon(Icons.work, color: Colors.white, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -1472,9 +1527,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(18),
-            decoration: const BoxDecoration(
-              color: CompanyColors.primary,
-            ),
+            decoration: const BoxDecoration(color: CompanyColors.primary),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1491,10 +1544,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                 const SizedBox(height: 6),
                 Text(
                   opportunity.role,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.white70,
-                  ),
+                  style: const TextStyle(fontSize: 16, color: Colors.white70),
                 ),
                 if (postedLabel != null) ...[
                   const SizedBox(height: 8),
@@ -1550,7 +1600,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                                 color: CompanyColors.primary,
                               ),
                             ),
-                            backgroundColor: CompanyColors.primary.withValues(alpha: 0.12),
+                            backgroundColor: CompanyColors.primary.withValues(
+                              alpha: 0.12,
+                            ),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 2,
@@ -1593,9 +1645,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   IconButton(
                     icon: const Icon(Icons.edit, color: Colors.blueGrey),
                     tooltip: 'Edit Opportunity',
-                    onPressed: () => _showSnackBar(
-                      'Editing ${opportunity.name} (coming soon)',
-                    ),
+                    onPressed: () => _navigateToEditOpportunity(opportunity),
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete, color: Color(0xFFC62828)),
