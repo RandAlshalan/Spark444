@@ -44,12 +44,57 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
   bool _loadingAccepted = true;
   String? _acceptedError;
   List<_AcceptedApplicant> _acceptedApplicants = [];
+  int _totalApplicants = 0;
+  int _pendingApplicants = 0;
 
   @override
   void initState() {
     super.initState();
     _loadCompany();
     _loadAcceptedApplicants();
+  }
+
+  Widget _buildSummaryCard() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Application Summary',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: CompanyColors.primary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _SummaryStatCard(
+                  icon: Icons.people_alt_outlined,
+                  label: 'Total Applicants',
+                  value: _totalApplicants.toString(),
+                  backgroundColor: CompanyColors.primary.withOpacity(0.1),
+                  iconColor: CompanyColors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _SummaryStatCard(
+                  icon: Icons.hourglass_bottom_outlined,
+                  label: 'Pending Applicants',
+                  value: _pendingApplicants.toString(),
+                  backgroundColor: CompanyColors.secondary.withOpacity(0.12),
+                  iconColor: CompanyColors.secondary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadCompany() async {
@@ -71,6 +116,15 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
     try {
       final applications = await _applicationService
           .getApplicationsForOpportunity(widget.opportunity.id);
+      if (mounted) {
+        setState(() {
+          _totalApplicants = applications.length;
+          _pendingApplicants = applications
+              .where((application) =>
+                  application.status.toLowerCase() == 'pending')
+              .length;
+        });
+      }
       final relevant = applications.where((application) {
         final status = application.status.toLowerCase();
         return status == 'accepted' || status == 'hired';
@@ -169,6 +223,7 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(opportunity, postedLabel),
+            _buildSummaryCard(),
             _buildDetailsSection(opportunity),
             _buildAcceptedApplicantsSection(),
             _buildApplicantsButton(context, opportunity),
@@ -192,20 +247,26 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.black.withOpacity(0.25),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.25),
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.calendar_today, size: 14, color: Colors.white),
                 const SizedBox(width: 6),
-                Text(
-                  'Posted $postedLabel',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                Flexible(
+                  child: Text(
+                    'Posted $postedLabel',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -497,9 +558,8 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
             )
           else
             Column(
-              children: _acceptedApplicants
-                  .map(_buildAcceptedApplicantTile)
-                  .toList(),
+              children:
+                  _acceptedApplicants.map(_buildAcceptedApplicantTile).toList(),
             ),
         ],
       ),
@@ -515,43 +575,60 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
         .format(_acceptedDate(applicant.application));
     final initials = _initialsForStudent(student);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: ListTile(
-        contentPadding: EdgeInsets.zero,
-        dense: true,
-        leading: CircleAvatar(
-          backgroundColor: CompanyColors.primary.withOpacity(0.12),
-          foregroundColor: CompanyColors.primary,
-          child: Text(initials.isEmpty ? '?' : initials),
+    final phone = student.phoneNumber.trim();
+    final university = student.university.trim();
+    final major = student.major.trim();
+    final level = (student.level ?? '').trim();
+
+    final details = <Widget>[
+      _buildInfoRow('Email', student.email, Icons.email_outlined),
+      if (phone.isNotEmpty)
+        _buildInfoRow('Phone', phone, Icons.phone_outlined),
+      if (university.isNotEmpty)
+        _buildInfoRow('University', university, Icons.school_outlined),
+      if (major.isNotEmpty)
+        _buildInfoRow('Major', major, Icons.badge_outlined),
+      if (level.isNotEmpty)
+        _buildInfoRow('Level', level, Icons.layers_outlined),
+      if (student.gpa != null)
+        _buildInfoRow(
+          'GPA',
+          student.gpa!.toStringAsFixed(2),
+          Icons.assessment_outlined,
         ),
-        title: Text(
-          displayName,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            color: CompanyColors.primary,
+      _buildInfoRow('Accepted On', acceptedOn, Icons.calendar_today_outlined),
+    ];
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      color: CompanyColors.surface,
+      elevation: CompanySpacing.cardElevation,
+      shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          leading: CircleAvatar(
+            backgroundColor: CompanyColors.primary.withOpacity(0.12),
+            foregroundColor: CompanyColors.primary,
+            child: Text(initials.isEmpty ? '?' : initials),
           ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              student.email,
-              style: const TextStyle(
-                fontSize: 13,
-                color: CompanyColors.muted,
-              ),
+          title: Text(
+            displayName,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: CompanyColors.primary,
             ),
-            const SizedBox(height: 2),
-            Text(
-              'Accepted on $acceptedOn',
-              style: const TextStyle(
-                fontSize: 12,
-                color: CompanyColors.muted,
-              ),
+          ),
+          subtitle: Text(
+            'Accepted on $acceptedOn',
+            style: const TextStyle(
+              fontSize: 12,
+              color: CompanyColors.muted,
             ),
-          ],
+          ),
+          children: details,
         ),
       ),
     );
@@ -572,6 +649,43 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
       initials = student.email[0].toUpperCase();
     }
     return initials;
+  }
+
+  Widget _buildInfoRow(String label, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: CompanyColors.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: CompanyColors.muted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: CompanyColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildApplicantsButton(BuildContext context, Opportunity opportunity) {
@@ -636,6 +750,72 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
           ],
         );
       },
+    );
+  }
+}
+
+class _SummaryStatCard extends StatelessWidget {
+  const _SummaryStatCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.backgroundColor,
+    required this.iconColor,
+    super.key,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color backgroundColor;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: CompanyColors.surface,
+      elevation: CompanySpacing.cardElevation,
+      shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: iconColor),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: CompanyColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: CompanyColors.muted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

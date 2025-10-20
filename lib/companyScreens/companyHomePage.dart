@@ -23,6 +23,18 @@ class CompanyHomePage extends StatefulWidget {
   _CompanyHomePageState createState() => _CompanyHomePageState();
 }
 
+class _NotificationPreview {
+  const _NotificationPreview({
+    required this.title,
+    required this.message,
+    required this.timestamp,
+  });
+
+  final String title;
+  final String message;
+  final DateTime timestamp;
+}
+
 class _CompanyHomePageState extends State<CompanyHomePage> {
   final AuthService _authService = AuthService();
   final OpportunityService _opportunityService = OpportunityService();
@@ -44,6 +56,23 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   int _totalApplicants = 0;
   int _pendingApplicants = 0;
   int _activeOpportunities = 0;
+  final List<_NotificationPreview> _demoNotifications = [
+    _NotificationPreview(
+      title: 'New applicant',
+      message: 'Amelia Johnson just applied to the UX Research Internship.',
+      timestamp: DateTime.now().subtract(const Duration(hours: 2, minutes: 15)),
+    ),
+    _NotificationPreview(
+      title: 'Application status',
+      message: 'You moved Daniel Lee to the Interview stage for Data Analyst Intern.',
+      timestamp: DateTime.now().subtract(const Duration(hours: 7, minutes: 40)),
+    ),
+    _NotificationPreview(
+      title: 'Profile follow',
+      message: 'Bright Future Academy started following your company profile.',
+      timestamp: DateTime.now().subtract(const Duration(days: 1, hours: 3)),
+    ),
+  ];
 
   Future<void> _fetchCompanyData() async {
     setState(() => _isLoading = true);
@@ -158,9 +187,14 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   void _navigateToFollowersPage() {
+    final company = _company;
+    if (company == null) {
+      _showSnackBar('Company information is still loading. Please try again.');
+      return;
+    }
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const FollowersPage()),
+      MaterialPageRoute(builder: (_) => FollowersPage(company: company)),
     );
   }
 
@@ -1398,8 +1432,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   Widget _buildRecentActivity() {
-    final recentOpportunities = _opportunities.take(3).toList();
-
+    final notifications = _demoNotifications;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1407,50 +1440,115 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'Recent Opportunities',
+              'Latest Notifications',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: CompanyColors.primary,
               ),
             ),
-            if (_opportunities.isNotEmpty)
-              TextButton(
-                onPressed: () {
-                  setState(() => _selectedIndex = 1);
-                },
-                child: const Text('View All'),
-              ),
+            TextButton(
+              onPressed: () {
+                setState(() => _selectedIndex = 3);
+              },
+              child: const Text('View All'),
+            ),
           ],
         ),
         const SizedBox(height: 16),
-        if (recentOpportunities.isEmpty)
-          Center(
+        if (notifications.isEmpty)
+          Card(
+            color: CompanyColors.surface,
+            elevation: CompanySpacing.cardElevation,
+            shape: RoundedRectangleBorder(
+              borderRadius: CompanySpacing.cardRadius,
+            ),
             child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.work_outline,
-                    size: 64,
-                    color: CompanyColors.muted.withValues(alpha: 0.5),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: CompanyColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.notifications_active_outlined,
+                      color: CompanyColors.primary,
+                      size: 28,
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No opportunities posted yet',
-                    style: TextStyle(fontSize: 16, color: CompanyColors.muted),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: _navigateToPostOpportunityPage,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Post Your First Opportunity'),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'You\'re all caught up!',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: CompanyColors.primary,
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'When students interact with your opportunities or profile, their updates will surface here. '
+                          'Visit the notifications tab to review past activity.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: CompanyColors.muted,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
+          )
+        else
+          Column(
+            children: notifications
+                .map(
+                  (notification) => Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    color: CompanyColors.surface,
+                    elevation: CompanySpacing.cardElevation,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: CompanySpacing.cardRadius,
+                    ),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor:
+                            CompanyColors.primary.withValues(alpha: 0.12),
+                        foregroundColor: CompanyColors.primary,
+                        child: const Icon(Icons.notifications_outlined),
+                      ),
+                      title: Text(
+                        notification.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: CompanyColors.primary,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${notification.message}\n${DateFormat('MMM d, h:mm a').format(notification.timestamp)}',
+                        style: const TextStyle(
+                          color: CompanyColors.muted,
+                          height: 1.4,
+                        ),
+                      ),
+                      isThreeLine: true,
+                      onTap: _navigateToNotificationsPage,
+                    ),
+                  ),
+                )
+                .toList(),
           ),
-        ...recentOpportunities.map(_buildCompactOpportunityCard),
       ],
     );
   }
@@ -1890,8 +1988,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
               ),
             ),
             _buildDrawerItem(Icons.group_outlined, 'My Followers', () {
-              _showSnackBar('Navigating to Followers Page...');
               Navigator.of(context).pop();
+              _navigateToFollowersPage();
             }),
             _buildDrawerItem(
               Icons.post_add_outlined,

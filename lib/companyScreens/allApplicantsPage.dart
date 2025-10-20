@@ -29,7 +29,17 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
   final ApplicationService _applicationService = ApplicationService();
   final AuthService _authService = AuthService();
 
+  static const List<String> _kAcademicLevelsList = [
+    'Freshman (Level 1-2)',
+    'Sophomore (Level 3-4)',
+    'Junior (Level 5-6)',
+    'Senior (Level 7-8)',
+    'Senior (Level +9)',
+    'Graduate Student',
+  ];
+
   late Future<_ApplicantsSnapshot> _applicantsFuture;
+  late Future<void> _referenceFuture;
   static const String _kAll = 'All';
 
   String _selectedMajor = _kAll;
@@ -38,14 +48,43 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
   RangeValues? _gpaRange;
   bool _gpaFilterEnabled = false;
   bool _filtersInitialized = false;
+  List<String> _referenceMajors = const <String>[];
+  List<String> _referenceLevels = _kAcademicLevelsList;
 
   @override
   void initState() {
     super.initState();
+    _referenceFuture = _loadReferenceLists();
     _applicantsFuture = _loadApplicants();
   }
 
+  Future<void> _loadReferenceLists() async {
+    try {
+      final lists = await _authService.getUniversitiesAndMajors();
+      final majors = <String>[...
+          (lists['majors'] ?? const <String>[]).map((value) => value.toString())];
+      if (!majors.contains('Other')) {
+        majors.add('Other');
+      }
+      if (mounted) {
+        setState(() {
+          _referenceMajors = majors;
+        });
+      } else {
+        _referenceMajors = majors;
+      }
+    } catch (_) {
+      // Falling back to existing majors collected from data when available.
+      _referenceMajors = const <String>[];
+    }
+  }
+
   Future<_ApplicantsSnapshot> _loadApplicants() async {
+    try {
+      await _referenceFuture;
+    } catch (_) {
+      // Ignore reference loading failures; we'll rely on collected data instead.
+    }
     final companyId = widget.company.uid;
     if (companyId == null || companyId.isEmpty) {
       return _ApplicantsSnapshot.empty;
@@ -111,11 +150,14 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
       (a, b) => b.application.appliedDate.compareTo(a.application.appliedDate),
     );
 
+    final mergedMajors = _mergeOptions(_referenceMajors, majorSet);
+    final mergedLevels = _mergeOptions(_referenceLevels, levelSet);
+
     return _ApplicantsSnapshot(
       records: acc,
       opportunityCount: opportunities.length,
-      majors: _sortedOptions(majorSet),
-      levels: _sortedOptions(levelSet),
+      majors: mergedMajors,
+      levels: mergedLevels,
       minGpa: minGpa,
       maxGpa: maxGpa,
     );
@@ -162,6 +204,35 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
       ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
     if (list.remove(_kNotSpecified)) list.add(_kNotSpecified);
     return list;
+  }
+
+  List<String> _mergeOptions(List<String> reference, Set<String> collected) {
+    final seen = <String>{};
+    final result = <String>[];
+
+    void addValue(String value) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return;
+      if (seen.add(trimmed)) {
+        result.add(trimmed);
+      }
+    }
+
+    for (final item in reference) {
+      addValue(item);
+    }
+
+    final collectedSorted = collected.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    for (final item in collectedSorted) {
+      addValue(item);
+    }
+
+    if (seen.contains(_kNotSpecified)) {
+      result.remove(_kNotSpecified);
+      result.add(_kNotSpecified);
+    }
+    return result;
   }
 
   List<_ApplicantRecord> _applyFilters(_ApplicantsSnapshot data) {
