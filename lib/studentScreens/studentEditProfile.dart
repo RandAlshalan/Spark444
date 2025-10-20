@@ -8,8 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../models/document_group.dart';
 
 import '../../../models/student.dart';
 import '../../../services/authService.dart';
@@ -1688,23 +1691,38 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   final StorageService _storageService = StorageService();
   bool _loading = false;
   bool _changed = false;
-  List<StoredFile> _documents = [];
+  bool _editMode = false; // Toggle between view and edit mode
+  List<DocumentGroup> _groups = [];
+  Map<String, List<StoredFile>> _groupFiles = {};
 
   @override
   void initState() {
     super.initState();
-    unawaited(_loadDocuments());
+    unawaited(_loadGroups());
   }
 
-  Future<void> _loadDocuments() async {
+  Future<void> _loadGroups() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     setState(() => _loading = true);
     try {
-      final docs = await _storageService.getFiles(user.uid, 'documents');
+      // Ensure default group exists
+      await _storageService.ensureDefaultGroup(user.uid);
+
+      // Load all groups
+      final groups = await _storageService.getDocumentGroups(user.uid);
+
+      // Load files for each group
+      final Map<String, List<StoredFile>> groupFiles = {};
+      for (final group in groups) {
+        final files = await _storageService.getFilesInGroup(user.uid, group.id);
+        groupFiles[group.id] = files;
+      }
+
       if (!mounted) return;
       setState(() {
-        _documents = docs;
+        _groups = groups;
+        _groupFiles = groupFiles;
       });
     } catch (e) {
       if (!mounted) return;
@@ -1716,7 +1734,99 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     }
   }
 
-  Future<void> _uploadDocument() async {
+  Future<void> _addNewGroup() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final title = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Group'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: controller,
+                decoration: InputDecoration(
+                  labelText: 'Group Title',
+                  hintText: 'Enter group name (max 50 characters)',
+                  counterText: '${controller.text.length}/50',
+                ),
+                autofocus: true,
+                maxLength: 50,
+                onChanged: (_) => formKey.currentState?.validate(),
+                validator: (value) {
+                  final trimmed = value?.trim() ?? '';
+                  if (trimmed.isEmpty) {
+                    return 'Group name cannot be empty';
+                  }
+                  if (trimmed.length < 2) {
+                    return 'Group name must be at least 2 characters';
+                  }
+                  if (trimmed.length > 50) {
+                    return 'Group name must be 50 characters or less';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 4),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: controller,
+                builder: (_, value, __) => Text(
+                  '${value.text.length}/50',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                final text = controller.text.trim();
+                Navigator.of(context).pop(text);
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+
+    if (title == null || title.isEmpty) return;
+
+    setState(() => _loading = true);
+    try {
+      await _storageService.createDocumentGroup(uid: user.uid, title: title);
+      _changed = true;
+      await _loadGroups();
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Group "$title" created successfully.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      messenger.showSnackBar(SnackBar(content: Text('Failed to create group: $e')));
+    }
+  }
+
+  Future<void> _uploadDocument(String groupId) async {
     final messenger = ScaffoldMessenger.of(context);
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -1729,38 +1839,43 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       withData: true,
       allowMultiple: true,
       type: FileType.custom,
-      allowedExtensions: const ['pdf', 'png'],
+      allowedExtensions: const ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx', 'txt'],
     );
     if (result == null) return;
+    final validExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx', 'txt'];
     final validFiles = result.files.where((file) {
       final extension = file.extension?.toLowerCase();
       final hasBytes = file.bytes != null;
-      return hasBytes && (extension == 'pdf' || extension == 'png');
+      return hasBytes && extension != null && validExtensions.contains(extension);
     }).toList();
     final skippedCount = result.files.length - validFiles.length;
     if (validFiles.isEmpty) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Only PDF or PNG files can be uploaded.')),
+        const SnackBar(
+          content: Text('Only PDF, PNG, JPG, DOC, DOCX, and TXT files can be uploaded.'),
+        ),
       );
       return;
     }
 
     setState(() => _loading = true);
     try {
-      await _storageService.uploadFiles(
-        uid: user.uid,
-        collection: 'documents',
-        files: validFiles,
-      );
+      for (final file in validFiles) {
+        await _storageService.uploadFileToGroup(
+          uid: user.uid,
+          groupId: groupId,
+          file: file,
+        );
+      }
       _changed = true;
-      await _loadDocuments(); // Refresh list
+      await _loadGroups(); // Refresh list
       if (!mounted) return;
       String baseMessage = validFiles.length == 1
           ? 'Document uploaded successfully.'
           : '${validFiles.length} documents uploaded successfully.';
       if (skippedCount > 0) {
         baseMessage +=
-            ' $skippedCount file(s) were skipped because they are not PDF or PNG.';
+            ' $skippedCount file(s) were skipped (unsupported format).';
       }
       messenger.showSnackBar(SnackBar(content: Text(baseMessage)));
     } catch (e) {
@@ -1770,7 +1885,36 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     }
   }
 
-  Future<void> _deleteDocument(StoredFile file) async {
+  Future<void> _previewDocument(StoredFile file) async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      final uri = Uri.parse(file.url);
+
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Could not open document'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Error opening document: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteDocument(String groupId, StoredFile file) async {
     final messenger = ScaffoldMessenger.of(context);
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -1787,6 +1931,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Delete'),
           ),
         ],
@@ -1795,13 +1943,13 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     if (confirm != true) return;
     setState(() => _loading = true);
     try {
-      await _storageService.deleteFile(
+      await _storageService.deleteFileFromGroup(
         uid: user.uid,
-        collection: 'documents',
+        groupId: groupId,
         file: file,
       );
       _changed = true;
-      await _loadDocuments();
+      await _loadGroups();
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(content: Text('Document deleted.')),
@@ -1813,6 +1961,277 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     }
   }
 
+  Future<void> _editGroupName(DocumentGroup group) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final controller = TextEditingController(text: group.title);
+    final formKey = GlobalKey<FormState>();
+
+    final newTitle = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Group Name'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: controller,
+                decoration: InputDecoration(
+                  labelText: 'Group Title',
+                  hintText: 'Enter group name (max 50 characters)',
+                  counterText: '${controller.text.length}/50',
+                ),
+                autofocus: true,
+                maxLength: 50,
+                onChanged: (_) => formKey.currentState?.validate(),
+                validator: (value) {
+                  final trimmed = value?.trim() ?? '';
+                  if (trimmed.isEmpty) {
+                    return 'Group name cannot be empty';
+                  }
+                  if (trimmed.length < 2) {
+                    return 'Group name must be at least 2 characters';
+                  }
+                  if (trimmed.length > 50) {
+                    return 'Group name must be 50 characters or less';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 4),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: controller,
+                builder: (_, value, __) => Text(
+                  '${value.text.length}/50',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                final text = controller.text.trim();
+                Navigator.of(context).pop(text);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (newTitle == null || newTitle.isEmpty || newTitle == group.title) return;
+
+    setState(() => _loading = true);
+    try {
+      await FirebaseFirestore.instance
+          .collection(AuthService.kStudentCol)
+          .doc(user.uid)
+          .collection('documentGroups')
+          .doc(group.id)
+          .update({'title': newTitle});
+
+      _changed = true;
+      await _loadGroups();
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Group name updated.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      messenger.showSnackBar(SnackBar(content: Text('Failed to update: $e')));
+    }
+  }
+
+  Future<void> _deleteGroup(DocumentGroup group) async {
+    // Don't allow deleting the default "Untitled" group
+    if (group.title == 'Untitled') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot delete the default Untitled group.')),
+      );
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final fileCount = _groupFiles[group.id]?.length ?? 0;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete Group'),
+        content: Text(
+          'Are you sure you want to delete "${group.title}"?\n\n'
+          '${fileCount > 0 ? 'This will also delete $fileCount document(s) in this group.' : 'This group is empty.'}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _loading = true);
+    try {
+      await _storageService.deleteDocumentGroup(
+        uid: user.uid,
+        groupId: group.id,
+      );
+      _changed = true;
+      await _loadGroups();
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Group deleted.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      messenger.showSnackBar(SnackBar(content: Text('Deletion failed: $e')));
+    }
+  }
+
+  Future<void> _reorderGroups(int oldIndex, int newIndex) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() {
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      final group = _groups.removeAt(oldIndex);
+      _groups.insert(newIndex, group);
+    });
+
+    try {
+      await _storageService.updateGroupOrder(
+        uid: user.uid,
+        groups: _groups,
+      );
+      _changed = true;
+    } catch (e) {
+      // Revert on error
+      await _loadGroups();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to reorder groups: $e')),
+      );
+    }
+  }
+
+  Widget _buildDocumentCard(String groupId, StoredFile document) {
+    final extension = document.name.split('.').last.toLowerCase();
+
+    IconData icon;
+    Color iconColor;
+
+    switch (extension) {
+      case 'pdf':
+        icon = Icons.picture_as_pdf;
+        iconColor = Colors.red.shade400;
+        break;
+      case 'png':
+      case 'jpg':
+      case 'jpeg':
+        icon = Icons.image;
+        iconColor = Colors.blue.shade400;
+        break;
+      case 'doc':
+      case 'docx':
+        icon = Icons.description;
+        iconColor = Colors.blue.shade700;
+        break;
+      case 'txt':
+        icon = Icons.text_snippet;
+        iconColor = Colors.grey.shade600;
+        break;
+      default:
+        icon = Icons.insert_drive_file;
+        iconColor = Colors.grey;
+    }
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: () => _previewDocument(document),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 40, color: iconColor),
+              const SizedBox(height: 12),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    document.name,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 13),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  IconButton(
+                    onPressed: () => _previewDocument(document),
+                    icon: const Icon(Icons.visibility_outlined),
+                    tooltip: 'Preview',
+                    iconSize: 20,
+                  ),
+                  if (_editMode)
+                    IconButton(
+                      onPressed: () => _deleteDocument(groupId, document),
+                      icon: const Icon(Icons.delete_outline),
+                      tooltip: 'Delete',
+                      color: Colors.red,
+                      iconSize: 20,
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -1822,74 +2241,144 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       },
       child: Scaffold(
         backgroundColor: Colors.white,
-        appBar: AppBar(title: const Text('Documents')),
-        floatingActionButton: FloatingActionButton(
-          onPressed: _uploadDocument,
-          child: const Icon(Icons.upload_file),
+        appBar: AppBar(
+          title: const Text('Documents'),
+          actions: [
+            if (_editMode)
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: TextButton.icon(
+                  onPressed: _addNewGroup,
+                  icon: const Icon(Icons.add_circle_outline),
+                  label: const Text('Add Group'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.blue.shade700,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            IconButton(
+              icon: Icon(_editMode ? Icons.check : Icons.edit),
+              onPressed: () {
+                setState(() {
+                  _editMode = !_editMode;
+                });
+              },
+              tooltip: _editMode ? 'Done' : 'Edit Mode',
+            ),
+          ],
         ),
         body: RefreshIndicator(
-          onRefresh: _loadDocuments,
+          onRefresh: _loadGroups,
           child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : _documents.isEmpty
-              ? const Center(child: Text('No documents uploaded yet.'))
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    final bool isWide = constraints.maxWidth >= 600;
-                    final int crossAxisCount = isWide ? 3 : 2;
-                    final double childAspectRatio = isWide ? 1.0 : 0.75;
-                    return GridView.builder(
-                      padding: const EdgeInsets.all(20),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: childAspectRatio,
-                      ),
-                      itemCount: _documents.length,
+              : _groups.isEmpty
+                  ? const Center(child: Text('No document groups yet.'))
+                  : ReorderableListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _groups.length,
+                      onReorder: _reorderGroups,
                       itemBuilder: (context, index) {
-                        final document = _documents[index];
+                        final group = _groups[index];
+                        final files = _groupFiles[group.id] ?? [];
+                        final isUntitled = group.title == 'Untitled';
+
                         return Card(
-                          elevation: 3,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.insert_drive_file,
-                                  size: 40,
-                                  color: Colors.grey,
-                                ),
-                                const SizedBox(height: 12),
-                                Expanded(
-                                  child: Center(
-                                    child: Text(
-                                      document.name,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(fontSize: 13),
-                                      maxLines: 3,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                          color: Colors.white,
+                          key: ValueKey(group.id),
+                          margin: const EdgeInsets.only(bottom: 16),
+                          elevation: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ListTile(
+                                leading: _editMode
+                                    ? const Icon(
+                                        Icons.drag_handle,
+                                        color: Colors.grey,
+                                      )
+                                    : null,
+                                title: Text(
+                                  group.title,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                TextButton.icon(
-                                  onPressed: () => _deleteDocument(document),
-                                  icon: const Icon(Icons.delete_outline),
-                                  label: const Text('Remove'),
+                                subtitle: Text('${files.length} document(s)'),
+                                trailing: _editMode
+                                    ? Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.upload_file),
+                                            onPressed: () => _uploadDocument(group.id),
+                                            tooltip: 'Upload Document',
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.edit),
+                                            onPressed: () => _editGroupName(group),
+                                            tooltip: 'Edit Group Name',
+                                          ),
+                                          if (!isUntitled)
+                                            IconButton(
+                                              icon: const Icon(Icons.delete),
+                                              onPressed: () => _deleteGroup(group),
+                                              tooltip: 'Delete Group',
+                                              color: Colors.red,
+                                            ),
+                                        ],
+                                      )
+                                    : null,
+                              ),
+                              if (files.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: Center(
+                                    child: Text(
+                                      'No documents in this group yet.',
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
+                                  ),
+                                )
+                              else
+                                Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final bool isWide = constraints.maxWidth >= 600;
+                                      final int crossAxisCount = isWide ? 3 : 2;
+                                      final double childAspectRatio = isWide ? 1.0 : 0.75;
+
+                                      return GridView.builder(
+                                        shrinkWrap: true,
+                                        physics: const NeverScrollableScrollPhysics(),
+                                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                          crossAxisCount: crossAxisCount,
+                                          crossAxisSpacing: 12,
+                                          mainAxisSpacing: 12,
+                                          childAspectRatio: childAspectRatio,
+                                        ),
+                                        itemCount: files.length,
+                                        itemBuilder: (context, fileIndex) {
+                                          return _buildDocumentCard(
+                                            group.id,
+                                            files[fileIndex],
+                                          );
+                                        },
+                                      );
+                                    },
+                                  ),
                                 ),
-                              ],
-                            ),
+                            ],
                           ),
                         );
                       },
-                    );
-                  },
-                ),
+                    ),
         ),
       ),
     );

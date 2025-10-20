@@ -741,22 +741,6 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
     );
   }
 
-  Widget _buildDocumentsView() {
-    return _InfoCard(
-      title: 'Documents',
-      children: [
-        ListTile(
-          leading: Icon(
-            Icons.info_outline,
-            color: _profileTextColor.withOpacity(0.6),
-          ),
-          title: const Text(
-            'This section is for managing your uploaded documents like transcripts and certificates.',
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildGeneratedResumesView() {
     return _InfoCard(
@@ -864,13 +848,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
             icon: Icons.folder_open_outlined,
             title: 'Documents',
             subtitle: 'Upload transcripts & certificates',
-            onTap: () => _openScreen(
-              StaticInfoViewerPage(
-                title: 'Documents',
-                content: _buildDocumentsView(),
-                editingPage: DocumentsScreen(student: student),
-              ),
-            ),
+            onTap: () => _openScreen(DocumentsScreen(student: student)),
           ),
           _MenuItemData(
             icon: Icons.description_outlined,
