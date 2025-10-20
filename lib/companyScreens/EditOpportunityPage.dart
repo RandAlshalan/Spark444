@@ -766,10 +766,12 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
 
                     _buildStyledTextFormField(
                       controller: _durationController,
-                      labelText: 'Duration (Auto-calculated)',
+                      labelText: 'Duration of the Opportunity',
                       icon: Icons.timelapse,
                       readOnly: true,
                       enabled: false,
+                      showLabelAbove: true,
+                      hintText: 'Auto-calculated',
                     ),
 
                     const SizedBox(height: 30),
@@ -818,42 +820,68 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
     int? maxLength,
     bool readOnly = false,
     bool enabled = true,
+    bool showLabelAbove = false,
+    String? hintText,
   }) {
+    final field = TextFormField(
+      controller: controller,
+      validator: validator,
+      onChanged: onChanged,
+      onFieldSubmitted: onFieldSubmitted,
+      inputFormatters: inputFormatters,
+      maxLines: maxLines,
+      maxLength: maxLength,
+      readOnly: readOnly,
+      enabled: enabled,
+      decoration: InputDecoration(
+        labelText: showLabelAbove ? null : labelText,
+        hintText: hintText,
+        hintStyle: TextStyle(
+          color: Colors.grey.shade500,
+          fontSize: 13,
+          fontStyle: FontStyle.italic,
+        ),
+        prefixIcon: Icon(icon, color: primaryColor),
+        suffixIcon: suffixIcon,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: primaryColor, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+      ),
+    );
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        controller: controller,
-        validator: validator,
-        onChanged: onChanged,
-        onFieldSubmitted: onFieldSubmitted,
-        inputFormatters: inputFormatters,
-        maxLines: maxLines,
-        maxLength: maxLength,
-        readOnly: readOnly,
-        enabled: enabled,
-        decoration: InputDecoration(
-          labelText: labelText,
-          prefixIcon: Icon(icon, color: primaryColor),
-          suffixIcon: suffixIcon,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: primaryColor, width: 2),
-          ),
-          filled: true,
-          fillColor: Colors.grey.shade50,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (showLabelAbove) ...[
+            Text(
+              labelText,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: primaryColor,
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+          field,
+        ],
       ),
     );
   }

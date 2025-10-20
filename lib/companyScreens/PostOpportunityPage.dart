@@ -491,28 +491,49 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
     ValueChanged<String>? onFieldSubmitted,
     ValueChanged<String>? onChanged,
     Widget? suffixIcon,
+    bool showLabelAbove = false,
+    String? hintText,
   }) {
+    final field = TextFormField(
+      controller: controller,
+      enabled: enabled,
+      decoration: _buildInputDecoration(
+        showLabelAbove ? null : labelText,
+        icon: icon,
+        enabled: enabled,
+        hintText: hintText,
+      ).copyWith(suffixIcon: suffixIcon),
+      validator: validator,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      inputFormatters: inputFormatters,
+      maxLength: maxLength,
+      readOnly: readOnly,
+      onTap: onTap,
+      onFieldSubmitted: onFieldSubmitted,
+      onChanged: onChanged,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        controller: controller,
-        enabled: enabled,
-        decoration: _buildInputDecoration(
-          labelText,
-          icon: icon,
-          enabled: enabled,
-        ).copyWith(suffixIcon: suffixIcon),
-        validator: validator,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        textInputAction: textInputAction,
-        inputFormatters: inputFormatters,
-        maxLength: maxLength,
-        readOnly: readOnly,
-        onTap: onTap,
-        onFieldSubmitted: onFieldSubmitted,
-        onChanged: onChanged,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (showLabelAbove) ...[
+            Text(
+              labelText,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: primaryColor,
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+          field,
+        ],
       ),
     );
   }
@@ -1051,10 +1072,12 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
 
                 _buildStyledTextFormField(
                   controller: _durationController,
-                  labelText: 'Duration (Auto-calculated)',
+                  labelText: 'Duration of the Opportunity',
                   icon: Icons.timelapse,
                   readOnly: true,
                   enabled: false,
+                  showLabelAbove: true,
+                  hintText: 'Auto-calculated',
                 ),
 
                 const SizedBox(height: 30),
@@ -1124,13 +1147,22 @@ class _PostOpportunityPageState extends State<PostOpportunityPage> {
   }
 
   InputDecoration _buildInputDecoration(
-    String labelText, {
+    String? labelText, {
     IconData? icon,
     bool enabled = true,
+    String? hintText,
   }) {
     return InputDecoration(
       labelText: labelText,
-      labelStyle: TextStyle(color: enabled ? primaryColor : Colors.grey),
+      labelStyle: labelText != null
+          ? TextStyle(color: enabled ? primaryColor : Colors.grey)
+          : null,
+      hintText: hintText,
+      hintStyle: TextStyle(
+        color: Colors.grey.shade500,
+        fontSize: 13,
+        fontStyle: FontStyle.italic,
+      ),
       prefixIcon: icon != null
           ? Icon(icon, color: enabled ? Colors.grey : Colors.grey.shade300)
           : null,
