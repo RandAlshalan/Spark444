@@ -34,6 +34,7 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
 
   String _selectedMajor = _kAll;
   String _selectedLevel = _kAll;
+  String _selectedStatus = _kAll;
   RangeValues? _gpaRange;
   bool _gpaFilterEnabled = false;
   bool _filtersInitialized = false;
@@ -147,6 +148,7 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
     setState(() {
       _selectedMajor = _kAll;
       _selectedLevel = _kAll;
+      _selectedStatus = _kAll;
       _gpaFilterEnabled = false;
       _gpaRange = (data.minGpa != null && data.maxGpa != null)
           ? RangeValues(data.minGpa!, data.maxGpa!)
@@ -164,6 +166,12 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
 
   List<_ApplicantRecord> _applyFilters(_ApplicantsSnapshot data) {
     return data.records.where((record) {
+      // Exclude withdrawn applications
+      final status = record.application.status;
+      if (status.toLowerCase() == 'withdrawn') {
+        return false;
+      }
+
       final majorDisplay = _presentMajor(record.student);
       if (_selectedMajor != _kAll && majorDisplay != _selectedMajor) {
         return false;
@@ -172,6 +180,13 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
       final levelDisplay = _presentLevel(record.student);
       if (_selectedLevel != _kAll && levelDisplay != _selectedLevel) {
         return false;
+      }
+
+      // Status filter
+      if (_selectedStatus != _kAll) {
+        if (status.toLowerCase() != _selectedStatus.toLowerCase()) {
+          return false;
+        }
       }
 
       if (_gpaFilterEnabled && _gpaRange != null) {
@@ -194,6 +209,10 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
   List<String> _buildLevelOptions(_ApplicantsSnapshot data) {
     if (data.levels.isEmpty) return const <String>[_kAll];
     return [_kAll, ...data.levels];
+  }
+
+  List<String> _buildStatusOptions() {
+    return const <String>[_kAll, 'Pending', 'Accepted', 'Rejected'];
   }
 
   bool _hasGpaRange(_ApplicantsSnapshot data) {
@@ -254,14 +273,6 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
                       ),
                     ),
                     const Spacer(),
-                    Text(
-                      'Showing $filteredCount of ${data.records.length}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: CompanyColors.muted,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
                     TextButton.icon(
                       onPressed: () => _resetFilters(data),
                       icon: const Icon(Icons.refresh, size: 16),
@@ -315,6 +326,27 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
                     ),
                   ),
                 ],
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _selectedStatus,
+                  items: _buildStatusOptions()
+                      .map(
+                        (option) => DropdownMenuItem<String>(
+                          value: option,
+                          child: Text(option),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedStatus = value ?? _kAll;
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
                 if (hasGpaRange && gpaValues != null) ...[
                   const SizedBox(height: 16),
                   Builder(

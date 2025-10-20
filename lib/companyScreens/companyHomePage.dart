@@ -317,15 +317,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           : CustomScrollView(
               slivers: [
                 _buildSliverAppBar(),
-                SliverPadding(
-                  padding: const EdgeInsets.all(16.0),
-                  sliver: _buildCurrentSection(),
-                ),
-                const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+                _buildCurrentSection(),
               ],
             ),
-      floatingActionButton: _buildFloatingActionButton(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
@@ -346,55 +340,58 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   Widget _buildNotificationsSection() {
-    return SliverList(
-      delegate: SliverChildListDelegate([
-        Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.notifications_outlined,
-                  size: 120,
-                  color: CompanyColors.muted.withValues(alpha: 0.3),
+    return SliverFillRemaining(
+      hasScrollBody: false,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.notifications_outlined,
+                size: 120,
+                color: CompanyColors.muted.withValues(alpha: 0.3),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'No Notifications',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: CompanyColors.primary,
                 ),
-                const SizedBox(height: 24),
-                const Text(
-                  'No Notifications',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: CompanyColors.primary,
-                  ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'You\'re all caught up! When you have new notifications, they\'ll appear here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: CompanyColors.muted,
+                  height: 1.5,
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  'You\'re all caught up! When you have new notifications, they\'ll appear here.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: CompanyColors.muted,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      ]),
+      ),
     );
   }
 
   Widget _buildDashboardSection() {
-    return SliverList(
-      delegate: SliverChildListDelegate([
-        _buildAnalyticsCards(),
-        const SizedBox(height: 32),
-        _buildQuickActions(),
-        const SizedBox(height: 32),
-        _buildRecentActivity(),
-      ]),
+    return SliverPadding(
+      padding: const EdgeInsets.all(16.0),
+      sliver: SliverList(
+        delegate: SliverChildListDelegate([
+          _buildAnalyticsCards(),
+          const SizedBox(height: 32),
+          _buildQuickActions(),
+          const SizedBox(height: 32),
+          _buildRecentActivity(),
+          const SizedBox(height: 100),
+        ]),
+      ),
     );
   }
 
@@ -408,11 +405,13 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     final description = (company.description ?? '').trim();
     final contactPills = _buildContactChips(contact);
 
-    return SliverList(
-      delegate: SliverChildListDelegate([
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
+    return SliverPadding(
+      padding: const EdgeInsets.all(16.0),
+      sliver: SliverList(
+        delegate: SliverChildListDelegate([
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
             const Text(
               'Manage Profile',
               style: TextStyle(
@@ -631,7 +630,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             ],
           ),
         ),
-      ]),
+        const SizedBox(height: 100),
+        ]),
+      ),
     );
   }
 
@@ -737,10 +738,12 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     sortOpportunities(activeOpportunities);
     sortOpportunities(pastOpportunities);
 
-    return SliverList(
-      delegate: SliverChildListDelegate([
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return SliverPadding(
+      padding: const EdgeInsets.all(16.0),
+      sliver: SliverList(
+        delegate: SliverChildListDelegate([
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _buildGradientButton(
               text: 'Post New',
@@ -875,45 +878,88 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           const SizedBox(height: 16),
           ...pastOpportunities.map(_buildOpportunityCard),
         ],
-      ]),
+        const SizedBox(height: 100),
+        ]),
+      ),
     );
   }
 
   Widget _buildBottomNavigationBar() {
-    return BottomAppBar(
-      color: CompanyColors.surface,
-      elevation: 8,
-      notchMargin: 8,
-      shape: const CircularNotchedRectangle(),
-      child: SizedBox(
-        height: 60,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+    return Container(
+      decoration: BoxDecoration(
+        color: CompanyColors.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: SizedBox(
+          height: 70,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(
+                index: 0,
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home,
+                label: 'Home',
+              ),
+              _buildNavItem(
+                index: 1,
+                icon: Icons.work_outline,
+                activeIcon: Icons.work,
+                label: 'Opportunities',
+              ),
+              _buildCenterFAB(),
+              _buildNavItem(
+                index: 3,
+                icon: Icons.notifications_outlined,
+                activeIcon: Icons.notifications,
+                label: 'Notifications',
+              ),
+              _buildNavItem(
+                index: 4,
+                icon: Icons.person_outline,
+                activeIcon: Icons.person,
+                label: 'Profile',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCenterFAB() {
+    return Expanded(
+      child: InkWell(
+        onTap: _navigateToPostOpportunityPage,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildNavItem(
-              index: 0,
-              icon: Icons.home_outlined,
-              activeIcon: Icons.home,
-              label: 'Home',
-            ),
-            _buildNavItem(
-              index: 1,
-              icon: Icons.work_outline,
-              activeIcon: Icons.work,
-              label: 'Opportunities',
-            ),
-            const SizedBox(width: 80), // Space for FAB
-            _buildNavItem(
-              index: 3,
-              icon: Icons.notifications_outlined,
-              activeIcon: Icons.notifications,
-              label: 'Notifications',
-            ),
-            _buildNavItem(
-              index: 4,
-              icon: Icons.person_outline,
-              activeIcon: Icons.person,
-              label: 'Profile',
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [CompanyColors.secondary, CompanyColors.accent],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: CompanyColors.secondary.withValues(alpha: 0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.add, color: Colors.white, size: 28),
             ),
           ],
         ),
@@ -1224,41 +1270,55 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       elevation: CompanySpacing.cardElevation,
       shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        constraints: const BoxConstraints(
+          minHeight: 150,
+          maxHeight: 170,
+        ),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(height: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: color,
+            const SizedBox(height: 12),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                      height: 1.0,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: CompanyColors.muted,
-                    fontWeight: FontWeight.w500,
+                  const SizedBox(height: 4),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: CompanyColors.muted,
+                      fontWeight: FontWeight.w500,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -1594,41 +1654,29 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  TextButton.icon(
-                    onPressed: () => _navigateToApplicantsList(opportunity),
-                    icon: const Icon(Icons.people_outline, size: 20),
-                    label: const Text('View Applicants'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: CompanyColors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
+            child: Row(
+              children: [
+                TextButton.icon(
+                  onPressed: () => _navigateToApplicantsList(opportunity),
+                  icon: const Icon(Icons.people_outline, size: 20),
+                  label: const Text('View Applicants'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: CompanyColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
-                  TextButton.icon(
-                    onPressed: () => _navigateToAnalytics(opportunity),
-                    icon: const Icon(Icons.auto_graph_outlined, size: 20),
-                    label: const Text('Analytics'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: CompanyColors.secondary,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blueGrey),
-                    tooltip: 'Edit Opportunity',
-                    onPressed: () => _navigateToEditOpportunity(opportunity),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Color(0xFFC62828)),
-                    tooltip: 'Delete Opportunity',
-                    onPressed: () => _deleteOpportunity(opportunity.id),
-                  ),
-                ],
-              ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.blueGrey),
+                  tooltip: 'Edit Opportunity',
+                  onPressed: () => _navigateToEditOpportunity(opportunity),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Color(0xFFC62828)),
+                  tooltip: 'Delete Opportunity',
+                  onPressed: () => _deleteOpportunity(opportunity.id),
+                ),
+              ],
             ),
           ),
         ],
