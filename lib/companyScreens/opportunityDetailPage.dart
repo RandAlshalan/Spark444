@@ -1,0 +1,641 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../models/Application.dart';
+import '../models/company.dart';
+import '../models/opportunity.dart';
+import '../models/student.dart';
+import '../services/applicationService.dart';
+import '../services/authService.dart';
+import 'EditOpportunityPage.dart';
+import 'allApplicantsPage.dart';
+import 'company_theme.dart';
+
+class OpportunityDetailPage extends StatefulWidget {
+  final Opportunity opportunity;
+  final VoidCallback onDelete;
+  final VoidCallback? onUpdate;
+
+  const OpportunityDetailPage({
+    super.key,
+    required this.opportunity,
+    required this.onDelete,
+    this.onUpdate,
+  });
+
+  @override
+  State<OpportunityDetailPage> createState() => _OpportunityDetailPageState();
+}
+
+class _AcceptedApplicant {
+  const _AcceptedApplicant({
+    required this.application,
+    required this.student,
+  });
+
+  final Application application;
+  final Student student;
+}
+
+class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
+  final ApplicationService _applicationService = ApplicationService();
+  final AuthService _authService = AuthService();
+  Company? _company;
+  bool _loadingAccepted = true;
+  String? _acceptedError;
+  List<_AcceptedApplicant> _acceptedApplicants = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCompany();
+    _loadAcceptedApplicants();
+  }
+
+  Future<void> _loadCompany() async {
+    final company = await _authService.getCurrentCompany();
+    if (mounted) {
+      setState(() {
+        _company = company;
+      });
+    }
+  }
+
+  Future<void> _loadAcceptedApplicants() async {
+    if (mounted) {
+      setState(() {
+        _loadingAccepted = true;
+        _acceptedError = null;
+      });
+    }
+    try {
+      final applications = await _applicationService
+          .getApplicationsForOpportunity(widget.opportunity.id);
+      final relevant = applications.where((application) {
+        final status = application.status.toLowerCase();
+        return status == 'accepted' || status == 'hired';
+      }).toList();
+
+      if (relevant.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _acceptedApplicants = <_AcceptedApplicant>[];
+          _loadingAccepted = false;
+        });
+        return;
+      }
+
+      final results = await Future.wait(
+        relevant.map((_application) async {
+          final student = await _authService.getStudent(_application.studentId);
+          if (student == null) return null;
+          return _AcceptedApplicant(
+            application: _application,
+            student: student,
+          );
+        }),
+      );
+
+      final accepted = results.whereType<_AcceptedApplicant>().toList()
+        ..sort(
+          (a, b) => _acceptedDate(b.application)
+              .compareTo(_acceptedDate(a.application)),
+        );
+
+      if (!mounted) return;
+      setState(() {
+        _acceptedApplicants = accepted;
+        _loadingAccepted = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading accepted applicants: $e');
+      if (!mounted) return;
+      setState(() {
+        _acceptedError = 'Could not load accepted applicants.';
+        _acceptedApplicants = <_AcceptedApplicant>[];
+        _loadingAccepted = false;
+      });
+    }
+  }
+
+  DateTime _acceptedDate(Application application) {
+    final timestamp =
+        application.lastStatusUpdateDate ?? application.appliedDate;
+    return timestamp.toDate();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final opportunity = widget.opportunity;
+    final postedDate = opportunity.postedDate?.toDate();
+    final postedLabel = postedDate != null
+        ? DateFormat('MMM d, yyyy').format(postedDate)
+        : 'Date not available';
+
+    return Scaffold(
+      backgroundColor: CompanyColors.background,
+      appBar: AppBar(
+        backgroundColor: CompanyColors.primary,
+        foregroundColor: Colors.white,
+        title: const Text('Opportunity Details'),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            tooltip: 'Edit Opportunity',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      EditOpportunityPage(opportunity: opportunity),
+                ),
+              );
+              if (widget.onUpdate != null) {
+                widget.onUpdate!();
+              }
+              _loadAcceptedApplicants();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete),
+            tooltip: 'Delete Opportunity',
+            onPressed: () => _showDeleteConfirmation(context),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(opportunity, postedLabel),
+            _buildDetailsSection(opportunity),
+            _buildAcceptedApplicantsSection(),
+            _buildApplicantsButton(context, opportunity),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(Opportunity opportunity, String postedLabel) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(
+        gradient: CompanyColors.heroGradient,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.calendar_today, size: 14, color: Colors.white),
+                const SizedBox(width: 6),
+                Text(
+                  'Posted $postedLabel',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            opportunity.name,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            opportunity.role,
+            style: const TextStyle(
+              fontSize: 18,
+              color: Colors.white70,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildChip(opportunity.type, Icons.work_outline),
+              if (opportunity.workMode != null && opportunity.workMode!.isNotEmpty)
+                _buildChip(opportunity.workMode!, Icons.apartment_outlined),
+              if (opportunity.location != null && opportunity.location!.isNotEmpty)
+                _buildChip(opportunity.location!, Icons.location_on_outlined),
+              _buildChip(
+                opportunity.isPaid ? 'Paid' : 'Unpaid',
+                opportunity.isPaid
+                    ? Icons.payments_outlined
+                    : Icons.volunteer_activism_outlined,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChip(String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailsSection(Opportunity opportunity) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: CompanyColors.surface,
+        borderRadius: CompanySpacing.cardRadius,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Details',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: CompanyColors.primary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (opportunity.preferredMajor != null && opportunity.preferredMajor!.isNotEmpty)
+            _buildDetailRow(
+              'Preferred Major',
+              opportunity.preferredMajor!,
+              Icons.school_outlined,
+            ),
+          if (opportunity.description != null && opportunity.description!.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Text(
+              'Description',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: CompanyColors.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              opportunity.description!,
+              style: const TextStyle(
+                fontSize: 14,
+                color: CompanyColors.muted,
+                height: 1.5,
+              ),
+            ),
+          ],
+          if (opportunity.skills != null && opportunity.skills!.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Text(
+              'Required Skills',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: CompanyColors.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: opportunity.skills!
+                  .map((skill) => Chip(
+                        label: Text(
+                          skill,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: CompanyColors.primary,
+                          ),
+                        ),
+                        backgroundColor: CompanyColors.primary.withOpacity(0.12),
+                        side: BorderSide.none,
+                      ))
+                  .toList(),
+            ),
+          ],
+          if (opportunity.requirements != null && opportunity.requirements!.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Text(
+              'Requirements',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: CompanyColors.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...opportunity.requirements!.map((req) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.check_circle_outline,
+                        size: 18,
+                        color: CompanyColors.secondary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          req,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: CompanyColors.muted,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: CompanyColors.primary),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: CompanyColors.muted,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: CompanyColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAcceptedApplicantsSection() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: CompanyColors.surface,
+        borderRadius: CompanySpacing.cardRadius,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text(
+                'Accepted Applicants',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: CompanyColors.primary,
+                ),
+              ),
+              if (!_loadingAccepted && _acceptedError == null)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: CompanyColors.primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_acceptedApplicants.length}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: CompanyColors.primary,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_loadingAccepted)
+            const Center(child: CircularProgressIndicator())
+          else if (_acceptedError != null)
+            Text(
+              _acceptedError!,
+              style: const TextStyle(color: Colors.redAccent),
+            )
+          else if (_acceptedApplicants.isEmpty)
+            const Text(
+              'No applicants have been accepted yet.',
+              style: TextStyle(
+                fontSize: 14,
+                color: CompanyColors.muted,
+              ),
+            )
+          else
+            Column(
+              children: _acceptedApplicants
+                  .map(_buildAcceptedApplicantTile)
+                  .toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAcceptedApplicantTile(_AcceptedApplicant applicant) {
+    final student = applicant.student;
+    final fullName = '${student.firstName} ${student.lastName}'.trim();
+    final displayName =
+        fullName.isEmpty ? student.email : fullName.replaceAll(RegExp(r'\s+'), ' ');
+    final acceptedOn = DateFormat('MMM d, yyyy')
+        .format(_acceptedDate(applicant.application));
+    final initials = _initialsForStudent(student);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        dense: true,
+        leading: CircleAvatar(
+          backgroundColor: CompanyColors.primary.withOpacity(0.12),
+          foregroundColor: CompanyColors.primary,
+          child: Text(initials.isEmpty ? '?' : initials),
+        ),
+        title: Text(
+          displayName,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            color: CompanyColors.primary,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              student.email,
+              style: const TextStyle(
+                fontSize: 13,
+                color: CompanyColors.muted,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Accepted on $acceptedOn',
+              style: const TextStyle(
+                fontSize: 12,
+                color: CompanyColors.muted,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _initialsForStudent(Student student) {
+    String initials = '';
+    final first = student.firstName.trim();
+    final last = student.lastName.trim();
+
+    if (first.isNotEmpty) {
+      initials += first[0].toUpperCase();
+    }
+    if (last.isNotEmpty) {
+      initials += last[0].toUpperCase();
+    }
+    if (initials.isEmpty && student.email.isNotEmpty) {
+      initials = student.email[0].toUpperCase();
+    }
+    return initials;
+  }
+
+  Widget _buildApplicantsButton(BuildContext context, Opportunity opportunity) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _company == null
+            ? null
+            : () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AllApplicantsPage(
+                      company: _company!,
+                      opportunity: opportunity,
+                    ),
+                  ),
+                );
+                _loadAcceptedApplicants();
+              },
+        icon: const Icon(Icons.people_outline),
+        label: const Text('View All Applicants'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: CompanyColors.secondary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context) {
+    final opportunity = widget.opportunity;
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Opportunity'),
+          content: Text(
+            'Are you sure you want to delete "${opportunity.name}"? This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                widget.onDelete();
+                Navigator.of(context).pop(); // Go back after deleting
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}

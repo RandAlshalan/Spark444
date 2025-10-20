@@ -8,6 +8,7 @@ import 'editCompanyProfilePage.dart';
 import 'PostOpportunityPage.dart';
 import 'EditOpportunityPage.dart';
 import 'opportunityAnalyticsPage.dart';
+import 'opportunityDetailPage.dart';
 import 'allApplicantsPage.dart';
 import 'followersPage.dart';
 import 'notificationsPage.dart';
@@ -862,7 +863,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             ),
           )
         else
-          ...activeOpportunities.map(_buildOpportunityCard),
+          ...activeOpportunities.map(_buildCompactOpportunityCard),
 
         // Past Opportunities Section
         if (pastOpportunities.isNotEmpty) ...[
@@ -876,7 +877,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             ),
           ),
           const SizedBox(height: 16),
-          ...pastOpportunities.map(_buildOpportunityCard),
+          ...pastOpportunities.map(_buildCompactOpportunityCard),
         ],
         const SizedBox(height: 100),
         ]),
@@ -1461,7 +1462,19 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       elevation: CompanySpacing.cardElevation,
       shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
       child: InkWell(
-        onTap: () => _navigateToApplicantsList(opportunity),
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OpportunityDetailPage(
+                opportunity: opportunity,
+                onDelete: () => _deleteOpportunity(opportunity.id),
+                onUpdate: _fetchCompanyData,
+              ),
+            ),
+          );
+          _fetchCompanyData(); // Refresh data when returning
+        },
         borderRadius: CompanySpacing.cardRadius,
         child: Padding(
           padding: const EdgeInsets.all(16),
