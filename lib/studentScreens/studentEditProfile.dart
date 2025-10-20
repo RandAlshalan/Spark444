@@ -13,6 +13,7 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/document_group.dart';
+import '../companyScreens/company_theme.dart';
 
 import '../../../models/student.dart';
 import '../../../services/authService.dart';
@@ -2153,75 +2154,95 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
     IconData icon;
     Color iconColor;
+    Color accentColor;
 
     switch (extension) {
       case 'pdf':
         icon = Icons.picture_as_pdf;
-        iconColor = Colors.red.shade400;
+        iconColor = const Color(0xFFC62828);
+        accentColor = const Color(0xFFFDE0DC);
         break;
       case 'png':
       case 'jpg':
       case 'jpeg':
         icon = Icons.image;
-        iconColor = Colors.blue.shade400;
+        iconColor = CompanyColors.secondary;
+        accentColor = const Color(0xFFFBE3EE);
         break;
       case 'doc':
       case 'docx':
         icon = Icons.description;
-        iconColor = Colors.blue.shade700;
+        iconColor = const Color(0xFF1565C0);
+        accentColor = const Color(0xFFE3F2FD);
         break;
       case 'txt':
         icon = Icons.text_snippet;
-        iconColor = Colors.grey.shade600;
+        iconColor = CompanyColors.muted;
+        accentColor = const Color(0xFFF3F4F6);
         break;
       default:
         icon = Icons.insert_drive_file;
-        iconColor = Colors.grey;
+        iconColor = CompanyColors.primary;
+        accentColor = const Color(0xFFEDE7F6);
     }
 
     return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      elevation: CompanySpacing.cardElevation,
+      color: CompanyColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: InkWell(
         onTap: () => _previewDocument(document),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 40, color: iconColor),
-              const SizedBox(height: 12),
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 28, color: iconColor),
+              ),
+              const SizedBox(height: 14),
               Expanded(
                 child: Center(
                   child: Text(
                     document.name,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 13),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: CompanyColors.primary,
+                    ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 14),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
                     onPressed: () => _previewDocument(document),
-                    icon: const Icon(Icons.visibility_outlined),
+                    icon: const Icon(Icons.visibility_outlined,
+                        color: CompanyColors.primary),
                     tooltip: 'Preview',
-                    iconSize: 20,
+                    iconSize: 22,
                   ),
                   if (_editMode)
                     IconButton(
                       onPressed: () => _deleteDocument(groupId, document),
-                      icon: const Icon(Icons.delete_outline),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: CompanyColors.secondary,
+                      ),
                       tooltip: 'Delete',
-                      color: Colors.red,
-                      iconSize: 20,
+                      iconSize: 22,
                     ),
                 ],
               ),
@@ -2240,9 +2261,12 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         if (!didPop) Navigator.of(context).pop(_changed);
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: CompanyColors.background,
         appBar: AppBar(
           title: const Text('Documents'),
+          backgroundColor: CompanyColors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
           actions: [
             if (_editMode)
               Padding(
@@ -2253,7 +2277,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   label: const Text('Add Group'),
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white,
-                    backgroundColor: Colors.blue.shade700,
+                    backgroundColor: Colors.white.withOpacity(0.18),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -2263,6 +2287,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               ),
             IconButton(
               icon: Icon(_editMode ? Icons.check : Icons.edit),
+              color: Colors.white,
               onPressed: () {
                 setState(() {
                   _editMode = !_editMode;
@@ -2272,114 +2297,307 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
             ),
           ],
         ),
-        body: RefreshIndicator(
-          onRefresh: _loadGroups,
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _groups.isEmpty
-                  ? const Center(child: Text('No document groups yet.'))
-                  : ReorderableListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _groups.length,
-                      onReorder: _reorderGroups,
-                      itemBuilder: (context, index) {
-                        final group = _groups[index];
-                        final files = _groupFiles[group.id] ?? [];
-                        final isUntitled = group.title == 'Untitled';
+        body: Container(
+          decoration: CompanyDecorations.pageBackground,
+          child: SafeArea(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    color: CompanyColors.primary,
+                    backgroundColor: CompanyColors.surface,
+                    onRefresh: _loadGroups,
+                    child: _groups.isEmpty
+                        ? _buildEmptyState(context)
+                        : ReorderableListView.builder(
+                            padding: CompanySpacing.pagePadding(context),
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            header: _buildDocumentsHeader(),
+                            itemCount: _groups.length,
+                            onReorder: _reorderGroups,
+                            itemBuilder: (context, index) {
+                              final group = _groups[index];
+                              final files = _groupFiles[group.id] ?? [];
+                              final isUntitled = group.title == 'Untitled';
 
-                        return Card(
-                          color: Colors.white,
-                          key: ValueKey(group.id),
-                          margin: const EdgeInsets.only(bottom: 16),
-                          elevation: 2,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ListTile(
-                                leading: _editMode
-                                    ? const Icon(
-                                        Icons.drag_handle,
-                                        color: Colors.grey,
-                                      )
-                                    : null,
-                                title: Text(
-                                  group.title,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              return Card(
+                                key: ValueKey(group.id),
+                                margin: const EdgeInsets.only(bottom: 20),
+                                elevation: CompanySpacing.cardElevation,
+                                color: CompanyColors.surface,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: CompanySpacing.cardRadius,
                                 ),
-                                subtitle: Text('${files.length} document(s)'),
-                                trailing: _editMode
-                                    ? Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          IconButton(
-                                            icon: const Icon(Icons.upload_file),
-                                            onPressed: () => _uploadDocument(group.id),
-                                            tooltip: 'Upload Document',
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.edit),
-                                            onPressed: () => _editGroupName(group),
-                                            tooltip: 'Edit Group Name',
-                                          ),
-                                          if (!isUntitled)
-                                            IconButton(
-                                              icon: const Icon(Icons.delete),
-                                              onPressed: () => _deleteGroup(group),
-                                              tooltip: 'Delete Group',
-                                              color: Colors.red,
-                                            ),
-                                        ],
-                                      )
-                                    : null,
-                              ),
-                              if (files.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.all(16.0),
-                                  child: Center(
-                                    child: Text(
-                                      'No documents in this group yet.',
-                                      style: TextStyle(color: Colors.grey),
-                                    ),
-                                  ),
-                                )
-                              else
-                                Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      final bool isWide = constraints.maxWidth >= 600;
-                                      final int crossAxisCount = isWide ? 3 : 2;
-                                      final double childAspectRatio = isWide ? 1.0 : 0.75;
-
-                                      return GridView.builder(
-                                        shrinkWrap: true,
-                                        physics: const NeverScrollableScrollPhysics(),
-                                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                          crossAxisCount: crossAxisCount,
-                                          crossAxisSpacing: 12,
-                                          mainAxisSpacing: 12,
-                                          childAspectRatio: childAspectRatio,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 18,
+                                      ),
+                                      decoration: const BoxDecoration(
+                                        gradient: CompanyColors.heroGradient,
+                                        borderRadius: BorderRadius.vertical(
+                                          top: Radius.circular(20),
                                         ),
-                                        itemCount: files.length,
-                                        itemBuilder: (context, fileIndex) {
-                                          return _buildDocumentCard(
-                                            group.id,
-                                            files[fileIndex],
-                                          );
-                                        },
-                                      );
-                                    },
-                                  ),
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          if (_editMode) ...[
+                                            const Icon(
+                                              Icons.drag_indicator,
+                                              color: Colors.white70,
+                                            ),
+                                            const SizedBox(width: 12),
+                                          ],
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  group.title,
+                                                  style: const TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '${files.length} document(s)',
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.white70,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          if (_editMode)
+                                            Wrap(
+                                              spacing: 6,
+                                              children: [
+                                                IconButton(
+                                                  onPressed: () => _uploadDocument(group.id),
+                                                  icon: const Icon(Icons.upload_file, color: Colors.white),
+                                                  tooltip: 'Upload Document',
+                                                ),
+                                                IconButton(
+                                                  onPressed: () => _editGroupName(group),
+                                                  icon: const Icon(Icons.edit_outlined, color: Colors.white),
+                                                  tooltip: 'Rename Group',
+                                                ),
+                                                if (!isUntitled)
+                                                  IconButton(
+                                                    onPressed: () => _deleteGroup(group),
+                                                    icon: const Icon(Icons.delete_outline, color: Colors.white),
+                                                    tooltip: 'Delete Group',
+                                                  ),
+                                              ],
+                                            )
+                                        ],
+                                      ),
+                                    ),
+                                    if (files.isEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.all(20),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: const [
+                                            Icon(Icons.folder_open, color: CompanyColors.muted),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'No documents in this group yet.',
+                                              style: TextStyle(
+                                                color: CompanyColors.muted,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    else
+                                      Padding(
+                                        padding: const EdgeInsets.all(20),
+                                        child: LayoutBuilder(
+                                          builder: (context, constraints) {
+                                            final bool isWide = constraints.maxWidth >= 600;
+                                            final int crossAxisCount = isWide ? 3 : 2;
+                                            final double childAspectRatio = isWide ? 0.82 : 0.75;
+
+                                            return GridView.builder(
+                                              shrinkWrap: true,
+                                              physics: const NeverScrollableScrollPhysics(),
+                                              gridDelegate:
+                                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                                crossAxisCount: crossAxisCount,
+                                                crossAxisSpacing: 16,
+                                                mainAxisSpacing: 16,
+                                                childAspectRatio: childAspectRatio,
+                                              ),
+                                              itemCount: files.length,
+                                              itemBuilder: (context, fileIndex) {
+                                                return _buildDocumentCard(
+                                                  group.id,
+                                                  files[fileIndex],
+                                                );
+                                              },
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                            ],
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
+                  ),
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return ListView(
+      padding: CompanySpacing.pagePadding(context),
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        _buildDocumentsHeader(),
+        Card(
+          elevation: CompanySpacing.cardElevation,
+          shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
+          color: CompanyColors.surface,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'No document groups yet',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: CompanyColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Create your first group to organise resumes, certificates, and other supporting files.',
+                  style: TextStyle(color: CompanyColors.muted),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: _addNewGroup,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: CompanyColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.add_circle_outline),
+                  label: const Text('Add Group'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDocumentsHeader() {
+    final totalDocuments = _groupFiles.values.fold<int>(
+      0,
+      (sum, files) => sum + files.length,
+    );
+    final totalGroups = _groups.length;
+    final headline = widget.student.firstName.isNotEmpty
+        ? '${widget.student.firstName}\'s Document Library'
+        : 'Document Library';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: CompanyColors.heroGradient,
+            borderRadius: CompanySpacing.cardRadius,
+            boxShadow: [
+              BoxShadow(
+                color: CompanyColors.primary.withOpacity(0.18),
+                blurRadius: 20,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                headline,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Organise your documents and keep them ready to share with companies.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _buildSummaryChip(
+                    Icons.folder_open,
+                    '$totalGroups ${totalGroups == 1 ? 'Group' : 'Groups'}',
+                  ),
+                  _buildSummaryChip(
+                    Icons.insert_drive_file_rounded,
+                    '$totalDocuments ${totalDocuments == 1 ? 'Document' : 'Documents'}',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildSummaryChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: Colors.white),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+        ],
       ),
     );
   }
