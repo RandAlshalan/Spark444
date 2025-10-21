@@ -590,6 +590,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         return RefreshIndicator(
           onRefresh: _fetchOpportunities, // Allow pull-to-refresh
           child: ListView.builder(
+            key: const PageStorageKey<String>('studentOppList'),
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             itemCount: _opportunities.length,
             itemBuilder: (context, index) {

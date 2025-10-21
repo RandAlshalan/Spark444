@@ -3,9 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:my_app/models/company.dart';
 import 'package:my_app/models/opportunity.dart';
+import 'package:my_app/models/Application.dart';
+import 'package:my_app/services/applicationService.dart';
 import 'package:my_app/services/authService.dart';
 import 'package:my_app/services/bookmarkService.dart';
 import '../studentScreens/studentOppDetails.dart'; // Contains OpportunityDetailsContent
+import 'package:my_app/studentScreens/studentCompanyProfilePage.dart'; // For company profile page
 
 class SavedstudentOppPgae extends StatefulWidget {
   final String studentId;
@@ -19,10 +22,12 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
   // --- Services ---
   final BookmarkService _bookmarkService = BookmarkService();
   final AuthService _authService = AuthService();
+  final ApplicationService _applicationService = ApplicationService();
 
   // --- State Variables ---
   Opportunity? _selectedOpportunity; // Selected opportunity for detail view
-  bool _isLoading = false; // Optional loading state
+  Application? _currentApplication; // Holds application for the selected opportunity
+  bool _isApplying = false; // Tracks if an application is being submitted/fetched
 
   @override
   Widget build(BuildContext context) {
@@ -39,8 +44,14 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
         leading: _selectedOpportunity != null
             ? IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () =>
-                    setState(() => _selectedOpportunity = null), // Back to list
+                onPressed: () {
+                  // Go back to the list
+                  setState(() {
+                    _selectedOpportunity = null;
+                    _currentApplication = null;
+                    _isApplying = false;
+                  });
+                },
               )
             : null,
       ),
@@ -50,19 +61,21 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
 
   /// --- Main body builder ---
   Widget _buildBody() {
-    // Show loading spinner if needed
-    if (_isLoading) {
-      return const Center(
-          child: CircularProgressIndicator(color: Color(0xFF422F5D)));
-    }
-
-    // If an opportunity is selected → show details
+    // If an opportunity is selected
     if (_selectedOpportunity != null) {
+      // If we are fetching the application status
+      if (_isApplying) {
+        return const Center(
+            child: CircularProgressIndicator(color: Color(0xFF422F5D)));
+      }
+
+      // If loading is complete, show details
       return OpportunityDetailsContent(
         opportunity: _selectedOpportunity!,
-        onNavigateToCompany: (companyId) {
-          // TODO: navigate to company profile if desired
-        },
+        application: _currentApplication, // Pass the current application (or null)
+        onNavigateToCompany: _navigateToCompanyProfile, // Pass navigation function
+        onApply: _handleApplyToOpportunity, // Pass apply function
+        onWithdraw: _handleWithdrawApplication, // Pass withdraw function
       );
     }
 
@@ -230,8 +243,8 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
               children: [
                 TextButton(
                   onPressed: () {
-                    // Show details inside the same screen
-                    setState(() => _selectedOpportunity = opportunity);
+                    // Call the function that fetches status and shows details
+                    _viewOpportunityDetails(opportunity);
                   },
                   child: const Text(
                     'View More',
@@ -290,6 +303,170 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not update bookmark.')),
         );
+      }
+    }
+  }
+
+  /// --- Navigation Function ---
+  /// Navigate to the company profile page
+  void _navigateToCompanyProfile(String companyId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StudentCompanyProfilePage(companyId: companyId),
+      ),
+    );
+  }
+
+  /// --- Application Logic Functions ---
+
+  /// Switch to detail view and fetch application status
+  void _viewOpportunityDetails(Opportunity opportunity) async {
+    // 1. Update state to show loading screen
+    setState(() {
+      _selectedOpportunity = opportunity;
+      _currentApplication = null; // Reset application
+      _isApplying = true; // Show loading indicator
+    });
+
+    try {
+      // 2. Fetch application status
+      final app = await _applicationService.getApplicationForOpportunity(
+        studentId: widget.studentId,
+        opportunityId: opportunity.id,
+      );
+      if (!mounted) return;
+
+      // 3. Update state with the new application and stop loading
+      setState(() {
+        _currentApplication = app as Application?; // Store the application (or null)
+        _isApplying = false; // Stop loading indicator
+      });
+    } catch (e) {
+      debugPrint("Error fetching application: $e");
+      if (mounted) {
+        setState(() => _isApplying = false); // Stop loading on error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not load application status: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Called when "Apply Now" is pressed
+  Future<void> _handleApplyToOpportunity() async {
+    if (_selectedOpportunity == null) return;
+
+    // Show confirmation dialog
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Application'),
+        content: Text(
+          'Are you sure you want to apply for the role of ${_selectedOpportunity!.role}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF422F5D),
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Apply', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return; // User pressed "Cancel"
+
+    setState(() => _isApplying = true); // Show loading
+    try {
+      // Call service to submit application
+      await _applicationService.submitApplication(
+        studentId: widget.studentId,
+        opportunityId: _selectedOpportunity!.id,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Application submitted successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Reload application status to show "Withdraw" button
+        _viewOpportunityDetails(_selectedOpportunity!);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      // Stop loading only on failure
+      setState(() => _isApplying = false);
+    }
+  }
+
+  /// Called when "Withdraw" is pressed
+  Future<void> _handleWithdrawApplication() async {
+    if (_currentApplication == null) return;
+
+    // Show confirmation dialog
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Withdraw Application?'),
+        content: const Text(
+          'This will update your application status to "Withdrawn". You cannot undo this.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Withdraw', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        // Call service to withdraw application
+        await _applicationService.withdrawApplication(
+          applicationId: _currentApplication!.id,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Application withdrawn.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Reload application status to show "Apply" button
+          _viewOpportunityDetails(_selectedOpportunity!);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
