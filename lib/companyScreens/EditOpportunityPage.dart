@@ -154,9 +154,12 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
     _endDate = widget.opportunity.endDate?.toDate();
     _applicationOpenDate = widget.opportunity.applicationOpenDate?.toDate();
     _applicationDeadline = widget.opportunity.applicationDeadline?.toDate();
-    _responseDeadline = widget.opportunity.responseDeadline?.toDate();
+    _responseDeadline =
+        widget.opportunity.responseDeadline?.toDate() ??
+        (_applicationDeadline?.add(const Duration(days: 1)) ??
+            DateTime.now().add(const Duration(days: 7)));
     _responseDeadlineVisible =
-        widget.opportunity.responseDeadlineVisible ?? false;
+        widget.opportunity.responseDeadlineVisible ?? true;
 
     // Populate skills and requirements
     if (widget.opportunity.skills != null) {
@@ -268,28 +271,27 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
   Future<void> _updateOpportunity() async {
     if (_formKey.currentState!.validate()) {
       // Validation logic similar to post opportunity
-      if (_responseDeadline != null) {
-        if (_applicationDeadline != null &&
-            !_responseDeadline!.isAfter(_applicationDeadline!)) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Response deadline must be after the application deadline.',
-              ),
+      // Response deadline validation (now always required)
+      if (_applicationDeadline != null &&
+          !_responseDeadline!.isAfter(_applicationDeadline!)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Response deadline must be after the application deadline.',
             ),
-          );
-          return;
-        }
-        if (_startDate != null && !_responseDeadline!.isBefore(_startDate!)) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Response deadline must be before the opportunity start date.',
-              ),
+          ),
+        );
+        return;
+      }
+      if (_startDate != null && !_responseDeadline!.isBefore(_startDate!)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Response deadline must be before the opportunity start date.',
             ),
-          );
-          return;
-        }
+          ),
+        );
+        return;
       }
 
       setState(() => _isLoading = true);
@@ -326,9 +328,9 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
         applicationDeadline: _applicationDeadline != null
             ? Timestamp.fromDate(_applicationDeadline!)
             : null,
-        responseDeadline: _responseDeadline != null
-            ? Timestamp.fromDate(_responseDeadline!)
-            : null,
+        responseDeadline: Timestamp.fromDate(
+          _responseDeadline!,
+        ), // Always required now
         responseDeadlineVisible: _responseDeadlineVisible,
         postedDate: widget.opportunity.postedDate, // Keep original posted date
         isActive: widget.opportunity.isActive,
@@ -649,7 +651,7 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
                         controller: _otherMajorController,
                         labelText: 'Specify Major',
                         icon: Icons.school,
-                        maxLength: 40,
+                        inputFormatters: [LengthLimitingTextInputFormatter(40)],
                         validator: (value) {
                           if (_selectedMajor == 'Other' &&
                               (value == null || value.trim().isEmpty)) {
@@ -776,6 +778,12 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
                         if (_startDate == null || _endDate == null) {
                           return 'Please select opportunity dates';
                         }
+                        if (_applicationDeadline != null &&
+                            _startDate != null) {
+                          if (!_applicationDeadline!.isBefore(_startDate!)) {
+                            return 'Opportunity must start after application deadline';
+                          }
+                        }
                         return null;
                       },
                     ),
@@ -789,6 +797,12 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
                         if (_applicationOpenDate == null ||
                             _applicationDeadline == null) {
                           return 'Please select application dates';
+                        }
+                        if (_applicationDeadline != null &&
+                            _startDate != null) {
+                          if (!_applicationDeadline!.isBefore(_startDate!)) {
+                            return 'Application deadline must be before opportunity starts';
+                          }
                         }
                         return null;
                       },
@@ -995,6 +1009,22 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
   Widget _buildResponseDeadlineSection() {
     return Column(
       children: [
+        _buildDateRangeField(
+          controller: TextEditingController(
+            text: _responseDeadline != null
+                ? DateFormat('MMM dd, yyyy').format(_responseDeadline!)
+                : '',
+          ),
+          labelText: 'Response Deadline (Required)',
+          icon: Icons.schedule,
+          onTap: () => _selectResponseDeadline(context),
+          validator: (value) {
+            if (_responseDeadline == null) {
+              return 'Please select a response deadline';
+            }
+            return null;
+          },
+        ),
         Container(
           margin: const EdgeInsets.symmetric(vertical: 8.0),
           padding: const EdgeInsets.all(12),
@@ -1007,64 +1037,18 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
             children: [
               const Expanded(
                 child: Text(
-                  'Set response deadline?',
+                  'Show response deadline to students?',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
                 ),
               ),
               Switch(
-                value: _responseDeadline != null,
-                onChanged: (v) {
-                  setState(() {
-                    if (v) {
-                      // Enable response deadline - show date picker
-                      _selectResponseDeadline(context);
-                    } else {
-                      // Disable response deadline
-                      _responseDeadline = null;
-                      _responseDeadlineVisible = false;
-                    }
-                  });
-                },
+                value: _responseDeadlineVisible,
+                onChanged: (v) => setState(() => _responseDeadlineVisible = v),
                 activeColor: accentColor,
               ),
             ],
           ),
         ),
-        if (_responseDeadline != null) ...[
-          _buildDateRangeField(
-            controller: TextEditingController(
-              text: DateFormat('MMM dd, yyyy').format(_responseDeadline!),
-            ),
-            labelText: 'Response Deadline',
-            icon: Icons.schedule,
-            onTap: () => _selectResponseDeadline(context),
-          ),
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 8.0),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Show response deadline to students?',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                  ),
-                ),
-                Switch(
-                  value: _responseDeadlineVisible,
-                  onChanged: (v) =>
-                      setState(() => _responseDeadlineVisible = v),
-                  activeColor: accentColor,
-                ),
-              ],
-            ),
-          ),
-        ],
       ],
     );
   }
