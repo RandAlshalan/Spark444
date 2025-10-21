@@ -2640,7 +2640,6 @@ class _ExperienceEditFormState extends State<_ExperienceEditForm> {
               'Full-time',
               'Part-time',
               'Bootcamp',
-              'Other',
             ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
             onChanged: (val) => setState(() => _type = val ?? 'Internship'),
           ),

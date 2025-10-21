@@ -50,6 +50,8 @@ class PdfPreviewScreen extends StatelessWidget {
         // 'canChangePageFormat: false' hides the button that lets the user
         // change the paper size (like from A4 to Letter). We don't need this.
         canChangePageFormat: false,
+        canChangeOrientation: false,
+        canDebug: false,
       ),
     );
   }
