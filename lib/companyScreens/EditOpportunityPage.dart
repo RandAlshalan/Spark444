@@ -117,29 +117,36 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
       _selectedLocation = widget.opportunity.location;
     }
 
-    // Handle preferred major - check if it's a custom major (not in the predefined list)
+    // Handle preferred major - will be set after majors list loads
     final existingMajor = widget.opportunity.preferredMajor;
+    _displayMajor = existingMajor;
+    _selectedMajor = existingMajor;
+
+    // Check if it's a custom major after the majors list loads
     if (existingMajor != null && existingMajor.isNotEmpty) {
-      // Wait for majors list to load before checking
       _loadMajorsFuture.then((_) {
-        if (mounted && !_majorsList.contains(existingMajor)) {
-          // It's a custom major, set it as "Other" and populate the text field
-          setState(() {
-            _selectedMajor = 'Other';
-            _displayMajor = 'Other';
-            _otherMajorController.text = existingMajor;
-          });
-        } else {
-          // It's a predefined major
-          setState(() {
-            _displayMajor = existingMajor;
-            _selectedMajor = existingMajor;
+        if (mounted) {
+          // Use WidgetsBinding to schedule the setState after the current frame
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+
+            if (!_majorsList.contains(existingMajor)) {
+              // It's a custom major, set it as "Other" and populate the text field
+              setState(() {
+                _selectedMajor = 'Other';
+                _displayMajor = 'Other';
+                _otherMajorController.text = existingMajor;
+              });
+            } else {
+              // It's a predefined major, just ensure state is correct
+              setState(() {
+                _displayMajor = existingMajor;
+                _selectedMajor = existingMajor;
+              });
+            }
           });
         }
       });
-    } else {
-      _displayMajor = existingMajor;
-      _selectedMajor = existingMajor;
     }
 
     // Handle dates

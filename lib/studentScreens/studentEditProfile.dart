@@ -12,6 +12,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../models/document_group.dart';
 import '../companyScreens/company_theme.dart';
 
@@ -1888,22 +1889,26 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
   Future<void> _previewDocument(StoredFile file) async {
     final messenger = ScaffoldMessenger.of(context);
-
     try {
       final uri = Uri.parse(file.url);
-
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
-      } else {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Could not open document'),
-            backgroundColor: Colors.red,
+      if (uri.scheme.startsWith('http')) {
+        if (!context.mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => _DocumentPreviewPage(title: file.name, url: file.url),
           ),
         );
+      } else {
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.inAppWebView);
+        } else {
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Could not open document'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       messenger.showSnackBar(
@@ -2611,6 +2616,21 @@ class GeneratedResumesScreen extends StatefulWidget {
 
   @override
   State<GeneratedResumesScreen> createState() => _GeneratedResumesScreenState();
+}
+
+class _DocumentPreviewPage extends StatelessWidget {
+  const _DocumentPreviewPage({required this.title, required this.url});
+
+  final String title;
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: SfPdfViewer.network(url),
+    );
+  }
 }
 
 class _GeneratedResumesScreenState extends State<GeneratedResumesScreen> {
