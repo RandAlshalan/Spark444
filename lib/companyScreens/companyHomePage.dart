@@ -211,13 +211,22 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   Future<void> _deleteOpportunity(String opportunityId) async {
+    if (opportunityId.isEmpty) {
+      _showSnackBar('Invalid opportunity ID');
+      return;
+    }
+
     final bool? confirm = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Opportunity'),
+        title: const Text(
+          'Delete Opportunity',
+          style: TextStyle(color: CompanyColors.primary),
+        ),
         content: const SingleChildScrollView(
           child: Text(
-            'Are you sure you want to permanently delete this opportunity?',
+            'Are you sure you want to permanently delete this opportunity? This action cannot be undone.',
           ),
         ),
         actions: [
@@ -227,7 +236,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+              backgroundColor: Colors.red.withOpacity(0.1),
+            ),
             child: const Text('Delete'),
           ),
         ],
@@ -235,14 +247,88 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     );
 
     if (confirm == true) {
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Deleting opportunity...'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+
       try {
         await _opportunityService.deleteOpportunity(opportunityId);
         if (!mounted) return;
         _showSnackBar('Opportunity deleted successfully.');
-        _fetchCompanyData();
+        await _fetchCompanyData();
       } catch (e) {
         if (!mounted) return;
-        _showSnackBar('Error deleting opportunity: $e');
+        _showSnackBar('Error deleting opportunity: ${e.toString().replaceAll('Exception: ', '')}');
+      }
+    }
+  }
+
+  // Method for deleting from detail page - includes navigation back
+  void _deleteOpportunityFromDetail(String opportunityId) async {
+    if (opportunityId.isEmpty) {
+      _showSnackBar('Invalid opportunity ID');
+      return;
+    }
+
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Delete Opportunity',
+          style: TextStyle(color: CompanyColors.primary),
+        ),
+        content: const SingleChildScrollView(
+          child: Text(
+            'Are you sure you want to permanently delete this opportunity? This action cannot be undone.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+              backgroundColor: Colors.red.withOpacity(0.1),
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Deleting opportunity...'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+
+      try {
+        await _opportunityService.deleteOpportunity(opportunityId);
+        if (!mounted) return;
+
+        // Navigate back before showing success message
+        Navigator.of(context).pop();
+
+        _showSnackBar('Opportunity deleted successfully.');
+        await _fetchCompanyData();
+      } catch (e) {
+        if (!mounted) return;
+        _showSnackBar('Error deleting opportunity: ${e.toString().replaceAll('Exception: ', '')}');
       }
     }
   }
@@ -1566,7 +1652,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             MaterialPageRoute(
               builder: (context) => OpportunityDetailPage(
                 opportunity: opportunity,
-                onDelete: () => _deleteOpportunity(opportunity.id),
+                onDelete: () => _deleteOpportunityFromDetail(opportunity.id),
                 onUpdate: _fetchCompanyData,
               ),
             ),

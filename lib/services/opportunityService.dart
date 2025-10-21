@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/opportunity.dart';
+import 'authService.dart';
 
 class OpportunityService {
   //`withConverter`
@@ -86,11 +87,49 @@ class OpportunityService {
   }
 
   Future<void> deleteOpportunity(String opportunityId) async {
+    if (opportunityId.isEmpty) {
+      throw Exception('Invalid opportunity ID');
+    }
+
+    final firestore = FirebaseFirestore.instance;
+    final oppDocRef = firestore.collection('opportunities').doc(opportunityId);
+
     try {
-      await _opportunitiesRef.doc(opportunityId).delete();
+      final snapshot = await oppDocRef.get();
+      if (!snapshot.exists) {
+        throw Exception('Opportunity no longer exists.');
+      }
+
+      final data = snapshot.data() as Map<String, dynamic>;
+      final companyId = (data['companyId'] as String?) ?? '';
+
+      // Prepare batch for deleting related application documents
+      final batch = firestore.batch();
+
+      // Delete opportunity document
+      batch.delete(oppDocRef);
+
+      // Remove opportunityId from company's opportunitiesPosted array if present
+      if (companyId.isNotEmpty) {
+        final companyDoc = firestore.collection(AuthService.kCompanyCol).doc(companyId);
+        batch.update(companyDoc, {
+          'opportunitiesPosted': FieldValue.arrayRemove([opportunityId]),
+        });
+      }
+
+      // Collect related applications
+      final applicationsSnapshot = await firestore
+          .collection('applications')
+          .where('opportunityId', isEqualTo: opportunityId)
+          .get();
+
+      for (final doc in applicationsSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
     } catch (e) {
-      print('Error deleting opportunity: $e');
-      rethrow;
+      throw Exception('Failed to delete opportunity: $e');
     }
   }
 }

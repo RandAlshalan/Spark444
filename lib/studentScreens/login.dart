@@ -187,7 +187,6 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return; // Avoid using BuildContext across async gaps
 
       final String userType = loginResult['userType'];
-      final bool isVerified = loginResult['isVerified'];
 
       _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
 
@@ -201,16 +200,6 @@ class _LoginScreenState extends State<LoginScreen>
           context,
           MaterialPageRoute(builder: (context) => const CompanyHomePage()),
         );
-        if (!isVerified) {
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (!mounted) return;
-            _showTopToast(
-              "Please verify your email",
-              icon: Icons.warning_amber_rounded,
-              duration: const Duration(seconds: 4),
-            );
-          });
-        }
       }
     } catch (e) {
       final mappedMsg = _mapAuthError(e);

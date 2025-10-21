@@ -143,7 +143,11 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
           .getApplicationsForOpportunity(opportunityId);
       if (mounted) {
         setState(() {
-          _totalApplicants = applications.length;
+          // Exclude withdrawn applicants from total count
+          _totalApplicants = applications
+              .where((application) =>
+                  application.status.toLowerCase() != 'withdrawn')
+              .length;
           _pendingApplicants = applications
               .where((application) =>
                   application.status.toLowerCase() == 'pending')
@@ -801,35 +805,10 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
   }
 
   void _showDeleteConfirmation(BuildContext context) {
-    final opportunity = widget.opportunity;
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Delete Opportunity'),
-          content: Text(
-            'Are you sure you want to delete "${opportunity.name}"? This action cannot be undone.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                widget.onDelete();
-                Navigator.of(context).pop(); // Go back after deleting
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
-              ),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
+    // Call the onDelete callback which handles confirmation in CompanyHomePage
+    widget.onDelete();
+    // Pop back to the previous screen after deletion
+    // Note: Navigation happens in CompanyHomePage after successful deletion
   }
 }
 

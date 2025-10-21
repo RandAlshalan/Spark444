@@ -370,6 +370,9 @@ class _DetailsTab extends StatelessWidget {
     String phone = (data['phone'] ?? data['contactPhone'] ?? '').toString().trim();
     if (phone.isEmpty) phone = _extractPhone('$rawContact $about');
 
+    // Extract location from data
+    final location = (data['location'] ?? data['address'] ?? '').toString().trim();
+
     var contactName = rawContact;
     if (phone.isNotEmpty) {
       contactName = contactName
@@ -437,6 +440,16 @@ class _DetailsTab extends StatelessWidget {
                     onPressed: phone.isEmpty ? null : () => _launchPhone(phone),
                     child: Text('Call', style: GoogleFonts.lato())),
               ),
+              if (location.isNotEmpty) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.location_on_outlined, color: _purple),
+                  title: Text(
+                    'Location: $location',
+                    style: GoogleFonts.lato(),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
