@@ -710,16 +710,17 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
                     if (_selectedSkills.isNotEmpty)
                       Wrap(
                         spacing: 8.0,
+                        runSpacing: 8.0,
                         children: _selectedSkills
                             .map(
-                              (skill) => Chip(
-                                label: Text(skill),
-                                backgroundColor: accentColor.withOpacity(0.8),
-                                labelStyle: const TextStyle(
-                                  color: Colors.white,
-                                ),
-                                onDeleted: () => _removeSkill(skill),
-                                deleteIconColor: Colors.white,
+                              (skill) => _buildTagChip(
+                                context,
+                                text: skill,
+                                background: accentColor.withOpacity(0.15),
+                                borderColor: accentColor.withOpacity(0.3),
+                                textColor: accentColor,
+                                iconColor: accentColor,
+                                onRemove: () => _removeSkill(skill),
                               ),
                             )
                             .toList(),
@@ -741,16 +742,17 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
                     if (_selectedRequirements.isNotEmpty)
                       Wrap(
                         spacing: 8.0,
+                        runSpacing: 8.0,
                         children: _selectedRequirements
                             .map(
-                              (req) => Chip(
-                                label: Text(req),
-                                backgroundColor: accentColor.withOpacity(0.8),
-                                labelStyle: const TextStyle(
-                                  color: Colors.white,
-                                ),
-                                onDeleted: () => _removeRequirement(req),
-                                deleteIconColor: Colors.white,
+                              (req) => _buildTagChip(
+                                context,
+                                text: req,
+                                background: primaryColor.withOpacity(0.12),
+                                borderColor: primaryColor.withOpacity(0.25),
+                                textColor: primaryColor,
+                                iconColor: primaryColor,
+                                onRemove: () => _removeRequirement(req),
                               ),
                             )
                             .toList(),
@@ -1093,6 +1095,58 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+      ),
+    );
+  }
+
+  Widget _buildTagChip(
+    BuildContext context, {
+    required String text,
+    required Color background,
+    required Color textColor,
+    Color? iconColor,
+    Color? borderColor,
+    VoidCallback? onRemove,
+  }) {
+    final maxWidth = MediaQuery.of(context).size.width - 80;
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: maxWidth > 0 ? maxWidth : double.infinity,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(20),
+          border: borderColor != null ? Border.all(color: borderColor) : null,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+                softWrap: true,
+              ),
+            ),
+            if (onRemove != null) ...[
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: onRemove,
+                child: Icon(
+                  Icons.close,
+                  size: 18,
+                  color: iconColor ?? textColor,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
