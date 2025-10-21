@@ -7,6 +7,7 @@ import '../models/opportunity.dart';
 import '../models/student.dart';
 import '../services/applicationService.dart';
 import '../services/authService.dart';
+import '../services/opportunityService.dart';
 import 'EditOpportunityPage.dart';
 import 'allApplicantsPage.dart';
 import 'company_theme.dart';
@@ -40,16 +41,19 @@ class _AcceptedApplicant {
 class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
   final ApplicationService _applicationService = ApplicationService();
   final AuthService _authService = AuthService();
+  final OpportunityService _opportunityService = OpportunityService();
   Company? _company;
   bool _loadingAccepted = true;
   String? _acceptedError;
   List<_AcceptedApplicant> _acceptedApplicants = [];
   int _totalApplicants = 0;
   int _pendingApplicants = 0;
+  Opportunity? _currentOpportunity;
 
   @override
   void initState() {
     super.initState();
+    _currentOpportunity = widget.opportunity;
     _loadCompany();
     _loadAcceptedApplicants();
   }
@@ -106,6 +110,26 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
     }
   }
 
+  Future<void> _reloadOpportunity() async {
+    try {
+      final opportunities = await _opportunityService.getCompanyOpportunities(
+        widget.opportunity.companyId,
+      );
+      final updatedOpportunity = opportunities.firstWhere(
+        (opp) => opp.id == widget.opportunity.id,
+        orElse: () => widget.opportunity,
+      );
+
+      if (mounted) {
+        setState(() {
+          _currentOpportunity = updatedOpportunity;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error reloading opportunity: $e');
+    }
+  }
+
   Future<void> _loadAcceptedApplicants() async {
     if (mounted) {
       setState(() {
@@ -114,8 +138,9 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
       });
     }
     try {
+      final opportunityId = _currentOpportunity?.id ?? widget.opportunity.id;
       final applications = await _applicationService
-          .getApplicationsForOpportunity(widget.opportunity.id);
+          .getApplicationsForOpportunity(opportunityId);
       if (mounted) {
         setState(() {
           _totalApplicants = applications.length;
@@ -180,7 +205,7 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final opportunity = widget.opportunity;
+    final opportunity = _currentOpportunity ?? widget.opportunity;
     final postedDate = opportunity.postedDate?.toDate();
     final postedLabel = postedDate != null
         ? DateFormat('MMM d, yyyy').format(postedDate)
@@ -198,17 +223,22 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
             icon: const Icon(Icons.edit),
             tooltip: 'Edit Opportunity',
             onPressed: () async {
-              await Navigator.push(
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) =>
-                      EditOpportunityPage(opportunity: opportunity),
+                      EditOpportunityPage(opportunity: _currentOpportunity ?? opportunity),
                 ),
               );
-              if (widget.onUpdate != null) {
-                widget.onUpdate!();
+
+              // Only update if the edit was successful
+              if (result == true) {
+                await _reloadOpportunity();
+                if (widget.onUpdate != null) {
+                  widget.onUpdate!();
+                }
+                _loadAcceptedApplicants();
               }
-              _loadAcceptedApplicants();
             },
           ),
           IconButton(

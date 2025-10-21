@@ -117,8 +117,30 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
       _selectedLocation = widget.opportunity.location;
     }
 
-    _displayMajor = widget.opportunity.preferredMajor;
-    _selectedMajor = widget.opportunity.preferredMajor;
+    // Handle preferred major - check if it's a custom major (not in the predefined list)
+    final existingMajor = widget.opportunity.preferredMajor;
+    if (existingMajor != null && existingMajor.isNotEmpty) {
+      // Wait for majors list to load before checking
+      _loadMajorsFuture.then((_) {
+        if (mounted && !_majorsList.contains(existingMajor)) {
+          // It's a custom major, set it as "Other" and populate the text field
+          setState(() {
+            _selectedMajor = 'Other';
+            _displayMajor = 'Other';
+            _otherMajorController.text = existingMajor;
+          });
+        } else {
+          // It's a predefined major
+          setState(() {
+            _displayMajor = existingMajor;
+            _selectedMajor = existingMajor;
+          });
+        }
+      });
+    } else {
+      _displayMajor = existingMajor;
+      _selectedMajor = existingMajor;
+    }
 
     // Handle dates
     _startDate = widget.opportunity.startDate?.toDate();
@@ -620,6 +642,7 @@ class _EditOpportunityPageState extends State<EditOpportunityPage> {
                         controller: _otherMajorController,
                         labelText: 'Specify Major',
                         icon: Icons.school,
+                        maxLength: 40,
                         validator: (value) {
                           if (_selectedMajor == 'Other' &&
                               (value == null || value.trim().isEmpty)) {
