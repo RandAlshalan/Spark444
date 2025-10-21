@@ -489,6 +489,16 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
               return null;
             },
             decoration: const InputDecoration(
+              labelText: 'Company Description',
+              labelStyle: TextStyle(
+                color: Color(0xFF422F5D),
+                fontSize: 14,
+              ),
+              floatingLabelStyle: TextStyle(
+                color: Color(0xFF422F5D),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
               hintText: 'Company Description',
               prefixIcon: Icon(Icons.description_outlined, color: Colors.grey),
               contentPadding: EdgeInsets.fromLTRB(20, 15, 20, 15),
@@ -637,6 +647,16 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
             menuMaxHeight: 300,
             icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF422F5D)),
             decoration: const InputDecoration(
+              labelText: 'Sector',
+              labelStyle: TextStyle(
+                color: Color(0xFF422F5D),
+                fontSize: 14,
+              ),
+              floatingLabelStyle: TextStyle(
+                color: Color(0xFF422F5D),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
               hintText: 'Sector',
               prefixIcon: Icon(Icons.category_outlined, color: Colors.grey),
               contentPadding: EdgeInsets.symmetric(
@@ -668,6 +688,16 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
               child: TextFormField(
                 controller: _sectorController,
                 decoration: const InputDecoration(
+                  labelText: 'Specify Your Sector',
+                  labelStyle: TextStyle(
+                    color: Color(0xFF422F5D),
+                    fontSize: 14,
+                  ),
+                  floatingLabelStyle: TextStyle(
+                    color: Color(0xFF422F5D),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                   hintText: 'Please specify your sector',
                   prefixIcon: Icon(Icons.edit, color: Colors.grey),
                   contentPadding: EdgeInsets.symmetric(
@@ -718,6 +748,16 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
           return null;
         },
         decoration: const InputDecoration(
+          labelText: 'Contact Phone Number',
+          labelStyle: TextStyle(
+            color: Color(0xFF422F5D),
+            fontSize: 14,
+          ),
+          floatingLabelStyle: TextStyle(
+            color: Color(0xFF422F5D),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
           hintText: '5X XXX XXXX',
           prefixIcon: Icon(Icons.phone_outlined, color: Colors.grey),
           prefixText: '+966 ',
@@ -760,6 +800,16 @@ class _EditCompanyProfilePageState extends State<EditCompanyProfilePage> {
         inputFormatters: inputFormatters,
         validator: validator,
         decoration: InputDecoration(
+          labelText: hintText,
+          labelStyle: const TextStyle(
+            color: Color(0xFF422F5D),
+            fontSize: 14,
+          ),
+          floatingLabelStyle: const TextStyle(
+            color: Color(0xFF422F5D),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
           hintText: hintText,
           prefixIcon: Icon(icon, color: Colors.grey),
           contentPadding: const EdgeInsets.symmetric(

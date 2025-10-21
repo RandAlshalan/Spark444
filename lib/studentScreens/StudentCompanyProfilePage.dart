@@ -16,7 +16,6 @@ import '../services/applicationService.dart';
 // --- Constants ---
 const _purple = Color(0xFF422F5D);
 const _pink = Color(0xFFD64483);
-const _chipBg = Color(0xFFEDE7F3);
 
 // =========================================================================
 // == MAIN COMPANY PROFILE PAGE (Stateless)
@@ -38,6 +37,14 @@ class StudentCompanyProfilePage extends StatelessWidget {
     return FirebaseFirestore.instance
         .collection('opportunities')
         .where('companyId', isEqualTo: companyId)
+        .snapshots()
+        .map((s) => s.size);
+  }
+
+  Stream<int> _followersCountStream() {
+    return FirebaseFirestore.instance
+        .collection('student')
+        .where('followedCompanies', arrayContains: companyId)
         .snapshots()
         .map((s) => s.size);
   }
@@ -232,6 +239,34 @@ class StudentCompanyProfilePage extends StatelessWidget {
                                 ),
                               ),
                             const SizedBox(height: 16),
+                            // Followers count row
+                            StreamBuilder<int>(
+                              stream: _followersCountStream(),
+                              builder: (context, followersSnap) {
+                                final followersCount = followersSnap.data ?? 0;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12.0),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.people_outline,
+                                        size: 18,
+                                        color: Colors.black.withOpacity(0.6),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '$followersCount ${followersCount == 1 ? 'Follower' : 'Followers'}',
+                                        style: GoogleFonts.lato(
+                                          fontSize: 14,
+                                          color: Colors.black.withOpacity(0.7),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
                             StreamBuilder<int>(
                               stream: _oppsCountStream(),
                               builder: (context, oppCountSnap) {
@@ -320,41 +355,6 @@ class _DetailsTab extends StatelessWidget {
     return (m?.group(1) ?? '').trim();
   }
 
-  List<String> _detectServices(String description, String sector) {
-    final text = (description + ' ' + sector).toLowerCase();
-    final map = <String, String>{
-      'cloud': 'Cloud & Data Center',
-      'data center': 'Cloud & Data Center',
-      'security': 'Cybersecurity',
-      'cyber': 'Cybersecurity',
-      'cybersecurity': 'Cybersecurity',
-      'network': 'Networking',
-      'networking': 'Networking',
-      'iot': 'IoT / Edge Computing',
-      'edge': 'IoT / Edge Computing',
-      'managed services': 'Managed Services',
-      'consult': 'Consulting',
-      'ai': 'AI',
-      'machine learning': 'ML',
-      'analytics': 'Analytics',
-      'infrastructure': 'Infrastructure',
-      'software': 'Software',
-      'mobile': 'Mobile',
-      'web': 'Web',
-      'devops': 'DevOps',
-      'support': 'Support',
-    };
-    final out = <String>[];
-    for (final k in map.keys) {
-      if (text.contains(k)) {
-        final label = map[k]!;
-        if (!out.contains(label)) out.add(label);
-      }
-    }
-    if (out.isEmpty && sector.trim().isNotEmpty) out.add(sector.trim());
-    return out.take(8).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
     final about = (company.description ?? '').trim();
@@ -387,22 +387,6 @@ class _DetailsTab extends StatelessWidget {
         .replaceAll(RegExp(r'^[\-\•\|,;:()\s]+|[\-\•\|,;:()\s]+$'), '')
         .trim();
 
-    List<String> services;
-    final raw =
-        data['coreServices'] ?? data['services'] ?? data['core_services'];
-    if (raw is Iterable) {
-      services =
-          raw.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
-    } else if (raw is String) {
-      services = raw
-          .split(RegExp(r'[;,]'))
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-    } else {
-      services = _detectServices(about, company.sector);
-    }
-
     Widget sectionTitle(String t) => Padding(
           padding: const EdgeInsets.only(top: 4, bottom: 8),
           child: Text(
@@ -422,34 +406,6 @@ class _DetailsTab extends StatelessWidget {
             height: 1.45,
           ),
         ),
-        const Divider(height: 28),
-        sectionTitle('Core Services'),
-        if (services.isEmpty)
-          Text(
-            'No services listed.',
-            style: GoogleFonts.lato(color: Colors.black.withOpacity(0.6)),
-          )
-        else
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: services
-                .map((s) => Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                          color: _chipBg,
-                          borderRadius: BorderRadius.circular(28)),
-                      child: Text(
-                        s,
-                        style: GoogleFonts.lato(
-                          color: _purple,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ))
-                .toList(),
-          ),
         const Divider(height: 28),
         sectionTitle('Contact Details'),
         Card(
@@ -733,21 +689,172 @@ class _OpportunityCard extends StatelessWidget {
 // =========================================================================
 // == REVIEWS TAB WIDGET
 // =========================================================================
-// (This section is unchanged)
 
 class _ReviewsTab extends StatelessWidget {
   const _ReviewsTab({required this.reviewCount});
   final int reviewCount;
 
+  // Dummy reviews data
+  final List<Map<String, dynamic>> _dummyReviews = const [
+    {
+      'studentName': 'Sarah Ahmed',
+      'rating': 5,
+      'date': '2 weeks ago',
+      'position': 'Software Engineering Intern',
+      'review': 'Amazing experience! The team was incredibly supportive and I learned so much about modern development practices. The mentorship program is outstanding.',
+    },
+    {
+      'studentName': 'Mohammed Ali',
+      'rating': 4,
+      'date': '1 month ago',
+      'position': 'Data Science Intern',
+      'review': 'Great company culture and excellent learning opportunities. The projects were challenging but rewarding. Would definitely recommend to other students.',
+    },
+    {
+      'studentName': 'Layla Hassan',
+      'rating': 5,
+      'date': '1 month ago',
+      'position': 'Marketing Intern',
+      'review': 'Fantastic internship experience! I got to work on real campaigns and the team treated me like a valued member. Great work-life balance too.',
+    },
+    {
+      'studentName': 'Omar Abdullah',
+      'rating': 4,
+      'date': '2 months ago',
+      'position': 'Business Analyst Intern',
+      'review': 'Very professional environment with plenty of opportunities to grow. The team was helpful and the work was meaningful. Minor issues with remote setup but overall great.',
+    },
+    {
+      'studentName': 'Fatima Ibrahim',
+      'rating': 5,
+      'date': '3 months ago',
+      'position': 'UI/UX Design Intern',
+      'review': 'Best internship I could have asked for! The design team was amazing and I got hands-on experience with real client projects. Highly recommend!',
+    },
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        reviewCount > 0
-            ? 'There are $reviewCount reviews (design placeholder).'
-            : 'No reviews yet.',
-        style: GoogleFonts.lato(fontSize: 16),
+    if (_dummyReviews.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.rate_review_outlined,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No reviews yet.',
+              style: GoogleFonts.lato(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.only(top: 8, bottom: 16),
+      itemCount: _dummyReviews.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      itemBuilder: (context, index) {
+        final review = _dummyReviews[index];
+        return _buildReviewCard(review);
+      },
+    );
+  }
+
+  Widget _buildReviewCard(Map<String, dynamic> review) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header: Name and Rating
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        review['studentName'],
+                        style: GoogleFonts.lato(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: _purple,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        review['position'],
+                        style: GoogleFonts.lato(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildStarRating(review['rating']),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Review text
+            Text(
+              review['review'],
+              style: GoogleFonts.lato(
+                fontSize: 14,
+                color: Colors.black87,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Date
+            Row(
+              children: [
+                Icon(
+                  Icons.access_time,
+                  size: 14,
+                  color: Colors.grey.shade500,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  review['date'],
+                  style: GoogleFonts.lato(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStarRating(int rating) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        return Icon(
+          index < rating ? Icons.star : Icons.star_border,
+          color: index < rating ? const Color(0xFFF99D46) : Colors.grey.shade400,
+          size: 20,
+        );
+      }),
     );
   }
 }
