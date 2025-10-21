@@ -394,12 +394,61 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
             ),
           ),
           const SizedBox(height: 16),
-          if (opportunity.preferredMajor != null && opportunity.preferredMajor!.isNotEmpty)
+
+          // Preferred Major
+          if (opportunity.preferredMajor != null && opportunity.preferredMajor!.isNotEmpty) ...[
             _buildDetailRow(
               'Preferred Major',
               opportunity.preferredMajor!,
               Icons.school_outlined,
             ),
+            const SizedBox(height: 12),
+          ],
+
+          // Opportunity Duration
+          if (opportunity.startDate != null && opportunity.endDate != null) ...[
+            _buildDetailRow(
+              'Opportunity Duration',
+              '${DateFormat('MMM d, yyyy').format(opportunity.startDate!.toDate())} - ${DateFormat('MMM d, yyyy').format(opportunity.endDate!.toDate())}',
+              Icons.date_range,
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Application Period
+          if (opportunity.applicationOpenDate != null && opportunity.applicationDeadline != null) ...[
+            _buildDetailRow(
+              'Application Period',
+              '${DateFormat('MMM d, yyyy').format(opportunity.applicationOpenDate!.toDate())} - ${DateFormat('MMM d, yyyy').format(opportunity.applicationDeadline!.toDate())}',
+              Icons.app_registration,
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Response Deadline
+          if (opportunity.responseDeadline != null) ...[
+            _buildDetailRow(
+              'Response Deadline',
+              DateFormat('MMM d, yyyy').format(opportunity.responseDeadline!.toDate()),
+              Icons.schedule,
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 32),
+              child: Text(
+                opportunity.responseDeadlineVisible == true
+                    ? 'Visible to students'
+                    : 'Hidden from students',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: CompanyColors.muted,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           if (opportunity.description != null && opportunity.description!.isNotEmpty) ...[
             const SizedBox(height: 20),
             const Text(
