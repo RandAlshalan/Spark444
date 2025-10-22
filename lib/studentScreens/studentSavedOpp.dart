@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:my_app/models/company.dart';
 import 'package:my_app/models/opportunity.dart';
@@ -175,7 +177,7 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
                       backgroundColor: Colors.grey.shade200,
                       backgroundImage: (company.logoUrl != null &&
                               company.logoUrl!.isNotEmpty)
-                          ? NetworkImage(company.logoUrl!)
+                          ? CachedNetworkImageProvider(company.logoUrl!)
                           : null,
                       child: (company.logoUrl == null ||
                               company.logoUrl!.isEmpty)

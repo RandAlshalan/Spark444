@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/company.dart';
 import '../models/opportunity.dart';
 import '../services/authService.dart';
 import '../services/opportunityService.dart';
 import '../services/applicationService.dart';
+import '../utils/page_transitions.dart';
 import 'editCompanyProfilePage.dart';
 import 'PostOpportunityPage.dart';
 import 'EditOpportunityPage.dart';
@@ -82,14 +84,22 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         company?.uid ?? '',
       );
 
-      // Calculate analytics
+      // Calculate analytics - fetch all applications in parallel for better performance
       int totalApplicants = 0;
       int pendingApplicants = 0;
       int activeOps = 0;
 
       final now = DateTime.now();
 
-      for (final opp in opportunities) {
+      // Fetch all applications in parallel instead of sequentially
+      final applicationFutures = opportunities.map((opp) =>
+        _applicationService.getApplicationsForOpportunity(opp.id)
+      ).toList();
+
+      final allApplications = await Future.wait(applicationFutures);
+
+      for (int i = 0; i < opportunities.length; i++) {
+        final opp = opportunities[i];
         final applicationOpenDate = opp.applicationOpenDate?.toDate();
         final isUpcoming =
             applicationOpenDate != null && now.isBefore(applicationOpenDate);
@@ -97,8 +107,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         if (opp.isActive && !isUpcoming) {
           activeOps++;
         }
-        final applications = await _applicationService
-            .getApplicationsForOpportunity(opp.id);
+
+        final applications = allApplications[i];
         totalApplicants += applications.length;
         pendingApplicants += applications
             .where((app) => app.status.toLowerCase() == 'pending')
@@ -127,7 +137,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   void _navigateToPostOpportunityPage() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const PostOpportunityPage()),
+      SmoothPageRoute(page: const PostOpportunityPage()),
     );
     if (!mounted) return;
     _fetchCompanyData();
@@ -142,9 +152,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) =>
-            AllApplicantsPage(company: company, opportunity: opportunity),
+      SmoothPageRoute(
+        page: AllApplicantsPage(company: company, opportunity: opportunity),
       ),
     );
     if (!mounted) return;
@@ -154,8 +163,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   Future<void> _navigateToAnalytics(Opportunity opportunity) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => OpportunityAnalyticsPage(opportunity: opportunity),
+      SmoothPageRoute(
+        page: OpportunityAnalyticsPage(opportunity: opportunity),
       ),
     );
     if (!mounted) return;
@@ -165,8 +174,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   Future<void> _navigateToEditOpportunity(Opportunity opportunity) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => EditOpportunityPage(opportunity: opportunity),
+      SmoothPageRoute(
+        page: EditOpportunityPage(opportunity: opportunity),
       ),
     );
 
@@ -185,7 +194,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     }
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => AllApplicantsPage(company: company)),
+      SmoothPageRoute(page: AllApplicantsPage(company: company)),
     );
     if (!mounted) return;
     _fetchCompanyData();
@@ -199,19 +208,14 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     }
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => FollowersPage(company: company)),
+      SmoothPageRoute(page: FollowersPage(company: company)),
     );
   }
 
   void _navigateToNotificationsPage() {
     Navigator.push(
       context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const NotificationsPage(),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
-      ),
+      FadePageRoute(page: const NotificationsPage()),
     );
   }
 
@@ -440,11 +444,14 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       backgroundColor: CompanyColors.background,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : CustomScrollView(
-              slivers: [
-                _buildSliverAppBar(),
-                _buildCurrentSection(),
-              ],
+          : RefreshIndicator(
+              onRefresh: _fetchCompanyData,
+              child: CustomScrollView(
+                slivers: [
+                  _buildSliverAppBar(),
+                  _buildCurrentSection(),
+                ],
+              ),
             ),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
@@ -553,9 +560,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
               onPressed: () {
                 Navigator.of(context)
                     .push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            EditCompanyProfilePage(company: company),
+                      SmoothPageRoute(
+                        page: EditCompanyProfilePage(company: company),
                       ),
                     )
                     .then((_) => _fetchCompanyData());
@@ -583,7 +589,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                     ),
                     backgroundImage:
                         company.logoUrl != null && company.logoUrl!.isNotEmpty
-                        ? NetworkImage(company.logoUrl!)
+                        ? CachedNetworkImageProvider(company.logoUrl!)
                         : null,
                     child: (company.logoUrl == null || company.logoUrl!.isEmpty)
                         ? const Icon(
@@ -1266,7 +1272,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   backgroundColor: CompanyColors.primary.withValues(alpha: 0.1),
                   backgroundImage:
                       company.logoUrl != null && company.logoUrl!.isNotEmpty
-                      ? NetworkImage(company.logoUrl!)
+                      ? CachedNetworkImageProvider(company.logoUrl!)
                       : null,
                   child: (company.logoUrl == null || company.logoUrl!.isEmpty)
                       ? const Icon(
@@ -1311,9 +1317,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                   onPressed: () {
                     Navigator.of(context)
                         .push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                EditCompanyProfilePage(company: _company!),
+                          SmoothPageRoute(
+                            page: EditCompanyProfilePage(company: _company!),
                           ),
                         )
                         .then((_) => _fetchCompanyData());
@@ -1673,8 +1678,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         onTap: () async {
           await Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => OpportunityDetailPage(
+            SmoothPageRoute(
+              page: OpportunityDetailPage(
                 opportunity: opportunity,
                 onDelete: () => _deleteOpportunityFromDetail(opportunity.id),
                 onUpdate: _fetchCompanyData,

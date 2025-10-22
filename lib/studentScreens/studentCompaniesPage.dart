@@ -1,6 +1,7 @@
 // lib/studentScreens/studentCompaniesPage.dart
 
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:my_app/studentScreens/StudentCompanyProfilePage.dart';
@@ -288,7 +289,7 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
             vertical: 6,
           ),
           leading: (c.logoUrl != null && c.logoUrl!.isNotEmpty)
-              ? CircleAvatar(backgroundImage: NetworkImage(c.logoUrl!))
+              ? CircleAvatar(backgroundImage: CachedNetworkImageProvider(c.logoUrl!))
               : const CircleAvatar(child: Icon(Icons.apartment)),
           title: Text(
             c.companyName,

@@ -1,5 +1,6 @@
 // --- IMPORTS ---
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -661,7 +662,7 @@ class _ApplicationCard extends StatelessWidget {
               backgroundColor: Colors.grey.shade200,
               backgroundImage: (snapshot.data?.logoUrl != null &&
                       snapshot.data!.logoUrl!.isNotEmpty)
-                  ? NetworkImage(snapshot.data!.logoUrl!)
+                  ? CachedNetworkImageProvider(snapshot.data!.logoUrl!)
                   : null,
               child: (snapshot.data?.logoUrl == null ||
                       snapshot.data!.logoUrl!.isEmpty)

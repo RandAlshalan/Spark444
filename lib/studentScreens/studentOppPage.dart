@@ -6,12 +6,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 // Note: Ensure your import paths are correct for your project
 import '../models/Application.dart';
 import '../models/company.dart';
 import '../models/opportunity.dart';
 import '../services/applicationService.dart';
 import '../services/authService.dart';
+import '../utils/page_transitions.dart';
 import '../studentScreens/studentCompanyProfilePage.dart'; // Import for navigation
 import '../studentScreens/studentOppDetails.dart';
 import 'package:my_app/services/bookmarkService.dart';
@@ -21,7 +23,6 @@ import 'package:my_app/studentScreens/studentCompaniesPage.dart';
 import '../studentScreens/studentViewProfile.dart';
 import '../widgets/CustomBottomNavBar.dart';
 import '../studentScreens/studentSavedOpp.dart';
-import '../studentScreens/studentOppDetails.dart';
 
 // --- COLOR CONSTANTS ---
 const Color _sparkPrimaryPurple = Color(0xFF422F5D);
@@ -439,8 +440,8 @@ class _studentOppPgaeState extends State<studentOppPgae> {
   void _navigateToCompanyProfile(String companyId) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => StudentCompanyProfilePage(companyId: companyId),
+      SmoothPageRoute(
+        page: StudentCompanyProfilePage(companyId: companyId),
       ),
     );
   }
@@ -450,8 +451,8 @@ class _studentOppPgaeState extends State<studentOppPgae> {
     if (_studentId != null)
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => SavedstudentOppPgae(studentId: _studentId!),
+        SmoothPageRoute(
+          page: SavedstudentOppPgae(studentId: _studentId!),
         ),
       );
   }
@@ -467,14 +468,14 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         // Go to Companies Page
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const StudentCompaniesPage()),
+          NoTransitionRoute(page: const StudentCompaniesPage()),
         );
         break;
       case 3:
         // Go to Profile Page
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const StudentViewProfile()),
+          NoTransitionRoute(page: const StudentViewProfile()),
         );
         break;
     }
@@ -1134,7 +1135,7 @@ class _OpportunityCard extends StatelessWidget {
                     backgroundImage:
                         (company?.logoUrl != null &&
                             company!.logoUrl!.isNotEmpty)
-                        ? NetworkImage(company!.logoUrl!)
+                        ? CachedNetworkImageProvider(company!.logoUrl!)
                         : null,
                     child:
                         (company?.logoUrl == null || company!.logoUrl!.isEmpty)

@@ -1,5 +1,6 @@
 // --- IMPORTS ---
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../models/Application.dart';
@@ -308,7 +309,7 @@ class OpportunityDetailsContent extends StatelessWidget {
                     backgroundImage:
                         (snapshot.data?.logoUrl != null &&
                             snapshot.data!.logoUrl!.isNotEmpty)
-                        ? NetworkImage(snapshot.data!.logoUrl!)
+                        ? CachedNetworkImageProvider(snapshot.data!.logoUrl!)
                         : null,
                     child:
                         (snapshot.data?.logoUrl == null ||

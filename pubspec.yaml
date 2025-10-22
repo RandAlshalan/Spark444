@@ -46,6 +46,7 @@ dependencies:
   google_fonts: ^6.3.2
   equatable: ^2.0.7
   url_launcher: ^6.3.0
+  cached_network_image: ^3.4.1
   pdf: ^3.11.3
   printing: ^5.14.2
   syncfusion_flutter_pdfviewer: ^28.1.33
