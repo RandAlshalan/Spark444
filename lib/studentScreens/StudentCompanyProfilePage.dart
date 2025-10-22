@@ -1368,6 +1368,65 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
   }
 
   Widget _buildApplyNowView() {
+    // Check if application period has started
+    final now = DateTime.now();
+    final applicationOpenDate = widget.opportunity.applicationOpenDate?.toDate();
+    final isUpcoming = applicationOpenDate != null && now.isBefore(applicationOpenDate);
+
+    if (isUpcoming) {
+      // Calculate time until open
+      final daysUntil = applicationOpenDate.difference(now).inDays;
+      final hoursUntil = applicationOpenDate.difference(now).inHours;
+
+      String timeMessage;
+      if (daysUntil > 0) {
+        timeMessage = 'Opens in $daysUntil ${daysUntil == 1 ? 'day' : 'days'}';
+      } else if (hoursUntil > 0) {
+        timeMessage = 'Opens in $hoursUntil ${hoursUntil == 1 ? 'hour' : 'hours'}';
+      } else {
+        timeMessage = 'Opens soon';
+      }
+
+      return SizedBox(
+        width: double.infinity,
+        child: Column(
+          children: [
+            ElevatedButton.icon(
+              onPressed: null, // Disabled
+              icon: const Icon(Icons.schedule),
+              label: const Text(
+                "Application Not Yet Open",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey.shade300,
+                foregroundColor: Colors.grey.shade700,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                disabledBackgroundColor: Colors.grey.shade300,
+                disabledForegroundColor: Colors.grey.shade700,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              timeMessage,
+              style: GoogleFonts.lato(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Application period is open
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
