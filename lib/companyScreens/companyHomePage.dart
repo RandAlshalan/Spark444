@@ -87,9 +87,14 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       int pendingApplicants = 0;
       int activeOps = 0;
 
+      final now = DateTime.now();
+
       for (final opp in opportunities) {
-        // Only count opportunities that are actually active
-        if (opp.isActive) {
+        final applicationOpenDate = opp.applicationOpenDate?.toDate();
+        final isUpcoming =
+            applicationOpenDate != null && now.isBefore(applicationOpenDate);
+
+        if (opp.isActive && !isUpcoming) {
           activeOps++;
         }
         final applications = await _applicationService
@@ -828,12 +833,21 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   Widget _buildOpportunitiesListSection() {
-    // Separate active and past opportunities
-    var activeOpportunities = _opportunities
-        .where((opp) => opp.isActive)
+    final now = DateTime.now();
+
+    bool isUpcoming(Opportunity opp) {
+      final applicationOpenDate = opp.applicationOpenDate?.toDate();
+      return applicationOpenDate != null && now.isBefore(applicationOpenDate);
+    }
+
+    final upcomingOpportunities =
+        _opportunities.where(isUpcoming).toList();
+
+    final activeOpportunities = _opportunities
+        .where((opp) => opp.isActive && !isUpcoming(opp))
         .toList();
-    var pastOpportunities = _opportunities
-        .where((opp) => !opp.isActive)
+    final pastOpportunities = _opportunities
+        .where((opp) => !opp.isActive && !isUpcoming(opp))
         .toList();
 
     // Apply sorting to both lists
@@ -983,7 +997,12 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             ),
           )
         else
-          ...activeOpportunities.map(_buildCompactOpportunityCard),
+          ...activeOpportunities.map((opp) => _buildCompactOpportunityCard(opp)),
+
+        if (upcomingOpportunities.isNotEmpty) ...[
+          const SizedBox(height: 32),
+          _buildUpcomingOpportunitiesSection(upcomingOpportunities, now),
+        ],
 
         // Past Opportunities Section
         if (pastOpportunities.isNotEmpty) ...[
@@ -1522,6 +1541,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: 32),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -1639,7 +1659,11 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     );
   }
 
-  Widget _buildCompactOpportunityCard(Opportunity opportunity) {
+  Widget _buildCompactOpportunityCard(
+    Opportunity opportunity, {
+    String? badge,
+    Color badgeColor = CompanyColors.secondary,
+  }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: CompanyColors.surface,
@@ -1698,6 +1722,27 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (badge != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          badge,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: badgeColor,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1713,214 +1758,78 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     );
   }
 
-  Widget _buildOpportunityCard(Opportunity opportunity) {
-    final postedDate = opportunity.postedDate?.toDate();
-    final postedLabel = postedDate != null
-        ? DateFormat('MMM d, yyyy').format(postedDate)
-        : null;
-
-    // Check if opportunity is upcoming (application period hasn't started)
-    final now = DateTime.now();
-    final applicationOpenDate = opportunity.applicationOpenDate?.toDate();
-    final isUpcoming = applicationOpenDate != null && now.isBefore(applicationOpenDate);
-
-    final metaChips = <Widget>[
-      _buildMetaChip(Icons.badge_outlined, opportunity.type),
-      if (opportunity.workMode != null &&
-          opportunity.workMode!.trim().isNotEmpty)
-        _buildMetaChip(
-          Icons.apartment_outlined,
-          _buildWorkModeLabel(opportunity),
-        ),
-      if (opportunity.preferredMajor != null &&
-          opportunity.preferredMajor!.trim().isNotEmpty)
-        _buildMetaChip(Icons.school_outlined, opportunity.preferredMajor!),
-      _buildMetaChip(
-        opportunity.isPaid
-            ? Icons.payments_outlined
-            : Icons.volunteer_activism_outlined,
-        opportunity.isPaid ? 'Paid' : 'Unpaid',
-        background: opportunity.isPaid
-            ? const Color.fromRGBO(76, 175, 80, 0.14)
-            : const Color.fromRGBO(244, 67, 54, 0.14),
-        iconColor: opportunity.isPaid
-            ? const Color(0xFF2E7D32)
-            : const Color(0xFFC62828),
-        textColor: opportunity.isPaid
-            ? const Color(0xFF2E7D32)
-            : const Color(0xFFC62828),
-      ),
-    ];
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 20),
-      elevation: CompanySpacing.cardElevation,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
-      color: CompanyColors.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
-            decoration: const BoxDecoration(color: CompanyColors.primary),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        opportunity.name,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (isUpcoming) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: CompanyColors.secondary,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.schedule,
-                              size: 14,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 4),
-                            const Text(
-                              'Upcoming',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 6),
+Widget _buildUpcomingOpportunitiesSection(
+    List<Opportunity> upcomingOpps,
+    DateTime now,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.schedule, color: CompanyColors.secondary, size: 24),
+                SizedBox(width: 8),
                 Text(
-                  opportunity.role,
-                  style: const TextStyle(fontSize: 16, color: Colors.white70),
-                ),
-                if (postedLabel != null) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.schedule,
-                        size: 16,
-                        color: Colors.white70,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Posted $postedLabel',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
+                  'Upcoming Opportunities',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: CompanyColors.primary,
                   ),
-                ],
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(spacing: 10, runSpacing: 10, children: metaChips),
-                if (opportunity.skills != null &&
-                    opportunity.skills!.isNotEmpty) ...[
-                  const SizedBox(height: 18),
-                  const Text(
-                    'Key Skills',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: CompanyColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8.0,
-                    runSpacing: 4.0,
-                    children: opportunity.skills!
-                        .map(
-                          (skill) => Chip(
-                            label: Text(
-                              skill,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: CompanyColors.primary,
-                              ),
-                            ),
-                            backgroundColor: CompanyColors.primary.withValues(
-                              alpha: 0.12,
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            side: BorderSide.none,
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            child: Row(
-              children: [
-                TextButton.icon(
-                  onPressed: () => _navigateToApplicantsList(opportunity),
-                  icon: const Icon(Icons.people_outline, size: 20),
-                  label: const Text('View Applicants'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: CompanyColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blueGrey),
-                  tooltip: 'Edit Opportunity',
-                  onPressed: () => _navigateToEditOpportunity(opportunity),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Color(0xFFC62828)),
-                  tooltip: 'Delete Opportunity',
-                  onPressed: () => _deleteOpportunity(opportunity.id),
                 ),
               ],
             ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: CompanyColors.secondary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${upcomingOpps.length}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: CompanyColors.secondary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Applications will open soon for these opportunities',
+          style: TextStyle(
+            fontSize: 14,
+            color: CompanyColors.muted,
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        ...upcomingOpps.map((opp) {
+          final applicationOpenDate = opp.applicationOpenDate!.toDate();
+          final difference = applicationOpenDate.difference(now);
+          final daysUntil = difference.inDays;
+          final hoursUntil = difference.inHours;
+
+          String opensIn;
+          if (daysUntil > 0) {
+            opensIn = 'Opens in $daysUntil ${daysUntil == 1 ? 'day' : 'days'}';
+          } else if (hoursUntil > 0) {
+            opensIn = 'Opens in $hoursUntil ${hoursUntil == 1 ? 'hour' : 'hours'}';
+          } else {
+            opensIn = 'Opens soon';
+          }
+
+          return _buildCompactOpportunityCard(
+            opp,
+            badge: opensIn,
+            badgeColor: CompanyColors.secondary,
+          );
+        }),
+      ],
     );
   }
 
@@ -2015,167 +1924,6 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildMetaChip(
-    IconData icon,
-    String label, {
-    Color background = const Color(0xFFEDE7F6),
-    Color iconColor = const Color(0xFF6B4791),
-    Color textColor = const Color(0xFF422F5D),
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: iconColor),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: textColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _buildWorkModeLabel(Opportunity opportunity) {
-    final mode = (opportunity.workMode ?? opportunity.type).trim();
-    final location = opportunity.location?.trim();
-
-    if (mode.toLowerCase() == 'remote' ||
-        location == null ||
-        location.isEmpty) {
-      return mode;
-    }
-    return '$mode · $location';
-  }
-
-  Widget _buildDrawer() {
-    return Drawer(
-      child: Container(
-        color: CompanyColors.primary,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [CompanyColors.accent, CompanyColors.secondary],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    radius: 35,
-                    backgroundColor: Colors.white,
-                    backgroundImage:
-                        _company?.logoUrl != null &&
-                            _company!.logoUrl!.isNotEmpty
-                        ? NetworkImage(_company!.logoUrl!)
-                        : null,
-                    child:
-                        (_company?.logoUrl == null ||
-                            _company!.logoUrl!.isEmpty)
-                        ? const Icon(
-                            Icons.apartment_outlined,
-                            color: CompanyColors.primary,
-                            size: 32,
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _company?.companyName ?? 'Company Name',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    _company?.email ?? 'Email Not Found',
-                    style: const TextStyle(
-                      color: Color.fromRGBO(255, 255, 255, 0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _buildDrawerItem(Icons.group_outlined, 'My Followers', () {
-              Navigator.of(context).pop();
-              _navigateToFollowersPage();
-            }),
-            _buildDrawerItem(
-              Icons.post_add_outlined,
-              'Post a New Opportunity',
-              () {
-                Navigator.of(context).pop();
-                _navigateToPostOpportunityPage();
-              },
-            ),
-            _buildDrawerItem(Icons.people_alt_outlined, 'All Applicants', () {
-              Navigator.of(context).pop();
-              _navigateToAllApplicants();
-            }),
-
-            _buildDrawerItem(Icons.edit_outlined, 'Edit Profile', () {
-              Navigator.of(context).pop();
-              Navigator.of(context)
-                  .push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          EditCompanyProfilePage(company: _company!),
-                    ),
-                  )
-                  .then((_) => _fetchCompanyData());
-            }),
-            const Divider(color: Colors.white54),
-            _buildDrawerItem(
-              Icons.delete_forever,
-              'Delete Account',
-              _showDeleteConfirmationDialog,
-              color: Colors.red[300],
-            ),
-            _buildDrawerItem(Icons.logout, 'Log Out', () async {
-              // Dummy logout action
-              await _authService.signOut();
-              if (!mounted) return;
-              Navigator.of(
-                context,
-              ).pushNamedAndRemoveUntil('/', (route) => false);
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDrawerItem(
-    IconData icon,
-    String title,
-    VoidCallback onTap, {
-    Color? color,
-  }) {
-    final itemColor = color ?? Colors.white;
-    return ListTile(
-      leading: Icon(icon, color: itemColor),
-      title: Text(title, style: TextStyle(color: itemColor)),
-      onTap: onTap,
     );
   }
 

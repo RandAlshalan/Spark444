@@ -1155,12 +1155,24 @@ class _OpportunityCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
+                        // Opportunity Name
+                        Text(
+                          opportunity.name,
+                          style: GoogleFonts.lato(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF422F5D),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
                         // Company Name
                         Text(
                           company?.companyName ?? "...",
                           style: GoogleFonts.lato(
-                            fontSize: 14,
-                            color: Colors.grey.shade700,
+                            fontSize: 13,
+                            color: Colors.grey.shade600,
                           ),
                         ),
                       ],
