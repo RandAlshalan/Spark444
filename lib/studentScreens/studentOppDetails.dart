@@ -117,8 +117,17 @@ class OpportunityDetailsContent extends StatelessWidget {
       }
     }
 
-    // Scenario 2: No application exists, and "Apply" is possible
+    // Scenario 2: No application exists, check if application period is open
     if (application == null && onApply != null) {
+      final now = DateTime.now();
+      final applicationOpenDate = opportunity.applicationOpenDate?.toDate();
+
+      // Check if application period hasn't started yet
+      if (applicationOpenDate != null && now.isBefore(applicationOpenDate)) {
+        return _buildUpcomingButton(context, applicationOpenDate);
+      }
+
+      // Application period is open
       return _buildActionButton(
         context: context,
         onPressed: onApply!,
@@ -130,6 +139,74 @@ class OpportunityDetailsContent extends StatelessWidget {
 
     // Scenario 3: No button (e.g., application is already accepted/rejected)
     return const SizedBox.shrink();
+  }
+
+  /// Build an upcoming button when application period hasn't started
+  Widget _buildUpcomingButton(BuildContext context, DateTime openDate) {
+    final daysUntil = openDate.difference(DateTime.now()).inDays;
+    final hoursUntil = openDate.difference(DateTime.now()).inHours;
+
+    String timeMessage;
+    if (daysUntil > 0) {
+      timeMessage = 'Opens in $daysUntil ${daysUntil == 1 ? 'day' : 'days'}';
+    } else if (hoursUntil > 0) {
+      timeMessage = 'Opens in $hoursUntil ${hoursUntil == 1 ? 'hour' : 'hours'}';
+    } else {
+      timeMessage = 'Opens soon';
+    }
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        12,
+        16,
+        12 + MediaQuery.of(context).padding.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: _profileBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: null, // Disabled button
+          icon: const Icon(Icons.schedule),
+          label: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Application Not Yet Open',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                timeMessage,
+                style: const TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey.shade300,
+            foregroundColor: Colors.grey.shade700,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            disabledBackgroundColor: Colors.grey.shade300,
+            disabledForegroundColor: Colors.grey.shade700,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   /// Generic helper to build the floating action button container.

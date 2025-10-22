@@ -1719,6 +1719,11 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         ? DateFormat('MMM d, yyyy').format(postedDate)
         : null;
 
+    // Check if opportunity is upcoming (application period hasn't started)
+    final now = DateTime.now();
+    final applicationOpenDate = opportunity.applicationOpenDate?.toDate();
+    final isUpcoming = applicationOpenDate != null && now.isBefore(applicationOpenDate);
+
     final metaChips = <Widget>[
       _buildMetaChip(Icons.badge_outlined, opportunity.type),
       if (opportunity.workMode != null &&
@@ -1763,15 +1768,53 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  opportunity.name,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        opportunity.name,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isUpcoming) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: CompanyColors.secondary,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.schedule,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'Upcoming',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 6),
                 Text(
