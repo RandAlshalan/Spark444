@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:my_app/models/resume.dart';
-import 'package:my_app/models/student.dart';
+import 'package:spark/models/resume.dart';
+import 'package:spark/models/student.dart';
 
 // --- Color Constants ---
 // These are defined here so we can reuse them easily

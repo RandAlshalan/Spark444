@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:my_app/models/bookmark.dart';
-import 'package:my_app/models/opportunity.dart';
+import 'package:spark/models/bookmark.dart';
+import 'package:spark/models/opportunity.dart';
 
 class BookmarkService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

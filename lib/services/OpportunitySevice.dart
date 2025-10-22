@@ -1,5 +1,5 @@
 /*import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:my_app/models/opportunity.dart';
+import 'package:spark/models/opportunity.dart';
 
 class OpportunityService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

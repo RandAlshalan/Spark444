@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:my_app/studentScreens/login.dart';
-import 'package:my_app/studentScreens/studentEmailVerification.dart';
-import 'package:my_app/studentScreens/welcomeScreen.dart';
+import 'package:spark/studentScreens/login.dart';
+import 'package:spark/studentScreens/studentEmailVerification.dart';
+import 'package:spark/studentScreens/welcomeScreen.dart';
 import '../models/student.dart';
 import '../services/authService.dart';
 

@@ -16,9 +16,9 @@ import '../services/authService.dart';
 import '../utils/page_transitions.dart';
 import '../studentScreens/studentCompanyProfilePage.dart'; // Import for navigation
 import '../studentScreens/studentOppDetails.dart';
-import 'package:my_app/services/bookmarkService.dart';
-import 'package:my_app/services/opportunityService.dart';
-import 'package:my_app/studentScreens/studentCompaniesPage.dart';
+import 'package:spark/services/bookmarkService.dart';
+import 'package:spark/services/opportunityService.dart';
+import 'package:spark/studentScreens/studentCompaniesPage.dart';
 
 import '../studentScreens/studentViewProfile.dart';
 import '../widgets/CustomBottomNavBar.dart';

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:my_app/studentScreens/welcomeScreen.dart';
+import 'package:spark/studentScreens/welcomeScreen.dart';
 import '../services/authService.dart';
 
 class StudentEmailVerification extends StatefulWidget {

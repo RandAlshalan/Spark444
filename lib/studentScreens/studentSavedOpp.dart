@@ -3,14 +3,14 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
-import 'package:my_app/models/company.dart';
-import 'package:my_app/models/opportunity.dart';
-import 'package:my_app/models/Application.dart';
-import 'package:my_app/services/applicationService.dart';
-import 'package:my_app/services/authService.dart';
-import 'package:my_app/services/bookmarkService.dart';
+import 'package:spark/models/company.dart';
+import 'package:spark/models/opportunity.dart';
+import 'package:spark/models/Application.dart';
+import 'package:spark/services/applicationService.dart';
+import 'package:spark/services/authService.dart';
+import 'package:spark/services/bookmarkService.dart';
 import '../studentScreens/studentOppDetails.dart'; // Contains OpportunityDetailsContent
-import 'package:my_app/studentScreens/studentCompanyProfilePage.dart'; // For company profile page
+import 'package:spark/studentScreens/studentCompanyProfilePage.dart'; // For company profile page
 
 class SavedstudentOppPgae extends StatefulWidget {
   final String studentId;

@@ -7,7 +7,7 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:my_app/studentScreens/FollowedCompaniesPage.dart';
+import 'package:spark/studentScreens/FollowedCompaniesPage.dart';
 
 import '../models/student.dart';
 import '../services/authService.dart';

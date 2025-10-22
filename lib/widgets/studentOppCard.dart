@@ -1,9 +1,9 @@
 /*import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:my_app/models/company.dart';
-import 'package:my_app/models/opportunity.dart';
-import 'package:my_app/services/authService.dart';
-import 'package:my_app/services/bookmarkService.dart';
+import 'package:spark/models/company.dart';
+import 'package:spark/models/opportunity.dart';
+import 'package:spark/services/authService.dart';
+import 'package:spark/services/bookmarkService.dart';
 
 class StudentOppCard extends StatefulWidget {
   final Opportunity opportunity;
