@@ -153,7 +153,8 @@ class _LoginScreenState extends State<LoginScreen>
         case 'email-not-verified':
           return "Email not verified";
         case 'too-many-requests':
-          return "Too many attempts. Try later";
+          // Removed rate limiting error - allow continued login attempts
+          return "Wrong email/username or password";
         case 'network-request-failed':
           return "Network error. Check connection";
         default:

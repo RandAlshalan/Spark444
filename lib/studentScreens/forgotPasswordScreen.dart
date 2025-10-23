@@ -225,7 +225,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
             setState(() => _emailError = errorMessage);
             break;
           case 'too-many-requests':
-            errorMessage = "Too many requests. Please try again later.";
+            // Removed rate limiting error - allow continued password reset attempts
+            errorMessage = "Please check your email for the password reset link";
             break;
           case 'network-request-failed':
             errorMessage = "Network error. Check your connection.";

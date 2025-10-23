@@ -113,11 +113,10 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
 # Flutter Launcher Icons configuration
+# Using icon with white background already composited
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/spark_logo.png"
-  background_color: "#FFFFFF"
+  image_path: "assets/spark_icon_white_final.png"
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/spark_logo.png"
-  remove_alpha_ios: true
+  adaptive_icon_foreground: "assets/spark_icon_white_final.png"
