@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/company.dart';
 import '../models/opportunity.dart';
 import '../services/bookmarkService.dart';
+import '../models/review.dart';
 import '../models/Application.dart'; 
 import '../services/applicationService.dart';
 // ---------------------------------------------------------
@@ -272,25 +273,27 @@ class StudentCompanyProfilePage extends StatelessWidget {
                               stream: _oppsCountStream(),
                               builder: (context, oppCountSnap) {
                                 final oppCount = oppCountSnap.data ?? 0;
-                                final reviewsCount =
-                                    company.studentReviews.length;
                                 return Center(
-                                  child: TabBar(
-                                    isScrollable: true,
-                                    labelColor: Colors.black,
-                                    labelStyle: GoogleFonts.lato(
-                                        fontWeight: FontWeight.w700),
-                                    unselectedLabelStyle: GoogleFonts.lato(),
-                                    unselectedLabelColor:
-                                        Colors.black.withOpacity(0.5),
-                                    indicatorColor: _purple,
-                                    indicatorWeight: 3,
-                                    dividerColor: Colors.transparent,
-                                    tabs: [
-                                      const Tab(text: 'Details'),
-                                      Tab(text: 'Opportunities ($oppCount)'),
-                                      Tab(text: 'Reviews ($reviewsCount)'),
-                                    ],
+                                  child: StreamBuilder<QuerySnapshot>(
+                                    stream: FirebaseFirestore.instance.collection('reviews').where('companyId', isEqualTo: companyId).snapshots(),
+                                    builder: (context, reviewSnap) {
+                                      final reviewsCount = reviewSnap.data?.size ?? 0;
+                                      return TabBar(
+                                        isScrollable: true,
+                                        labelColor: Colors.black,
+                                        labelStyle: GoogleFonts.lato(fontWeight: FontWeight.w700),
+                                        unselectedLabelStyle: GoogleFonts.lato(),
+                                        unselectedLabelColor: Colors.black.withOpacity(0.5),
+                                        indicatorColor: _purple,
+                                        indicatorWeight: 3,
+                                        dividerColor: Colors.transparent,
+                                        tabs: [
+                                          const Tab(text: 'Details'),
+                                          Tab(text: 'Opportunities ($oppCount)'),
+                                          Tab(text: 'Reviews ($reviewsCount)'),
+                                        ],
+                                      );
+                                    }
                                   ),
                                 );
                               },
@@ -308,8 +311,11 @@ class StudentCompanyProfilePage extends StatelessWidget {
                     child: TabBarView(
                       children: [
                         _DetailsTab(company: company, data: data),
-                        _OpportunitiesTab(companyId: companyId),
-                        _ReviewsTab(reviewCount: company.studentReviews.length),
+                        _OpportunitiesTab(companyId: companyId), 
+                        _ReviewsTab(
+                          companyId: companyId,
+                          studentId: studentId,
+                        ),
                       ],
                     ),
                   ),
@@ -704,53 +710,205 @@ class _OpportunityCard extends StatelessWidget {
 // == REVIEWS TAB WIDGET
 // =========================================================================
 
-class _ReviewsTab extends StatelessWidget {
-  const _ReviewsTab({required this.reviewCount});
-  final int reviewCount;
+class _ReviewsTab extends StatefulWidget {
+  const _ReviewsTab({required this.companyId, required this.studentId});
+  final String companyId;
+  final String? studentId;
 
-  // Dummy reviews data
-  final List<Map<String, dynamic>> _dummyReviews = const [
-    {
-      'studentName': 'Sarah Ahmed',
-      'rating': 5,
-      'date': '2 weeks ago',
-      'position': 'Software Engineering Intern',
-      'review': 'Amazing experience! The team was incredibly supportive and I learned so much about modern development practices. The mentorship program is outstanding.',
-    },
-    {
-      'studentName': 'Mohammed Ali',
-      'rating': 4,
-      'date': '1 month ago',
-      'position': 'Data Science Intern',
-      'review': 'Great company culture and excellent learning opportunities. The projects were challenging but rewarding. Would definitely recommend to other students.',
-    },
-    {
-      'studentName': 'Layla Hassan',
-      'rating': 5,
-      'date': '1 month ago',
-      'position': 'Marketing Intern',
-      'review': 'Fantastic internship experience! I got to work on real campaigns and the team treated me like a valued member. Great work-life balance too.',
-    },
-    {
-      'studentName': 'Omar Abdullah',
-      'rating': 4,
-      'date': '2 months ago',
-      'position': 'Business Analyst Intern',
-      'review': 'Very professional environment with plenty of opportunities to grow. The team was helpful and the work was meaningful. Minor issues with remote setup but overall great.',
-    },
-    {
-      'studentName': 'Fatima Ibrahim',
-      'rating': 5,
-      'date': '3 months ago',
-      'position': 'UI/UX Design Intern',
-      'review': 'Best internship I could have asked for! The design team was amazing and I got hands-on experience with real client projects. Highly recommend!',
-    },
-  ];
+  @override
+  State<_ReviewsTab> createState() => _ReviewsTabState();
+}
+
+class _ReviewsTabState extends State<_ReviewsTab> {
+  final _reviewController = TextEditingController();
+  double _currentRating = 0;
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _reviewController.dispose();
+    super.dispose();
+  }
+
+  Stream<List<Review>> _getReviewsStream() {
+    return FirebaseFirestore.instance
+        .collection('reviews')
+        .where('companyId', isEqualTo: widget.companyId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => Review.fromFirestore(doc)).toList());
+  }
+
+  Future<void> _submitReview() async {
+    if (_currentRating == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Please select a rating before submitting.')),
+      );
+      return;
+    }
+    if (_reviewController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please write a review before submitting.')),
+      );
+      return;
+    }
+    if (widget.studentId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be logged in to leave a review.')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final studentDoc = await FirebaseFirestore.instance
+          .collection('student')
+          .doc(widget.studentId)
+          .get();
+      final studentName =
+          '${studentDoc['firstName']} ${studentDoc['lastName']}'.trim();
+
+      final newReview = Review(
+        id: '', // Firestore will generate this
+        studentId: widget.studentId!,
+        studentName: studentName,
+        companyId: widget.companyId,
+        rating: _currentRating,
+        reviewText: _reviewController.text.trim(),
+        createdAt: Timestamp.now(),
+      );
+
+      await FirebaseFirestore.instance.collection('reviews').add(newReview.toMap());
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Thank you for your review!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _reviewController.clear();
+        setState(() => _currentRating = 0);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to submit review: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  Widget _buildWriteReviewSection() {
+    if (widget.studentId == null) {
+      return const SizedBox.shrink();
+    }
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 16.0),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Write a Review',
+              style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) {
+                return IconButton(
+                  onPressed: () => setState(() => _currentRating = index + 1.0),
+                  icon: Icon(
+                    index < _currentRating ? Icons.star : Icons.star_border,
+                    color: const Color(0xFFF99D46),
+                    size: 32,
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _reviewController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Share your experience...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: _isSubmitting ? null : _submitReview,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _purple,
+                  foregroundColor: Colors.white,
+                ),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Submit'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (_dummyReviews.isEmpty) {
-      return Center(
+    return StreamBuilder<List<Review>>(
+      stream: _getReviewsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        final reviews = snapshot.data ?? [];
+
+        return ListView(
+          padding: const EdgeInsets.only(top: 8, bottom: 16),
+          children: [
+            _buildWriteReviewSection(),
+            if (reviews.isEmpty)
+              _buildEmptyState()
+            else
+              ...reviews.map((review) => _buildReviewCard(review)).toList(),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -767,23 +925,21 @@ class _ReviewsTab extends StatelessWidget {
                 color: Colors.grey.shade600,
               ),
             ),
+            const SizedBox(height: 4),
+            Text(
+              'Be the first to share your experience!',
+              style: GoogleFonts.lato(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+              ),
+            ),
           ],
         ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.only(top: 8, bottom: 16),
-      itemCount: _dummyReviews.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 16),
-      itemBuilder: (context, index) {
-        final review = _dummyReviews[index];
-        return _buildReviewCard(review);
-      },
+      ),
     );
   }
 
-  Widget _buildReviewCard(Map<String, dynamic> review) {
+  Widget _buildReviewCard(Review review) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
@@ -803,31 +959,23 @@ class _ReviewsTab extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        review['studentName'],
+                        review.studentName,
                         style: GoogleFonts.lato(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: _purple,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        review['position'],
-                        style: GoogleFonts.lato(
-                          fontSize: 13,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
                     ],
                   ),
                 ),
-                _buildStarRating(review['rating']),
+                _buildStarRating(review.rating.toInt()),
               ],
             ),
             const SizedBox(height: 12),
             // Review text
             Text(
-              review['review'],
+              review.reviewText,
               style: GoogleFonts.lato(
                 fontSize: 14,
                 color: Colors.black87,
@@ -845,7 +993,7 @@ class _ReviewsTab extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  review['date'],
+                  DateFormat('MMM d, yyyy').format(review.createdAt.toDate()),
                   style: GoogleFonts.lato(
                     fontSize: 12,
                     color: Colors.grey.shade600,
