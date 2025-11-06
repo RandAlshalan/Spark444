@@ -12,8 +12,12 @@ import '../models/opportunity.dart';
 import '../services/bookmarkService.dart';
 import '../models/review.dart';
 import '../models/Application.dart'; 
+import '../models/resume.dart';
 import '../services/applicationService.dart';
 import 'StudentSingleProfilePage.dart'; // NEW: single-student followers-style view
+import 'resumeSelectionDialog.dart';
+import 'applicationConfirmationDialog.dart';
+import '../widgets/application_success_dialog.dart';
 // ---------------------------------------------------------
 
 // --- Constants ---
@@ -1403,24 +1407,34 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
   Future<void> _applyNow() async {
     if (_studentId == null) return;
 
+    final selection = await showDialog<Map<String, dynamic>?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => ResumeSelectionDialog(studentId: _studentId!),
+    );
+
+    if (selection == null) return;
+
+    final resume = selection['resume'] as Resume?;
+    final coverLetter = selection['coverLetter'] as String?;
+
+    if (resume == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a resume to continue.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final bool? confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Application'),
-        content: Text(
-          'Are you sure you want to apply for the role of ${widget.opportunity.role}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: _purple),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Apply', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (context) => ApplicationConfirmationDialog(
+        opportunity: widget.opportunity,
+        resume: resume,
+        coverLetter: coverLetter,
       ),
     );
 
@@ -1431,26 +1445,38 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
       await _applicationService.submitApplication(
         studentId: _studentId!,
         opportunityId: widget.opportunity.id,
+        resumeId: resume.id,
+        resumePdfUrl: resume.pdfUrl,
+        coverLetterText: coverLetter,
       );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Application submitted successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        await _fetchApplicationStatus(); // Refresh the status
-      }
+
+      if (!mounted) return;
+
+      final includeCoverLetter =
+          coverLetter != null && coverLetter.trim().isNotEmpty;
+
+      await _fetchApplicationStatus();
+      if (!mounted) return;
+
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => ApplicationSuccessDialog(
+          opportunityTitle: widget.opportunity.role,
+          companyName: null,
+          resumeTitle: resume.title,
+          includeCoverLetter: includeCoverLetter,
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        setState(() => _isApplying = false);
-      }
+      if (!mounted) return;
+      setState(() => _isApplying = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

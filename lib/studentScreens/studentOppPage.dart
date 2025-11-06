@@ -11,11 +11,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../models/Application.dart';
 import '../models/company.dart';
 import '../models/opportunity.dart';
+import '../models/resume.dart';
 import '../services/applicationService.dart';
 import '../services/authService.dart';
 import '../utils/page_transitions.dart';
 import '../studentScreens/studentCompanyProfilePage.dart'; // Import for navigation
 import '../studentScreens/studentOppDetails.dart';
+import '../studentScreens/studentApplications.dart';
 import 'package:spark/services/bookmarkService.dart';
 import 'package:spark/services/opportunityService.dart';
 import 'package:spark/studentScreens/studentCompaniesPage.dart';
@@ -24,6 +26,9 @@ import '../studentScreens/studentViewProfile.dart';
 import '../widgets/CustomBottomNavBar.dart';
 import '../studentScreens/studentSavedOpp.dart';
 import '../studentScreens/StudentChatPage.dart';
+import 'resumeSelectionDialog.dart';
+import '../widgets/application_success_dialog.dart';
+import 'applicationConfirmationDialog.dart';
 // --- COLOR CONSTANTS ---
 const Color _sparkPrimaryPurple = Color(0xFF422F5D);
 const Color _pageBackgroundColor = Color(0xFFF8F9FA);
@@ -229,62 +234,97 @@ class _studentOppPgaeState extends State<studentOppPgae> {
   Future<void> _applyNow() async {
     if (_selectedOpportunity == null || _studentId == null) return;
 
-    // Show a confirmation dialog first
-    final bool? confirm = await showDialog<bool>(
+    final selection = await showDialog<Map<String, dynamic>?>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Application'),
-        content: Text(
-          'Are you sure you want to apply for the role of ${_selectedOpportunity!.role}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _sparkPrimaryPurple,
-            ),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Apply', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (context) => ResumeSelectionDialog(
+        studentId: _studentId!,
       ),
     );
 
-    if (confirm != true) return; // User pressed "Cancel"
+    if (selection == null) return;
 
-    setState(() => _isApplying = true); // Show loading indicator
+    final resume = selection['resume'] as Resume?;
+    final coverLetter = selection['coverLetter'] as String?;
+    if (resume == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a resume to continue.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => ApplicationConfirmationDialog(
+        opportunity: _selectedOpportunity!,
+        resume: resume,
+        coverLetter: coverLetter,
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isApplying = true);
     try {
-      // Call the service to submit the application
       await _applicationService.submitApplication(
         studentId: _studentId!,
         opportunityId: _selectedOpportunity!.id,
+        resumeId: resume.id,
+        resumePdfUrl: resume.pdfUrl,
+        coverLetterText: coverLetter,
       );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Application submitted successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        // Refresh the detail view to show the new "Withdraw" button
-        _viewOpportunityDetails(_selectedOpportunity!);
+
+      if (!mounted) return;
+
+      final includeCoverLetter =
+          coverLetter != null && coverLetter.trim().isNotEmpty;
+
+      String companyName =
+          _companyCache[_selectedOpportunity!.companyId]?.companyName ?? '';
+      if (companyName.isEmpty) {
+        final fetchedCompany =
+            await _authService.getCompany(_selectedOpportunity!.companyId);
+        companyName = fetchedCompany?.companyName ?? 'the hiring team';
       }
+
+      await _viewOpportunityDetails(_selectedOpportunity!);
+      if (!mounted) return;
+
+      setState(() => _isApplying = false);
+
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => ApplicationSuccessDialog(
+          opportunityTitle: _selectedOpportunity!.role,
+          companyName: companyName,
+          resumeTitle: resume.title,
+          includeCoverLetter: includeCoverLetter,
+          onViewApplications: () {
+            if (!mounted) return;
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => StudentApplicationsScreen(
+                  studentId: _studentId!,
+                ),
+              ),
+            );
+          },
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isApplying = false); // Stop loading
-      }
+      if (!mounted) return;
+      setState(() => _isApplying = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -375,7 +415,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
 
   /// Switches the view to show details for a specific opportunity
   /// Switches the view to show details for a specific opportunity
-  void _viewOpportunityDetails(Opportunity opportunity) async {
+  Future<void> _viewOpportunityDetails(Opportunity opportunity) async {
     setState(() {
       _selectedOpportunity = opportunity;
       _currentApplication = null; // Reset application state

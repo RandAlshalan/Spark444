@@ -1,11 +1,14 @@
 import 'dart:math' as math;
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/Application.dart' as app_model;
 import '../models/company.dart';
 import '../models/opportunity.dart';
+import '../models/resume.dart';
 import '../models/student.dart';
 import '../services/applicationService.dart';
 import '../services/authService.dart';
@@ -864,6 +867,7 @@ class _ApplicantCard extends StatefulWidget {
 class _ApplicantCardState extends State<_ApplicantCard> {
   final ApplicationService _applicationService = ApplicationService();
   bool _isUpdating = false;
+  bool _isLoadingResume = false;
 
   Future<void> _updateStatus(String newStatus) async {
     final confirmed = await showDialog<bool>(
@@ -930,6 +934,328 @@ class _ApplicantCardState extends State<_ApplicantCard> {
         setState(() => _isUpdating = false);
       }
     }
+  }
+
+  Future<void> _viewResume() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final application = widget.record.application;
+    final resumeId = application.resumeId;
+    final fallbackUrl = application.resumeUrl;
+
+    if ((resumeId == null || resumeId.isEmpty) &&
+        (fallbackUrl == null || fallbackUrl.isEmpty)) {
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('This application does not have a resume attached.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoadingResume = true);
+
+    try {
+      if (fallbackUrl != null && fallbackUrl.isNotEmpty) {
+        await _launchExternalResume(fallbackUrl);
+        return;
+      }
+
+      final doc = await FirebaseFirestore.instance
+          .collection('resumes')
+          .doc(resumeId)
+          .get();
+
+      if (!doc.exists) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            content: Text('The selected resume is no longer available.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final resume = Resume.fromFirestore(doc);
+      if (resume.pdfUrl != null && resume.pdfUrl!.isNotEmpty) {
+        await _launchExternalResume(resume.pdfUrl!);
+      } else {
+        await _showResumeDetails(resume);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Could not open resume: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingResume = false);
+      }
+    }
+  }
+
+  Future<void> _launchExternalResume(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Resume link is invalid.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not launch resume link.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showResumeDetails(Resume resume) async {
+    final dateFormat = DateFormat('MMM yyyy');
+    final summary = (resume.personalDetails['summary'] as String? ?? '').trim();
+
+    String formatRange(DateTime start, DateTime? end, bool isPresent) {
+      final startStr = dateFormat.format(start);
+      if (isPresent) return '$startStr - Present';
+      if (end == null) return '$startStr - Present';
+      return '$startStr - ${dateFormat.format(end)}';
+    }
+
+    Widget sectionTitle(String text) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 16, bottom: 8),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+          ),
+        ),
+      );
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(resume.title),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Last updated ${DateFormat('MMM d, yyyy').format(resume.lastModifiedAt)}',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+                if (summary.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(summary),
+                  ),
+                if (resume.skills.isNotEmpty) ...[
+                  sectionTitle('Skills'),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: resume.skills
+                        .take(12)
+                        .map(
+                          (skill) => Chip(
+                            label: Text(skill),
+                            backgroundColor: CompanyColors.primary.withOpacity(0.08),
+                            labelStyle: const TextStyle(
+                              color: CompanyColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+                if (resume.education.isNotEmpty) ...[
+                  sectionTitle('Education'),
+                  ...resume.education.map(
+                    (edu) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            edu.degreeName,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(edu.instituteName),
+                          Text(
+                            formatRange(
+                              edu.startDate,
+                              edu.endDate,
+                              edu.isPresent,
+                            ),
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                          if (edu.gpa != null)
+                            Text('GPA: ${edu.gpa!.toStringAsFixed(2)}'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                if (resume.experiences.isNotEmpty) ...[
+                  sectionTitle('Experience'),
+                  ...resume.experiences.map(
+                    (exp) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            exp.title,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(exp.organization),
+                          Text(
+                            formatRange(
+                              exp.startDate,
+                              exp.endDate,
+                              exp.isPresent,
+                            ),
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                          if ((exp.description ?? '').trim().isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(exp.description!),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                if (resume.projects.isNotEmpty) ...[
+                  sectionTitle('Projects'),
+                  ...resume.projects.map(
+                    (proj) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            proj.title,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          if ((proj.description).trim().isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(proj.description),
+                            ),
+                          if ((proj.link ?? '').trim().isNotEmpty)
+                            Text(
+                              proj.link!,
+                              style: const TextStyle(
+                                color: CompanyColors.secondary,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                if (resume.languages.isNotEmpty) ...[
+                  sectionTitle('Languages'),
+                  ...resume.languages.map(
+                    (lang) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text('${lang.name} • ${lang.proficiency}'),
+                    ),
+                  ),
+                ],
+                if (resume.awards.isNotEmpty) ...[
+                  sectionTitle('Awards'),
+                  ...resume.awards.map(
+                    (award) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            award.title,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(award.organization),
+                          Text(
+                            DateFormat('MMM yyyy').format(award.issueDate),
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                          if (award.description.trim().isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(award.description),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                if (resume.customSections.isNotEmpty) ...[
+                  sectionTitle('Additional Information'),
+                  ...resume.customSections.map(
+                    (section) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            section.sectionTitle,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          ...section.entries.map(
+                            (entry) => Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if ((entry.title ?? '').trim().isNotEmpty)
+                                    Text(entry.title!),
+                                  if ((entry.description ?? '').trim().isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text(entry.description!),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -1048,6 +1374,29 @@ class _ApplicantCardState extends State<_ApplicantCard> {
                         ),
                       )
                       .toList(),
+                ),
+              ),
+            if ((application.resumeId != null && application.resumeId!.isNotEmpty) ||
+                (application.resumeUrl != null && application.resumeUrl!.isNotEmpty))
+              Padding(
+                padding: const EdgeInsets.only(top: 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _isLoadingResume ? null : _viewResume,
+                    icon: _isLoadingResume
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.description_outlined),
+                    label: const Text('View Resume'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(color: CompanyColors.primary.withOpacity(0.6)),
+                    ),
+                  ),
                 ),
               ),
             if (isPending) ...[

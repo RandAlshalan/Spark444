@@ -116,9 +116,13 @@ class OpportunityDetailsContent extends StatelessWidget {
           color: Colors.red.shade700,
         );
       }
+
+      // If status is 'withdrawn', treat as if no application exists (allow reapply)
+      // This case is now handled by getApplicationForOpportunity returning null,
+      // so this block won't be reached for withdrawn applications
     }
 
-    // Scenario 2: No application exists, check if application period is open
+    // Scenario 2: No application exists (or was withdrawn), check if application period is open
     if (application == null && onApply != null) {
       final now = DateTime.now();
       final applicationOpenDate = opportunity.applicationOpenDate?.toDate();
@@ -128,7 +132,7 @@ class OpportunityDetailsContent extends StatelessWidget {
         return _buildUpcomingButton(context, applicationOpenDate);
       }
 
-      // Application period is open
+      // Application period is open - show Apply Now button
       return _buildActionButton(
         context: context,
         onPressed: onApply!,

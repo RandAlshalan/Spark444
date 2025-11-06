@@ -27,6 +27,8 @@ class ApplicationService {
   }
 
   /// Fetches the specific application document for a given student and opportunity.
+  /// Returns null if no active (non-withdrawn) application exists.
+  /// This allows students to reapply after withdrawing their application.
   Future<Application?> getApplicationForOpportunity({
     required String studentId,
     required String opportunityId,
@@ -45,13 +47,15 @@ class ApplicationService {
         (a, b) => b.appliedDate.compareTo(a.appliedDate),
       );
 
+    // Return the first non-withdrawn application
     for (final app in applications) {
       if (app.status.toLowerCase() != 'withdrawn') {
         return app;
       }
     }
 
-    return applications.first;
+    // If all applications are withdrawn, return null to allow reapply
+    return null;
   }
 
   /// Loads all applications submitted to the given opportunity ordered by most recent.
@@ -76,6 +80,9 @@ class ApplicationService {
   Future<void> submitApplication({
     required String studentId,
     required String opportunityId,
+    required String resumeId,
+    String? resumePdfUrl,
+    String? coverLetterText,
   }) async {
     // Prevent duplicate submissions from rapid clicks.
     final alreadyApplied = await hasStudentApplied(
@@ -87,16 +94,26 @@ class ApplicationService {
     }
 
     // Creates a new document in the 'applications' collection.
-    await _applicationsCollection.add({
+    final applicationData = {
       'studentId': studentId,
       'opportunityId': opportunityId,
       'status': 'Pending', // Default status
       'appliedDate': Timestamp.now(),
-      'resumeUrl': null,
-      'coverLetterText': null,
+      'resumeId': resumeId,
+      'resumeUrl': resumePdfUrl,
+      'coverLetterText': coverLetterText,
       'lastStatusUpdateDate': null,
       'companyFeedback': null,
-    });
+    };
+
+    if (resumePdfUrl == null || resumePdfUrl.isEmpty) {
+      applicationData.remove('resumeUrl');
+    }
+    if (coverLetterText == null || coverLetterText.trim().isEmpty) {
+      applicationData.remove('coverLetterText');
+    }
+
+    await _applicationsCollection.add(applicationData);
   }
 
   Future<void> deleteApplication({required String applicationId}) async {
