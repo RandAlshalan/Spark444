@@ -1088,22 +1088,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               counterText: '', // keep existing appearance
             ),
-            onChanged: (value) {
-              // compute validity and update only when toggling to reduce rebuilds
-              final trimmed = value.trim();
-              final hasText = trimmed.isNotEmpty;
-              final textValid = trimmed.length >= _reviewMinLength && trimmed.length <= _reviewMaxLength;
-              if (hasText != _reviewHasText || textValid != _reviewTextValid) {
-                // Use helper to set state properly
-                _updateReviewButtonState();
-              } else {
-                // still update the displayed counter (small and cheap)
-                // calling setState only when needed to refresh remaining counter
-                if ((_reviewMaxLength - trimmed.length) != (_reviewMaxLength - _reviewController.text.trim().length)) {
-                  setState(() {});
-                }
-              }
-            },
+            // no per-keystroke state changes here (prevents reloads)
           ),
           const SizedBox(height: 6),
           Row(
@@ -1111,19 +1096,25 @@ class _ReviewsTabState extends State<_ReviewsTab> {
             children: [
               // Inline error / helper text
               Expanded(
-                child: Text(
-                  '${_reviewMaxLength - _reviewController.text.trim().length} characters remaining',
-                  style: GoogleFonts.lato(
-                    fontSize: 13,
-                    color: Colors.grey.shade600,
-                  ),
+                child: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _reviewController,
+                  builder: (context, value, _) {
+                    final remaining = _reviewMaxLength - value.text.trim().length;
+                    return Text(
+                      '$remaining characters remaining',
+                      style: GoogleFonts.lato(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 8),
               Align(
                 alignment: Alignment.centerRight,
                 child: ElevatedButton(
-                  onPressed: (_isSubmitting || !_canSubmitReview) ? null : _submitReview,
+                  onPressed: _isSubmitting ? null : _submitReview,
                   style: ElevatedButton.styleFrom(backgroundColor: _purple, foregroundColor: Colors.white),
                   child: _isSubmitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Submit'),
                 ),
@@ -1226,12 +1217,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
               maxLength: _reviewMaxLength,
               inputFormatters: [LengthLimitingTextInputFormatter(_reviewMaxLength)],
               decoration: InputDecoration(hintText: 'Write a reply...', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), counterText: ''),
-              onChanged: (value) {
-                final hasText = value.trim().isNotEmpty;
-                if ((_replyHasText[parentId] ?? false) != hasText) {
-                  setState(() => _replyHasText[parentId] = hasText);
-                }
-              },
+              // no per-keystroke state changes here (prevents reloads)
             ),
             const SizedBox(height: 6),
             // Inline reply error / remaining + controls
@@ -1255,9 +1241,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
                 ]),
                 const SizedBox(width: 8),
                 ElevatedButton(
-                  onPressed: (_isReplySubmitting[parentId] ?? false) || !(_replyHasText[parentId] ?? false)
-                      ? null
-                      : () => _submitReply(parentId),
+                  onPressed: (_isReplySubmitting[parentId] ?? false) ? null : () => _submitReply(parentId),
                   style: ElevatedButton.styleFrom(backgroundColor: _purple),
                   child: (_isReplySubmitting[parentId] ?? false) ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text('Reply', style: GoogleFonts.lato(color: Colors.white)),
                 ),
