@@ -8,7 +8,8 @@ class Application {
   status; // Current status (e.g., 'Pending', 'Reviewed', 'Rejected', 'Hired')
   final Timestamp
   appliedDate; // Date and time when the application was submitted
-  final String? resumeUrl; // Optional: URL to the student's resume
+  final String? resumeId; // Optional: Reference to student's resume document
+  final String? resumeUrl; // Optional: URL to the student's resume PDF
   final String? coverLetterText; // Optional: The text of the cover letter
   final String? coverLetterUrl; // Optional: URL to a cover letter file
   final Timestamp?
@@ -22,6 +23,7 @@ class Application {
     required this.studentId,
     required this.status,
     required this.appliedDate,
+    this.resumeId,
     this.resumeUrl,
     this.coverLetterText,
     this.coverLetterUrl,
@@ -41,6 +43,7 @@ class Application {
       appliedDate:
           data['appliedDate'] as Timestamp? ??
           Timestamp.now(), // Default to now if missing
+      resumeId: data['resumeId'],
       resumeUrl: data['resumeUrl'],
       coverLetterText: data['coverLetterText'],
       coverLetterUrl: data['coverLetterUrl'],
@@ -56,6 +59,7 @@ class Application {
       'studentId': studentId,
       'status': status,
       'appliedDate': appliedDate,
+      if (resumeId != null) 'resumeId': resumeId,
       if (resumeUrl != null) 'resumeUrl': resumeUrl,
       if (coverLetterText != null) 'coverLetterText': coverLetterText,
       if (coverLetterUrl != null) 'coverLetterUrl': coverLetterUrl,
