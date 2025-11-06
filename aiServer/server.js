@@ -30,7 +30,7 @@ app.post("/chat", async (req, res) => {
 
     // --- Intelligently build the System Prompt ---
     // This tells the AI how to behave based on the inputs
-    const SYSTEM_PROMPT = `
+    const systemPrompt = `
 You are an expert AI interview coach. Your tone is supportive, encouraging, and professional. Your goal is to help students feel confident and prepared.
 
 **CRITICAL RULE:** You must *never* ask for or use any personal user data (name, school, GPA, etc.). All answers must be general and educational.
