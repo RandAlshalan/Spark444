@@ -735,10 +735,16 @@ class _ReviewsTabState extends State<_ReviewsTab> {
   // control whether the review shows the student's profile (visible) or is anonymous
   bool _authorVisible = true;
 
-  // Helper to open the company-facing single-student page (only if authorVisible)
+  // Reply UI state per root review id
+  final Map<String, TextEditingController> _replyControllers = {};
+  final Map<String, bool> _showReplyBox = {};
+  final Map<String, bool> _replyAuthorVisible = {};
+  final Map<String, bool> _isReplySubmitting = {};
+
+  // Helper to open the single-student page (only if authorVisible)
   void _openStudentProfile({required String studentId, required bool authorVisible}) {
     if (!authorVisible) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This profile is posted anonymously')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("This student’s profile is private.")));
       return;
     }
     Navigator.push(
@@ -748,10 +754,13 @@ class _ReviewsTabState extends State<_ReviewsTab> {
       ),
     );
   }
-  
+
   @override
   void dispose() {
     _reviewController.dispose();
+    for (final c in _replyControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -763,18 +772,14 @@ class _ReviewsTabState extends State<_ReviewsTab> {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      // Map documents to Review and parentId
       final items = snapshot.docs.map((doc) {
         final r = Review.fromFirestore(doc);
         final data = doc.data() as Map<String, dynamic>;
         final parentIdRaw = data['parentId'];
-        final parentId = (parentIdRaw is String && parentIdRaw.trim().isNotEmpty)
-            ? parentIdRaw
-            : null;
+        final parentId = (parentIdRaw is String && parentIdRaw.trim().isNotEmpty) ? parentIdRaw : null;
         return {'review': r, 'parentId': parentId};
       }).toList();
 
-      // Build map of parentId -> replies
       final Map<String, List<Review>> repliesMap = {};
       for (var item in items) {
         final Review r = item['review'] as Review;
@@ -784,21 +789,16 @@ class _ReviewsTabState extends State<_ReviewsTab> {
         }
       }
 
-      // Build top-level threads: parentId == null
       final threads = items
           .where((i) => (i['parentId'] as String?) == null)
           .map((i) {
         final Review top = i['review'] as Review;
         final replies = repliesMap[top.id] ?? [];
-        // Sort replies oldest-first for natural conversation order
-        replies.sort((a, b) =>
-            a.createdAt.toDate().compareTo(b.createdAt.toDate()));
+        replies.sort((a, b) => a.createdAt.toDate().compareTo(b.createdAt.toDate()));
         return _ReviewThread(review: top, replies: replies);
       }).toList();
 
-      // Ensure top-level reviews are newest-first
-      threads.sort((a, b) =>
-          b.review.createdAt.toDate().compareTo(a.review.createdAt.toDate()));
+      threads.sort((a, b) => b.review.createdAt.toDate().compareTo(a.review.createdAt.toDate()));
 
       return threads;
     });
@@ -806,31 +806,22 @@ class _ReviewsTabState extends State<_ReviewsTab> {
 
   Future<void> _submitReview() async {
     if (_currentRating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a rating before submitting.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a rating before submitting.')));
       return;
     }
     if (_reviewController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please write a review before submitting.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please write a review before submitting.')));
       return;
     }
     if (widget.studentId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be logged in to leave a review.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You must be logged in to leave a review.')));
       return;
     }
 
     setState(() => _isSubmitting = true);
 
     try {
-      final studentDoc = await FirebaseFirestore.instance
-          .collection('student')
-          .doc(widget.studentId)
-          .get();
+      final studentDoc = await FirebaseFirestore.instance.collection('student').doc(widget.studentId).get();
       final first = (studentDoc.data()?['firstName'] ?? '').toString();
       final last = (studentDoc.data()?['lastName'] ?? '').toString();
       final studentName = ('$first $last').trim();
@@ -843,26 +834,102 @@ class _ReviewsTabState extends State<_ReviewsTab> {
         'reviewText': _reviewController.text.trim(),
         'createdAt': Timestamp.now(),
         'authorVisible': _authorVisible,
-        // parentId: omitted for top-level reviews; when implementing replies include parentId
+        // top-level review => no parentId
       };
 
       await FirebaseFirestore.instance.collection('reviews').add(reviewData);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Thank you for your review!'), backgroundColor: Colors.green),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thank you for your review!'), backgroundColor: Colors.green));
         _reviewController.clear();
         setState(() => _currentRating = 0);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to submit review: $e'), backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to submit review: $e'), backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _submitReply(String parentReviewId) async {
+    final controller = _replyControllers.putIfAbsent(parentReviewId, () => TextEditingController());
+    final text = controller.text.trim();
+    final visible = _replyAuthorVisible.putIfAbsent(parentReviewId, () => true);
+
+    if (widget.studentId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You must be logged in to reply.')));
+      return;
+    }
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reply cannot be empty.')));
+      return;
+    }
+
+    setState(() => _isReplySubmitting[parentReviewId] = true);
+    try {
+      final studentDoc = await FirebaseFirestore.instance.collection('student').doc(widget.studentId).get();
+      final first = (studentDoc.data()?['firstName'] ?? '').toString();
+      final last = (studentDoc.data()?['lastName'] ?? '').toString();
+      final studentName = ('$first $last').trim();
+
+      final replyData = {
+        'studentId': widget.studentId!,
+        'studentName': studentName,
+        'companyId': widget.companyId,
+        'rating': 0, // replies don't carry rating
+        'reviewText': text,
+        'createdAt': Timestamp.now(),
+        'authorVisible': visible,
+        'parentId': parentReviewId,
+      };
+
+      await FirebaseFirestore.instance.collection('reviews').add(replyData);
+
+      // clear and collapse reply box
+      controller.clear();
+      setState(() {
+        _showReplyBox[parentReviewId] = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to submit reply: $e'), backgroundColor: Colors.red));
+      }
+    } finally {
+      setState(() => _isReplySubmitting[parentReviewId] = false);
+    }
+  }
+
+  Future<void> _confirmAndDelete(String reviewId, {required bool isParent}) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete'),
+        content: const Text('Are you sure you want to delete this item? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), style: ElevatedButton.styleFrom(backgroundColor: _purple), child: const Text('Delete', style: TextStyle(color: Colors.white))),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final reviewsCol = FirebaseFirestore.instance.collection('reviews');
+        if (isParent) {
+          final repliesSnap = await reviewsCol.where('parentId', isEqualTo: reviewId).get();
+          final batch = FirebaseFirestore.instance.batch();
+          for (final d in repliesSnap.docs) batch.delete(d.reference);
+          batch.delete(reviewsCol.doc(reviewId));
+          await batch.commit();
+        } else {
+          await reviewsCol.doc(reviewId).delete();
+        }
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deleted'), backgroundColor: Colors.green));
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red));
+      }
     }
   }
 
@@ -881,8 +948,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
             children: List.generate(5, (index) {
               return IconButton(
                 onPressed: () => setState(() => _currentRating = index + 1.0),
-                icon: Icon(index < _currentRating ? Icons.star : Icons.star_border,
-                    color: const Color(0xFFF99D46), size: 32),
+                icon: Icon(index < _currentRating ? Icons.star : Icons.star_border, color: const Color(0xFFF99D46), size: 32),
               );
             }),
           ),
@@ -898,10 +964,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
           TextField(
             controller: _reviewController,
             maxLines: 3,
-            decoration: InputDecoration(
-              hintText: 'Share your experience...',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
+            decoration: InputDecoration(hintText: 'Share your experience...', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
           ),
           const SizedBox(height: 12),
           Align(
@@ -909,9 +972,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
             child: ElevatedButton(
               onPressed: _isSubmitting ? null : _submitReview,
               style: ElevatedButton.styleFrom(backgroundColor: _purple, foregroundColor: Colors.white),
-              child: _isSubmitting
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Submit'),
+              child: _isSubmitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Submit'),
             ),
           ),
         ]),
@@ -956,6 +1017,12 @@ class _ReviewsTabState extends State<_ReviewsTab> {
   }
 
   Widget _buildReviewThreadCard(_ReviewThread thread) {
+    final parentId = thread.review.id;
+    _replyControllers.putIfAbsent(parentId, () => TextEditingController());
+    _showReplyBox.putIfAbsent(parentId, () => false);
+    _replyAuthorVisible.putIfAbsent(parentId, () => true);
+    _isReplySubmitting.putIfAbsent(parentId, () => false);
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -964,11 +1031,77 @@ class _ReviewsTabState extends State<_ReviewsTab> {
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _buildReviewCard(thread.review),
+
+          // Reply button + optional reply box
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => setState(() => _showReplyBox[parentId] = !(_showReplyBox[parentId] ?? false)),
+                child: Text('Reply', style: GoogleFonts.lato()),
+              ),
+              if (widget.studentId != null && widget.studentId == thread.review.studentId) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(),
+                  icon: Icon(Icons.delete_outline, color: Colors.red.shade700),
+                  onPressed: () => _confirmAndDelete(parentId, isParent: true),
+                ),
+              ],
+            ],
+          ),
+
+          if (_showReplyBox[parentId] == true) ...[
+            const SizedBox(height: 8),
+            TextField(
+              controller: _replyControllers[parentId],
+              maxLines: 3,
+              decoration: InputDecoration(hintText: 'Write a reply...', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(children: [
+                  Text('Show my profile', style: GoogleFonts.lato(fontSize: 14)),
+                  const SizedBox(width: 8),
+                  Switch(value: _replyAuthorVisible[parentId] ?? true, activeColor: _purple, onChanged: (v) => setState(() => _replyAuthorVisible[parentId] = v)),
+                ]),
+                ElevatedButton(
+                  onPressed: (_isReplySubmitting[parentId] ?? false) ? null : () => _submitReply(parentId),
+                  style: ElevatedButton.styleFrom(backgroundColor: _purple),
+                  child: (_isReplySubmitting[parentId] ?? false) ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text('Reply', style: GoogleFonts.lato(color: Colors.white)),
+                ),
+              ],
+            ),
+          ],
+
+          // Replies (rendered thread.replies)
           if (thread.replies.isNotEmpty) ...[
             const SizedBox(height: 8),
             Divider(color: Colors.grey.shade300),
             const SizedBox(height: 8),
-            ...thread.replies.map((r) => _buildReplyTile(r)).toList(),
+            ...thread.replies.map((r) {
+              return Stack(
+                children: [
+                  _buildReplyTile(r),
+                  // delete reply icon for owner (overlay to the right)
+                  if (widget.studentId != null && widget.studentId == r.studentId)
+                    Positioned(
+                      right: 4,
+                      top: 4,
+                      child: IconButton(
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(),
+                        icon: Icon(Icons.delete_outline, size: 18, color: Colors.red.shade700),
+                        onPressed: () => _confirmAndDelete(r.id, isParent: false),
+                      ),
+                    ),
+                ],
+              );
+            }).toList(),
           ],
         ]),
       ),
@@ -996,8 +1129,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
                 final visible = (review.authorVisible ?? true);
                 final displayName = visible ? (currentName.isNotEmpty ? currentName : review.studentName) : 'Anonymous';
 
-                return Text(displayName,
-                    style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700, color: _purple));
+                return Text(displayName, style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700, color: _purple));
               },
             ),
           ),
@@ -1034,9 +1166,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
                 final combined = '$fn ${ln}'.trim();
                 if (combined.isNotEmpty) nameForInitials = combined;
               }
-              initials = (nameForInitials.isNotEmpty)
-                  ? nameForInitials.split(' ').map((s) => s.isNotEmpty ? s[0] : '').take(2).join().toUpperCase()
-                  : '';
+              initials = (nameForInitials.isNotEmpty) ? nameForInitials.split(' ').map((s) => s.isNotEmpty ? s[0] : '').take(2).join().toUpperCase() : '';
               return Text(initials, style: GoogleFonts.lato(fontSize: 12, color: _purple));
             },
           ),
@@ -1081,8 +1211,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
 
   Widget _buildStarRating(int rating) {
     return Row(mainAxisSize: MainAxisSize.min, children: List.generate(5, (index) {
-      return Icon(index < rating ? Icons.star : Icons.star_border,
-          color: index < rating ? const Color(0xFFF99D46) : Colors.grey.shade400, size: 20);
+      return Icon(index < rating ? Icons.star : Icons.star_border, color: index < rating ? const Color(0xFFF99D46) : Colors.grey.shade400, size: 20);
     }));
   }
 }
