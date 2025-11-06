@@ -1,73 +1,69 @@
 import 'package:flutter/material.dart';
 import '../services/chat_service.dart';
-import '../models/message.dart';
 
 class ChatPage extends StatefulWidget {
-  final String profileInfo; 
-  const ChatPage({super.key, required this.profileInfo});
+  const ChatPage({super.key});
 
   @override
   State<ChatPage> createState() => _ChatPageState();
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final ChatService _chatService = ChatService();
   final TextEditingController _controller = TextEditingController();
-  final List<Message> _messages = [];
+  final ChatService _chatService = ChatService();
+  final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
 
-  Future<void> _sendMessage() async {
+  void _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
     setState(() {
-      _messages.add(Message(text: text, isUser: true));
+      _messages.add({'role': 'user', 'text': text});
+      _controller.clear();
       _isLoading = true;
     });
-    _controller.clear();
 
-    final reply = await _chatService.sendMessage(
-      text,
-      profileInfo: widget.profileInfo,
-    );
-
-    setState(() {
-      _messages.add(Message(text: reply, isUser: false));
-      _isLoading = false;
-    });
+    try {
+      final reply = await _chatService.sendMessage(text);
+      setState(() {
+        _messages.add({'role': 'ai', 'text': reply});
+      });
+    } catch (e) {
+      setState(() {
+        _messages.add({'role': 'ai', 'text': 'Error: ${e.toString()}'});
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("AI Interview Practice"),
-      ),
+      appBar: AppBar(title: const Text('AI Interview Coach')),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
+              padding: const EdgeInsets.all(12),
               itemCount: _messages.length,
               itemBuilder: (context, index) {
                 final msg = _messages[index];
+                final isUser = msg['role'] == 'user';
                 return Align(
-                  alignment: msg.isUser
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
+                  alignment:
+                      isUser ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
-                    margin:
-                        const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                    margin: const EdgeInsets.symmetric(vertical: 4),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: msg.isUser
-                          ? Colors.blueAccent.withOpacity(0.2)
-                          : Colors.grey.shade200,
+                      color: isUser ? Colors.purple[100] : Colors.grey[200],
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
-                      msg.text,
-                      style: const TextStyle(fontSize: 16),
-                    ),
+                    child: Text(msg['text'] ?? ''),
                   ),
                 );
               },
@@ -79,20 +75,21 @@ class _ChatPageState extends State<ChatPage> {
               child: CircularProgressIndicator(),
             ),
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(12.0),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _controller,
                     decoration:
-                        const InputDecoration(hintText: 'Write your answer'),
+                        const InputDecoration(hintText: 'Type your question...'),
+                    onSubmitted: (_) => _sendMessage(),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.send),
+                  icon: const Icon(Icons.send, color: Colors.purple),
                   onPressed: _sendMessage,
-                )
+                ),
               ],
             ),
           ),

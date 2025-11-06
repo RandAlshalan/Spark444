@@ -95,7 +95,7 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
        case 2: 
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => ChatPage(profileInfo: 'Student',)),
+          MaterialPageRoute(builder: (context) => ChatPage()),
         );
         break;
       case 3:
