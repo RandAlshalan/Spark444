@@ -1,42 +1,56 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import '../models/student.dart'; // Make sure this path is correct
-import '../models/message.dart'; // Make sure this path is correct
 import '../services/chat_service.dart'; // Make sure this path is correct
-import 'dart:async'; // For Future.delayed
+import 'dart:async'; // For using Future.delayed
 
-// --- 1. Define key colors (from StudentChatPage) ---
+// --- 1. Define key colors ---
 const Color _primaryColor = Color(0xFF422F5D);
 const Color _aiBubbleColor = Color(0xFFF1F1F1);
-const Color _userBubbleColor = _primaryColor; // Use primary for user
 const Color _scaffoldBgColor = Color(0xFFF8F9FA);
 
-class ChatPage extends StatefulWidget {
-  const ChatPage({super.key});
+// Renamed to StudentChatPage
+class StudentChatPage extends StatefulWidget {
+  const StudentChatPage({super.key});
 
   @override
-  State<ChatPage> createState() => _ChatPageState();
+  State<StudentChatPage> createState() => _StudentChatPageState();
 }
 
-class _ChatPageState extends State<ChatPage> {
+// Renamed to _StudentChatPageState
+class _StudentChatPageState extends State<StudentChatPage> {
+  // Controllers for text input and scrolling
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final ChatService _chatService = ChatService(); // Use one service instance
-
+  
+  // Services and state variables
+  final ChatService _chatService = ChatService();
+  // This list holds the chat messages in memory.
+  // When the page is closed, this list is destroyed.
+  final List<Map<String, String>> _messages = []; 
   bool _isLoading = false;
-  String? _currentChatId; // Current chat session ID
+
+  @override
+  void initState() {
+    super.initState();
+    // Add a friendly welcome message when the page loads
+    _messages.add({
+      'role': 'ai',
+      'text':
+          "Hi! I'm your AI Interview Coach. 👋\n\nAsk me any question to prepare for your interview."
+    });
+  }
 
   @override
   void dispose() {
+    // Clean up controllers to prevent memory leaks
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  /// Scrolls to bottom of chat
+  /// Scrolls to the bottom of the message list
   void _scrollToBottom() {
+    // Delay slightly to allow the UI to build before scrolling
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -48,292 +62,200 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  /// Create a new chat session
-  Future<void> _createNewChat(String userId) async {
-    // Add a default "title" or generate one
-    final docRef = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('chats')
-        .add({
-      'title': 'New Chat @ ${DateTime.now().toShortDateString()}',
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    setState(() => _currentChatId = docRef.id);
-
-    // Optional: Add the default welcome message to this new chat
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('chats')
-        .doc(_currentChatId)
-        .collection('messages')
-        .add({
-      'role': 'ai',
-      'text': "Hi! I'm your AI Interview Coach. 👋\n\nAsk me any question to prepare for your interview.",
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-  }
-
-  /// Get the current chat history from Firestore
-  Future<List<Map<String, String>>> _getChatHistory(String userId) async {
-    if (_currentChatId == null) return [];
-
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('chats')
-        .doc(_currentChatId)
-        .collection('messages')
-        .orderBy('timestamp')
-        .get();
-
-    // Filter out the welcome message for the history
-    return snapshot.docs.map((doc) {
-      return {
-        'role': doc['role'] as String,
-        'text': doc['text'] as String,
-      };
-    }).where((msg) => 
-        !(msg['role'] == 'ai' && msg['text']!.startsWith("Hi! I'm your AI Interview Coach"))
-    ).toList();
-  }
-
-  /// Send user message and get AI reply
-  Future<void> _sendMessage(Student student) async {
+  /// Handles sending the user's message to the ChatService
+  void _sendMessage() async {
     final text = _controller.text.trim();
-    if (text.isEmpty || _currentChatId == null) return;
+    // Don't send if the message is empty or if AI is already replying
+    if (text.isEmpty || _isLoading) return;
 
-    final userId = student.id;
-    _controller.clear();
-    setState(() => _isLoading = true);
-    _scrollToBottom(); // Scroll after user sends
+    // --- (Example) Assume you get these IDs from your app's state ---
+    // You must replace these with your real variables
+    final String? currentResumeId = 'resume_12345'; // (Example: Get this from your state)
+    final String? currentTrainingType = 'Software Development'; // (Example)
 
-    final messagesRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('chats')
-        .doc(_currentChatId)
-        .collection('messages');
-
-    // 1. Save user's message
-    await messagesRef.add({
-      'role': 'user',
-      'text': text,
-      'timestamp': FieldValue.serverTimestamp(),
+    final userMessage = {'role': 'user', 'text': text};
+    
+    // Add user's message to UI immediately
+    setState(() {
+      _messages.add(userMessage);
+      _controller.clear();
+      _isLoading = true; // Show typing indicator
     });
+
+    _scrollToBottom(); // Scroll down
+
+    // --- Filter out the welcome message from the history ---
+    // The AI doesn't need to see its own welcome message
+    final history = _messages.where((msg) {
+        return !(msg['role'] == 'ai' && msg['text']!.startsWith("Hi! I'm your AI Interview Coach"));
+    }).toList();
+
 
     try {
-      // 2. Get current history for the API call
-      final history = await _getChatHistory(userId);
-
-      // 3. Call AI service (using the advanced method from StudentChatPage)
-      final replyText = await _chatService.sendMessage(
+      // --- FIXED: The call now matches the ChatService ---
+      // Call the AI service with history and extra parameters
+      final reply = await _chatService.sendMessage(
         history, // Send the history List
+        resumeId: currentResumeId,       // Send the extra parameters
+        trainingType: currentTrainingType,
       );
-
-      // 4. Save AI reply
-      await messagesRef.add({
-        'role': 'ai',
-        'text': replyText,
-        'timestamp': FieldValue.serverTimestamp(),
+      
+      // Add AI's reply to the UI
+      setState(() {
+        _messages.add({'role': 'ai', 'text': reply});
       });
     } catch (e) {
-      // 5. Save error message
-      await messagesRef.add({
-        'role': 'ai',
-        'text': 'Oops! ${e.toString()} 😟',
-        'timestamp': FieldValue.serverTimestamp(),
+      // Show an error message if the API call fails
+      setState(() {
+        _messages.add({'role': 'ai', 'text': 'Oops! ${e.toString()} 😟'});
       });
     } finally {
-      setState(() => _isLoading = false);
-      _scrollToBottom(); // Scroll after AI replies
+      // Whether it succeeded or failed, stop loading
+      setState(() {
+        _isLoading = false;
+      });
+      _scrollToBottom(); // Scroll down to show the new message
     }
+  }
+
+  // --- NEW FUNCTION: Handles the back button press ---
+  /// Shows a confirmation dialog before allowing the user to leave the page.
+  Future<bool> _onWillPop() async {
+    // If the user hasn't typed anything (only the welcome message exists),
+    // let them leave without a warning.
+    if (_messages.length <= 1) {
+      return true; // (true = allow pop/exit)
+    }
+
+    // If they have chatted, show a confirmation dialog
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Are you sure?'),
+        content: const Text('Your chat history will be deleted if you leave.'),
+        actions: <Widget>[
+          // "Stay" button
+          TextButton(
+            onPressed: () => Navigator.pop(context, false), // (false = do not pop/exit)
+            child: const Text('Cancel'),
+          ),
+          // "Leave" button
+          TextButton(
+            onPressed: () => Navigator.pop(context, true), // (true = allow pop/exit)
+            child: const Text(
+              'Leave',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Handle cases where the user taps outside the dialog (result is null)
+    // (result ?? false) means: if result is null, treat it as false (don't exit)
+    return result ?? false;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Get the Student object from Provider
-    final student = context.watch<Student?>();
-
-    if (student == null) {
-      return const Scaffold(
-        body: Center(child: Text("Loading student profile... Please log in.")),
-      );
-    }
-    
-    final userId = student.id;
-
-    return Scaffold(
-      backgroundColor: _scaffoldBgColor,
-      appBar: AppBar(
-        title: const Text(
-          'AI Interview Coach',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: _primaryColor,
-        elevation: 2,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: Colors.white),
-            tooltip: "Start new chat",
-            onPressed: () => _createNewChat(userId),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // --- Chat session selector ---
-          SizedBox(
-            height: 60, // Reduced height a bit
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(userId)
-                  .collection('chats')
-                  .orderBy('createdAt', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                
-                final chats = snapshot.data!.docs;
-                if (chats.isEmpty && _currentChatId == null) {
-                  // If no chats exist, create one automatically
-                  Future.microtask(() => _createNewChat(userId));
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: chats.length,
-                  itemBuilder: (context, index) {
-                    final chat = chats[index];
-                    final chatId = chat.id;
-                    final title = (chat.data() as Map<String, dynamic>)['title'] ?? 'Untitled';
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
-                      child: ChoiceChip(
-                        label: Text(title),
-                        selectedColor: _primaryColor,
-                        labelStyle: TextStyle(
-                          color: _currentChatId == chatId ? Colors.white : _primaryColor,
-                        ),
-                        selected: _currentChatId == chatId,
-                        onSelected: (selected) {
-                          if (selected) {
-                            setState(() => _currentChatId = chatId);
-                          }
-                        },
-                      ),
-                    );
-                  },
-                );
-              },
+    // --- MODIFIED: Wrap Scaffold with WillPopScope ---
+    // This intercepts the back button press (both app bar and Android navigation)
+    return WillPopScope(
+      onWillPop: _onWillPop, // Call our new function to show the dialog
+      child: Scaffold(
+        backgroundColor: _scaffoldBgColor,
+        appBar: AppBar(
+          title: const Text(
+            'AI Interview Coach',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
             ),
           ),
+          backgroundColor: _primaryColor,
+          elevation: 2,
+          centerTitle: true,
+        ),
+        body: Column(
+          children: [
+            // --- Message List Area ---
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(12),
+                // Add 1 to item count if _isLoading is true (for the typing indicator)
+                itemCount: _messages.length + (_isLoading ? 1 : 0),
+                itemBuilder: (context, index) {
+                  
+                  // If this is the last item AND we are loading, show the indicator
+                  if (_isLoading && index == _messages.length) {
+                    return _buildTypingIndicator();
+                  }
 
-          const Divider(height: 1, thickness: 1),
+                  // Get the message and check if it's from the user
+                  final msg = _messages[index];
+                  final isUser = msg['role'] == 'user';
 
-          // --- Messages List ---
-          Expanded(
-            child: _currentChatId == null
-                ? const Center(child: Text("Start a chat or select one"))
-                : StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(userId)
-                        .collection('chats')
-                        .doc(_currentChatId)
-                        .collection('messages')
-                        .orderBy('timestamp')
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return Center(child: Text("Error: ${snapshot.error}"));
-                      }
-                      if (!snapshot.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      // We have data, so scroll to bottom
-                      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-
-                      final msgs = snapshot.data!.docs.map((doc) => ChatMessage.fromFirestore(doc)).toList();
-
-                      return ListView.builder(
-                        controller: _scrollController,
+                  // Align messages left (AI) or right (User)
+                  return Align(
+                    alignment:
+                        isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    child: ConstrainedBox(
+                      // Limit message width to 75% of the screen
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.75,
+                      ),
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 6),
                         padding: const EdgeInsets.all(12),
-                        itemCount: msgs.length + (_isLoading ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          
-                          if (_isLoading && index == msgs.length) {
-                            return _buildTypingIndicator();
-                          }
-
-                          final msg = msgs[index];
-                          final isUser = msg.role == 'user';
-
-                          return Align(
-                            alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth: MediaQuery.of(context).size.width * 0.75,
-                              ),
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(vertical: 6),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: isUser ? _userBubbleColor : _aiBubbleColor,
-                                  borderRadius: BorderRadius.only(
-                                    topLeft: const Radius.circular(16),
-                                    topRight: const Radius.circular(16),
-                                    bottomLeft: Radius.circular(isUser ? 16 : 0),
-                                    bottomRight: Radius.circular(isUser ? 0 : 16),
-                                  ),
+                        decoration: BoxDecoration(
+                          color: isUser ? _primaryColor : _aiBubbleColor,
+                          // Create the "chat bubble" shape
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(16),
+                            topRight: const Radius.circular(16),
+                            bottomLeft: Radius.circular(isUser ? 16 : 0),
+                            bottomRight: Radius.circular(isUser ? 0 : 16),
+                          ),
+                        ),
+                        // Use Markdown for AI replies (for formatting)
+                        // Use standard Text for user replies
+                        child: msg['role'] == 'ai'
+                            ? MarkdownBody(
+                                data: msg['text'] ?? '',
+                                selectable: true, // Allows student to copy text
+                                styleSheet: MarkdownStyleSheet(
+                                  p: const TextStyle(
+                                      fontSize: 15, color: Colors.black87),
+                                  strong: const TextStyle(
+                                      fontWeight: FontWeight.bold),
+                                  listBullet: const TextStyle(
+                                      fontSize: 15, color: Colors.black87),
                                 ),
-                                child: msg.role == 'ai'
-                                    ? MarkdownBody(
-                                        data: msg.text,
-                                        selectable: true,
-                                        styleSheet: MarkdownStyleSheet(
-                                          p: const TextStyle(
-                                              fontSize: 15, color: Colors.black87),
-                                          strong: const TextStyle(
-                                              fontWeight: FontWeight.bold),
-                                          listBullet: const TextStyle(
-                                              fontSize: 15, color: Colors.black87),
-                                        ),
-                                      )
-                                    : Text(
-                                        msg.text,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          color: Colors.white,
-                                        ),
-                                      ),
+                              )
+                            : Text(
+                                msg['text'] ?? '',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-          ),
-          
-          // --- Input area ---
-          _buildInputArea(onSend: () => _sendMessage(student)),
-        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            
+            // --- Text Input Area ---
+            _buildInputArea(),
+          ],
+        ),
       ),
     );
   }
 
-  /// Widget for the AI's "typing" indicator
+  /// Widget for the AI's "typing..." indicator
   Widget _buildTypingIndicator() {
     return Align(
       alignment: Alignment.centerLeft,
@@ -360,7 +282,8 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   /// Widget for the text input area at the bottom
-  Widget _buildInputArea({required VoidCallback onSend}) {
+  Widget _buildInputArea() {
+    // SafeArea ensures the input field isn't hidden by system UI (like the home bar)
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.all(12.0),
@@ -372,10 +295,11 @@ class _ChatPageState extends State<ChatPage> {
         ),
         child: Row(
           children: [
+            // Text field
             Expanded(
               child: TextField(
                 controller: _controller,
-                enabled: !_isLoading,
+                enabled: !_isLoading, // Disable field while loading
                 decoration: InputDecoration(
                   hintText: _isLoading
                       ? 'Coach is typing...'
@@ -391,27 +315,23 @@ class _ChatPageState extends State<ChatPage> {
                     vertical: 12,
                   ),
                 ),
-                onSubmitted: _isLoading ? null : (_) => onSend(),
+                // Allow sending by pressing "enter" on keyboard
+                onSubmitted: _isLoading ? null : (_) => _sendMessage(),
               ),
             ),
             const SizedBox(width: 8),
+            // Send button
             CircleAvatar(
               backgroundColor: _isLoading ? Colors.grey : _primaryColor,
               child: IconButton(
                 icon: const Icon(Icons.send, color: Colors.white),
-                onPressed: _isLoading ? null : onSend,
+                // Disable button while loading
+                onPressed: _isLoading ? null : _sendMessage,
               ),
             ),
           ],
         ),
       ),
     );
-  }
-}
-
-/// Helper extension for dates
-extension DateHelpers on DateTime {
-  String toShortDateString() {
-    return "${this.month}/${this.day}/${this.year}";
   }
 }
