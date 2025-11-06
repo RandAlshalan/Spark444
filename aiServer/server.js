@@ -61,10 +61,14 @@ You are an expert AI interview coach. Your tone is supportive, encouraging, and 
     }
 
     // Combine the dynamic system prompt with the chat history
-    const apiMessages = [
-      { role: "system", content: systemPrompt.trim() },
-      ...messages, // Add all previous messages (from user and AI)
-    ];
+// If you store chat history with 'ai' role:
+const apiMessages = messages.map(msg => {
+  return {
+    role: msg.role === 'ai' ? 'assistant' : msg.role,
+    content: msg.text || msg.content
+  };
+});
+
 
     const response = await fetch(OPENAI_API_URL, {
       method: "POST",
