@@ -750,12 +750,29 @@ class _ReviewsTabState extends State<_ReviewsTab> {
   // Track whether a reply field currently has any text (true => enable Reply button).
   final Map<String, bool> _replyHasText = {};
 
-  // --- New: character counters & inline errors ---
-  int _reviewRemaining = _reviewMaxLength;
-  String? _reviewInlineError;
+  // Live review input state (for Submit button enabling)
+  bool _reviewHasText = false;
+  bool _reviewTextValid = false;
+  bool _canSubmitReview = false;
+  String? _ratingInlineError;
 
-  final Map<String, int> _replyRemaining = {};
-  final Map<String, String?> _replyInlineError = {};
+  // --- New helper to update review submit state ---
+  void _updateReviewButtonState({bool force = false}) {
+    final text = _reviewController.text.trim();
+    final textValid = text.length >= _reviewMinLength && text.length <= _reviewMaxLength;
+    final hasRating = _currentRating > 0;
+    final newCan = textValid && hasRating;
+    // Only setState when the actionable boolean changes to reduce rebuilds.
+    if (force || newCan != _canSubmitReview || textValid != _reviewTextValid || (text.isNotEmpty) != _reviewHasText) {
+      setState(() {
+        _reviewHasText = text.isNotEmpty;
+        _reviewTextValid = textValid;
+        _canSubmitReview = newCan;
+        // clear rating error if user fixes rating
+        if (hasRating) _ratingInlineError = null;
+      });
+    }
+  }
 
   // Helper to open the single-student page (only if authorVisible)
   void _openStudentProfile({required String studentId, required bool authorVisible}) {
@@ -775,6 +792,10 @@ class _ReviewsTabState extends State<_ReviewsTab> {
   void initState() {
     super.initState();
     // Do not attach a listener that calls setState on each keystroke to avoid continuous rebuilds.
+    // Initialize review button state from any existing controller text / rating.
+    _reviewHasText = _reviewController.text.trim().isNotEmpty;
+    _reviewTextValid = _reviewController.text.trim().length >= _reviewMinLength && _reviewController.text.trim().length <= _reviewMaxLength;
+    _canSubmitReview = _reviewTextValid && _currentRating > 0;
   }
 
   @override
@@ -865,7 +886,9 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     }
 
     if (_currentRating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a rating before submitting.')));
+      // Prevent submission and show small inline message near stars (and snack for extra visibility)
+      setState(() => _ratingInlineError = 'Please select a rating before submitting your review.');
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a rating before submitting your review.'), backgroundColor: Colors.red));
       return;
     }
     if (text.isEmpty) {
@@ -906,7 +929,13 @@ class _ReviewsTabState extends State<_ReviewsTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thank you for your review!'), backgroundColor: Colors.green));
         _reviewController.clear();
-        setState(() => _currentRating = 0);
+        setState(() {
+          _currentRating = 0;
+          _ratingInlineError = null;
+          _reviewHasText = false;
+          _reviewTextValid = false;
+          _canSubmitReview = false;
+        });
       }
     } catch (e) {
       final msg = (e is Exception) ? e.toString().replaceAll('Exception: ', '') : 'Failed to submit review: $e';
@@ -969,6 +998,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
       controller.clear();
       setState(() {
         _showReplyBox[parentReviewId] = false;
+        _replyHasText[parentReviewId] = false;
       });
     } catch (e) {
       final msg = (e is Exception) ? e.toString().replaceAll('Exception: ', '') : 'Failed to submit reply: $e';
@@ -1028,7 +1058,13 @@ class _ReviewsTabState extends State<_ReviewsTab> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(5, (index) {
               return IconButton(
-                onPressed: () => setState(() => _currentRating = index + 1.0),
+                onPressed: () {
+                  // set rating and update submit-button state
+                  setState(() => _currentRating = index + 1.0);
+                  // clear inline rating error and recalc button state
+                  _ratingInlineError = null;
+                  _updateReviewButtonState();
+                },
                 icon: Icon(index < _currentRating ? Icons.star : Icons.star_border, color: const Color(0xFFF99D46), size: 32),
               );
             }),
@@ -1046,11 +1082,28 @@ class _ReviewsTabState extends State<_ReviewsTab> {
             controller: _reviewController,
             maxLines: 3,
             maxLength: _reviewMaxLength,
+            inputFormatters: [LengthLimitingTextInputFormatter(_reviewMaxLength)],
             decoration: InputDecoration(
               hintText: 'Share your experience...',
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              counterText: '', // we'll render a custom counter
+              counterText: '', // keep existing appearance
             ),
+            onChanged: (value) {
+              // compute validity and update only when toggling to reduce rebuilds
+              final trimmed = value.trim();
+              final hasText = trimmed.isNotEmpty;
+              final textValid = trimmed.length >= _reviewMinLength && trimmed.length <= _reviewMaxLength;
+              if (hasText != _reviewHasText || textValid != _reviewTextValid) {
+                // Use helper to set state properly
+                _updateReviewButtonState();
+              } else {
+                // still update the displayed counter (small and cheap)
+                // calling setState only when needed to refresh remaining counter
+                if ((_reviewMaxLength - trimmed.length) != (_reviewMaxLength - _reviewController.text.trim().length)) {
+                  setState(() {});
+                }
+              }
+            },
           ),
           const SizedBox(height: 6),
           Row(
@@ -1070,13 +1123,22 @@ class _ReviewsTabState extends State<_ReviewsTab> {
               Align(
                 alignment: Alignment.centerRight,
                 child: ElevatedButton(
-                  onPressed: (_isSubmitting || !isValid) ? null : _submitReview,
+                  onPressed: (_isSubmitting || !_canSubmitReview) ? null : _submitReview,
                   style: ElevatedButton.styleFrom(backgroundColor: _purple, foregroundColor: Colors.white),
                   child: _isSubmitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Submit'),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          if (_ratingInlineError != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 4.0, bottom: 4.0),
+              child: Text(
+                _ratingInlineError!,
+                style: GoogleFonts.lato(fontSize: 13, color: Colors.red.shade700),
+              ),
+            ),
         ]),
       ),
     );
@@ -1162,7 +1224,14 @@ class _ReviewsTabState extends State<_ReviewsTab> {
               controller: _replyControllers[parentId],
               maxLines: 3,
               maxLength: _reviewMaxLength,
+              inputFormatters: [LengthLimitingTextInputFormatter(_reviewMaxLength)],
               decoration: InputDecoration(hintText: 'Write a reply...', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), counterText: ''),
+              onChanged: (value) {
+                final hasText = value.trim().isNotEmpty;
+                if ((_replyHasText[parentId] ?? false) != hasText) {
+                  setState(() => _replyHasText[parentId] = hasText);
+                }
+              },
             ),
             const SizedBox(height: 6),
             // Inline reply error / remaining + controls
@@ -1186,7 +1255,9 @@ class _ReviewsTabState extends State<_ReviewsTab> {
                 ]),
                 const SizedBox(width: 8),
                 ElevatedButton(
-                  onPressed: (_isReplySubmitting[parentId] ?? false) || (_validateTextLength(_replyControllers[parentId]!.text.trim()) != null) ? null : () => _submitReply(parentId),
+                  onPressed: (_isReplySubmitting[parentId] ?? false) || !(_replyHasText[parentId] ?? false)
+                      ? null
+                      : () => _submitReply(parentId),
                   style: ElevatedButton.styleFrom(backgroundColor: _purple),
                   child: (_isReplySubmitting[parentId] ?? false) ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text('Reply', style: GoogleFonts.lato(color: Colors.white)),
                 ),
