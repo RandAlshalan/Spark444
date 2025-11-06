@@ -5,6 +5,7 @@ import '../models/company.dart';
 import '../models/student.dart';
 import '../services/authService.dart';
 import 'company_theme.dart';
+import 'companyStudentProfilePage.dart';
 
 class FollowersPage extends StatefulWidget {
   const FollowersPage({super.key, required this.company});
@@ -35,10 +36,7 @@ class _FollowersPageState extends State<FollowersPage> {
       appBar: AppBar(
         title: const Text(
           'My Followers',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: CompanyColors.primary,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -64,7 +62,11 @@ class _FollowersPageState extends State<FollowersPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+              const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Colors.redAccent,
+              ),
               const SizedBox(height: 12),
               Text(
                 _error!,
@@ -119,12 +121,11 @@ class _FollowersPageState extends State<FollowersPage> {
           .where('followedCompanies', arrayContains: companyId)
           .get();
 
-      final followers = snapshot.docs
-          .map((doc) => Student.fromFirestore(doc))
-          .toList()
-        ..sort(
-          (a, b) => a.firstName.toLowerCase().compareTo(b.firstName.toLowerCase()),
-        );
+      final followers =
+          snapshot.docs.map((doc) => Student.fromFirestore(doc)).toList()..sort(
+            (a, b) =>
+                a.firstName.toLowerCase().compareTo(b.firstName.toLowerCase()),
+          );
 
       if (!mounted) return;
       setState(() {
@@ -190,101 +191,131 @@ class _FollowersPageState extends State<FollowersPage> {
     final university = follower.university.trim();
     final initials = _getInitials(displayName);
 
+    // تأكد اسم الحقل اللي فيه الـ id في موديل Student؛ شائع: uid أو id
+    final studentId = follower.id ?? follower.id ?? '';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: CompanyColors.surface,
       elevation: CompanySpacing.cardElevation,
       shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: CompanyColors.primary.withValues(alpha: 0.1),
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      color: CompanyColors.primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+      child: InkWell(
+        borderRadius: CompanySpacing.cardRadius,
+        onTap: () {
+          if (studentId.isEmpty) {
+            // تقدر تعرض رسالة خطأ بسيطة لو ما في id
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Unable to open profile: missing id'),
+              ),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  CompanyStudentProfilePage(studentId: studentId),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: CompanyColors.primary.withValues(
+                      alpha: 0.1,
+                    ),
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        color: CompanyColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: CompanyColors.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.email_outlined,
+                              size: 14,
+                              color: CompanyColors.muted,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                email,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: CompanyColors.muted,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (university.isNotEmpty || major.isNotEmpty || level.isNotEmpty)
+                const SizedBox(height: 12),
+              if (university.isNotEmpty)
+                _buildInfoRow('University', university, Icons.school_outlined),
+              if (major.isNotEmpty)
+                _buildInfoRow('Major', major, Icons.badge_outlined),
+              if (level.isNotEmpty)
+                _buildInfoRow('Level', level, Icons.layers_outlined),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: CompanyColors.secondary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'Following',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: CompanyColors.secondary,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: CompanyColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.email_outlined,
-                              size: 14, color: CompanyColors.muted),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              email,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: CompanyColors.muted,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (university.isNotEmpty || major.isNotEmpty || level.isNotEmpty)
-              const SizedBox(height: 12),
-            if (university.isNotEmpty)
-              _buildInfoRow('University', university, Icons.school_outlined),
-            if (major.isNotEmpty)
-              _buildInfoRow('Major', major, Icons.badge_outlined),
-            if (level.isNotEmpty)
-              _buildInfoRow('Level', level, Icons.layers_outlined),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: CompanyColors.secondary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'Following',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: CompanyColors.secondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
-
 
   String _getInitials(String name) {
     final parts = name.trim().split(' ');
@@ -305,10 +336,7 @@ class _FollowersPageState extends State<FollowersPage> {
           Expanded(
             child: Text(
               '$label: $value',
-              style: const TextStyle(
-                fontSize: 13,
-                color: CompanyColors.muted,
-              ),
+              style: const TextStyle(fontSize: 13, color: CompanyColors.muted),
             ),
           ),
         ],
