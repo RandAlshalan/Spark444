@@ -41,7 +41,7 @@ class CustomBottomNavBar extends StatelessWidget {
         child: BottomNavigationBar(
           currentIndex: currentIndex,
           onTap: onTap,
-          type: BottomNavigationBarType.fixed,
+          type: BottomNavigationBarType.fixed, // هذا النوع مهم لعرض 5 أيقونات
           backgroundColor: profileCardColor,
           selectedItemColor: sparkPrimaryPurple,
           unselectedItemColor: profileTextColor.withOpacity(0.5),
@@ -62,6 +62,15 @@ class CustomBottomNavBar extends StatelessWidget {
               activeIcon: Icon(Icons.business),
               label: 'Companies',
             ),
+            
+            // --- ✨ الأيقونة الجديدة المضافة هنا ---
+            BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline_rounded),
+              activeIcon: Icon(Icons.chat_bubble_rounded),
+              label: 'Chatbot',
+            ),
+            // --- نهاية الإضافة ---
+
             BottomNavigationBarItem(
               icon: Icon(Icons.work_outline),
               activeIcon: Icon(Icons.work),

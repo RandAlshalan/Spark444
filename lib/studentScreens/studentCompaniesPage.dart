@@ -13,6 +13,7 @@ import '../models/company.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/CustomBottomNavBar.dart';
 import '../studentScreens/studentViewProfile.dart';
+import '../studentScreens/StudentChatPage.dart';
 import '../studentScreens/studentSavedOpp.dart';
 import '../studentScreens/studentOppPage.dart';
 // --- NAV BAR IMPORTS END ---
@@ -91,13 +92,19 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
       case 0:
         _showInfoMessage('Coming soon!');
         break;
-      case 2:
+       case 2: 
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ChatPage()),
+        );
+        break;
+      case 3:
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const studentOppPgae()),
         );
         break;
-      case 3:
+      case 4:
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const StudentViewProfile()),

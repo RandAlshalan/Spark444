@@ -18,7 +18,7 @@ import '../studentScreens/studentResume.dart';
 // Make sure the path is correct for your project structure.
 import '../studentScreens/studentApplications.dart';
 import 'StudentMyReviewsPage.dart';
-
+import '../studentScreens/StudentChatPage.dart';
 // --- Color Constants inspired by Spark Logo ---
 const Color _sparkPrimaryPurple = Color(
   0xFF422F5D,
@@ -72,7 +72,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
   final AuthService _authService = AuthService();
   Student? _student;
   bool _loading = true;
-  int _currentIndex = 3;
+  int _currentIndex = 4;
 
   @override
   void initState() {
@@ -222,8 +222,14 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
         _openScreen(const StudentCompaniesPage());
 
         break;
+      case 2: 
 
-      case 2: // Opportunities
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ChatPage()),
+        );
+        break;
+      case 3: // Opportunities
         // Navigate to your existing OpportunitiesPage
         // Fix: 'S' is uppercase
         Navigator.push(
@@ -231,7 +237,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
           MaterialPageRoute(builder: (context) => studentOppPgae()),
         );
         break;
-      case 3: // Profile
+      case 4: // Profile
         // This is the current page, so we don't need to do anything.
         // The check at the top of the function already handles this.
         break;

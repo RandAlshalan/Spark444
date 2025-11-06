@@ -33,7 +33,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
   final AuthService _authService = AuthService();
   Student? _student;
   bool _loading = true;
-  int _currentIndex = 3;
+  int _currentIndex = 4;
 
   Color _withAlpha(Color color, double opacity) {
     final double normalized = opacity < 0
