@@ -30,7 +30,7 @@ app.post("/chat", async (req, res) => {
 
     const data = await response.json();
 
-    const reply = data.choices?.[0]?.message?.content || "ما في رد من الذكاء الاصطناعي.";
+    const reply = data.choices?.[0]?.message?.content || "No Response";
     res.json({ reply });
 
   } catch (err) {
