@@ -475,7 +475,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
 
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => ChatPage(profileInfo: 'Student',)),
+          MaterialPageRoute(builder: (context) => StudentChatPage()),
         );
         break;
       case 4:

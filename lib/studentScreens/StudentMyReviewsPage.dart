@@ -287,8 +287,9 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
                 final createdTs = data['createdAt'] as Timestamp?;
                 final created = createdTs?.toDate();
                 final rating = (data['rating'] ?? 0);
-                final snippet = text.length > 180 ? '${text.substring(0, 180)}…' : text;
-                final isReply = parentId != null;
+                // allow displaying up to 300 characters (reviews are limited to 300 elsewhere)
+                final snippet = text.length > 300 ? '${text.substring(0, 300)}…' : text;
+                final isReply = (parentId != null) && parentId.toString().trim().isNotEmpty;
 
                 // Ensure we have the company meta (async fetch with caching)
                 if (companyId.isNotEmpty && !_companyNameCache.containsKey(companyId)) {
@@ -297,75 +298,90 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
 
                 final companyName = (_companyNameCache[companyId] ?? '').isNotEmpty ? _companyNameCache[companyId]! : (isReply ? 'Reply' : 'Review');
 
-                return Card(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () {
-                      if (companyId.isNotEmpty) {
-                        // Navigate to company profile page if available
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => StudentCompanyProfilePage(companyId: companyId),
-                          ),
-                        );
-                      }
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              _buildLeading(companyId, companyName),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(child: Text(companyName, style: GoogleFonts.lato(fontWeight: FontWeight.w700, fontSize: 15))),
-                                        if (rating != null && rating.toString().trim().isNotEmpty)
-                                          Row(
-                                            children: [
-                                              Icon(Icons.star, size: 16, color: Colors.orange.shade600),
-                                              const SizedBox(width: 4),
-                                              Text(rating.toString(), style: GoogleFonts.lato(fontSize: 13, fontWeight: FontWeight.w600)),
-                                            ],
-                                          ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(isReply ? 'Reply' : 'Review', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
-                                  ],
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: 'Delete',
-                                onPressed: () => _confirmAndDeleteReview(d),
-                                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Text(snippet, style: GoogleFonts.lato()),
-                          const SizedBox(height: 10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              if (created != null)
-                                Text(_dateFmt.format(created), style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
-                              if (isReply == true)
-                                Chip(label: Text('Reply', style: GoogleFonts.lato(fontSize: 12))),
-                            ],
-                          ),
-                        ],
+                // Show a small label above every card (Reply for replies, Review for root reviews)
+                final labelText = isReply ? 'Reply' : 'Review';
+                final labelColor = isReply ? _purple : Colors.grey.shade600;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, bottom: 6),
+                      child: Text(
+                        labelText,
+                        style: GoogleFonts.lato(fontSize: 13, fontWeight: FontWeight.w600, color: labelColor),
                       ),
                     ),
-                  ),
+                    Card(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          if (companyId.isNotEmpty) {
+                            // Navigate to company profile page if available
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => StudentCompanyProfilePage(companyId: companyId),
+                              ),
+                            );
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  _buildLeading(companyId, companyName),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(child: Text(companyName, style: GoogleFonts.lato(fontWeight: FontWeight.w700, fontSize: 15))),
+                                            // Only show rating for root/main reviews
+                                            if (!isReply && rating != null && rating.toString().trim().isNotEmpty)
+                                              Row(
+                                                children: [
+                                                  Icon(Icons.star, size: 16, color: Colors.orange.shade600),
+                                                  const SizedBox(width: 4),
+                                                  Text(rating.toString(), style: GoogleFonts.lato(fontSize: 13, fontWeight: FontWeight.w600)),
+                                                ],
+                                              ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(isReply ? 'Reply' : 'Review', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Delete',
+                                    onPressed: () => _confirmAndDeleteReview(d),
+                                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(snippet, style: GoogleFonts.lato()),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  if (created != null)
+                                    Text(_dateFmt.format(created), style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
+                                  // removed internal Reply chip for replies (label above replaces it)
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 );
               },
             ),

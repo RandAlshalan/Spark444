@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  provider: ^6.0.0
   image_picker: ^1.0.4
   file_picker: ^8.0.0
   cupertino_icons: ^1.0.8
@@ -50,6 +51,7 @@ dependencies:
   pdf: ^3.11.3
   printing: ^5.14.2
   syncfusion_flutter_pdfviewer: ^28.1.33
+  flutter_markdown: ^0.6.17
 
   path_provider: ^2.1.3
   permission_handler: ^11.3.1
