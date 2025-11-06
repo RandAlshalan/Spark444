@@ -17,6 +17,7 @@ import 'notificationsPage.dart';
 import 'company_theme.dart';
 import '../studentScreens/welcomeScreen.dart';
 import 'package:intl/intl.dart';
+import 'companyReviewsPage.dart';
 
 class CompanyHomePage extends StatefulWidget {
   const CompanyHomePage({super.key});
@@ -66,7 +67,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     ),
     _NotificationPreview(
       title: 'Application status',
-      message: 'You moved Daniel Lee to the Interview stage for Data Analyst Intern.',
+      message:
+          'You moved Daniel Lee to the Interview stage for Data Analyst Intern.',
       timestamp: DateTime.now().subtract(const Duration(hours: 7, minutes: 40)),
     ),
     _NotificationPreview(
@@ -92,9 +94,11 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       final now = DateTime.now();
 
       // Fetch all applications in parallel instead of sequentially
-      final applicationFutures = opportunities.map((opp) =>
-        _applicationService.getApplicationsForOpportunity(opp.id)
-      ).toList();
+      final applicationFutures = opportunities
+          .map(
+            (opp) => _applicationService.getApplicationsForOpportunity(opp.id),
+          )
+          .toList();
 
       final allApplications = await Future.wait(applicationFutures);
 
@@ -163,9 +167,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   Future<void> _navigateToAnalytics(Opportunity opportunity) async {
     await Navigator.push(
       context,
-      SmoothPageRoute(
-        page: OpportunityAnalyticsPage(opportunity: opportunity),
-      ),
+      SmoothPageRoute(page: OpportunityAnalyticsPage(opportunity: opportunity)),
     );
     if (!mounted) return;
     _fetchCompanyData();
@@ -174,9 +176,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   Future<void> _navigateToEditOpportunity(Opportunity opportunity) async {
     final result = await Navigator.push(
       context,
-      SmoothPageRoute(
-        page: EditOpportunityPage(opportunity: opportunity),
-      ),
+      SmoothPageRoute(page: EditOpportunityPage(opportunity: opportunity)),
     );
 
     // If the edit was successful, refresh the opportunities list
@@ -213,10 +213,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   void _navigateToNotificationsPage() {
-    Navigator.push(
-      context,
-      FadePageRoute(page: const NotificationsPage()),
-    );
+    Navigator.push(context, FadePageRoute(page: const NotificationsPage()));
   }
 
   Future<void> _deleteOpportunity(String opportunityId) async {
@@ -273,7 +270,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         await _fetchCompanyData();
       } catch (e) {
         if (!mounted) return;
-        _showSnackBar('Error deleting opportunity: ${e.toString().replaceAll('Exception: ', '')}');
+        _showSnackBar(
+          'Error deleting opportunity: ${e.toString().replaceAll('Exception: ', '')}',
+        );
       }
     }
   }
@@ -337,7 +336,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         await _fetchCompanyData();
       } catch (e) {
         if (!mounted) return;
-        _showSnackBar('Error deleting opportunity: ${e.toString().replaceAll('Exception: ', '')}');
+        _showSnackBar(
+          'Error deleting opportunity: ${e.toString().replaceAll('Exception: ', '')}',
+        );
       }
     }
   }
@@ -447,10 +448,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           : RefreshIndicator(
               onRefresh: _fetchCompanyData,
               child: CustomScrollView(
-                slivers: [
-                  _buildSliverAppBar(),
-                  _buildCurrentSection(),
-                ],
+                slivers: [_buildSliverAppBar(), _buildCurrentSection()],
               ),
             ),
       bottomNavigationBar: _buildBottomNavigationBar(),
@@ -545,224 +543,239 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-            const Text(
-              'Manage Profile',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: CompanyColors.primary,
+              const Text(
+                'Manage Profile',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: CompanyColors.primary,
+                ),
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit, color: CompanyColors.secondary),
-              iconSize: 28,
-              tooltip: 'Edit Profile',
-              onPressed: () {
-                Navigator.of(context)
-                    .push(
-                      SmoothPageRoute(
-                        page: EditCompanyProfilePage(company: company),
-                      ),
-                    )
-                    .then((_) => _fetchCompanyData());
-              },
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        Card(
-          color: CompanyColors.surface,
-          elevation: CompanySpacing.cardElevation,
-          shape: RoundedRectangleBorder(
-            borderRadius: CompanySpacing.cardRadius,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: CircleAvatar(
-                    radius: 50,
-                    backgroundColor: CompanyColors.primary.withValues(
-                      alpha: 0.1,
-                    ),
-                    backgroundImage:
-                        company.logoUrl != null && company.logoUrl!.isNotEmpty
-                        ? CachedNetworkImageProvider(company.logoUrl!)
-                        : null,
-                    child: (company.logoUrl == null || company.logoUrl!.isEmpty)
-                        ? const Icon(
-                            Icons.apartment_outlined,
-                            color: CompanyColors.primary,
-                            size: 50,
-                          )
-                        : null,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Center(
-                  child: Text(
-                    company.companyName,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: CompanyColors.primary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: CompanyColors.secondary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      company.sector.isNotEmpty
-                          ? company.sector
-                          : 'Sector not specified',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: CompanyColors.secondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                const Divider(),
-                const SizedBox(height: 24),
-                _buildProfileInfoRow(
-                  icon: Icons.alternate_email_outlined,
-                  label: 'Email',
-                  value: email.isNotEmpty ? email : 'Email not provided',
-                ),
-                if (contactPills.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  _buildProfileInfoRow(
-                    icon: Icons.contact_phone_outlined,
-                    label: 'Contact',
-                    value: '',
-                    customWidget: Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: contactPills,
-                    ),
-                  ),
-                ],
-                if (description.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  const Divider(),
-                  const SizedBox(height: 24),
-                  const Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: CompanyColors.primary,
-                        size: 20,
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        'About the Company',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: CompanyColors.primary,
+              IconButton(
+                icon: const Icon(Icons.edit, color: CompanyColors.secondary),
+                iconSize: 28,
+                tooltip: 'Edit Profile',
+                onPressed: () {
+                  Navigator.of(context)
+                      .push(
+                        SmoothPageRoute(
+                          page: EditCompanyProfilePage(company: company),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    description,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: CompanyColors.muted,
-                      height: 1.6,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-        _buildProfileActionCard(
-          icon: Icons.group_outlined,
-          title: 'My Followers',
-          onTap: _navigateToFollowersPage,
-        ),
-        const SizedBox(height: 12),
-        _buildProfileActionCard(
-          icon: Icons.star_outline,
-          title: 'My Reviews',
-          onTap: () {
-            _showSnackBar('My Reviews feature coming soon');
-          },
-        ),
-        const SizedBox(height: 32),
-        Card(
-          color: CompanyColors.surface,
-          elevation: CompanySpacing.cardElevation,
-          shape: RoundedRectangleBorder(
-            borderRadius: CompanySpacing.cardRadius,
-          ),
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(
-                  Icons.logout,
-                  color: CompanyColors.secondary,
-                ),
-                title: const Text(
-                  'Log Out',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: CompanyColors.primary,
-                  ),
-                ),
-                trailing: const Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: CompanyColors.muted,
-                ),
-                onTap: () async {
-                  await _authService.signOut();
-                  if (!mounted) return;
-                  Navigator.of(
-                    context,
-                  ).pushNamedAndRemoveUntil('/', (route) => false);
+                      )
+                      .then((_) => _fetchCompanyData());
                 },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.delete_forever, color: Colors.red),
-                title: const Text(
-                  'Delete Account',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.red,
-                  ),
-                ),
-                trailing: const Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: CompanyColors.muted,
-                ),
-                onTap: _showDeleteConfirmationDialog,
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 100),
+          const SizedBox(height: 24),
+          Card(
+            color: CompanyColors.surface,
+            elevation: CompanySpacing.cardElevation,
+            shape: RoundedRectangleBorder(
+              borderRadius: CompanySpacing.cardRadius,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: CircleAvatar(
+                      radius: 50,
+                      backgroundColor: CompanyColors.primary.withValues(
+                        alpha: 0.1,
+                      ),
+                      backgroundImage:
+                          company.logoUrl != null && company.logoUrl!.isNotEmpty
+                          ? CachedNetworkImageProvider(company.logoUrl!)
+                          : null,
+                      child:
+                          (company.logoUrl == null || company.logoUrl!.isEmpty)
+                          ? const Icon(
+                              Icons.apartment_outlined,
+                              color: CompanyColors.primary,
+                              size: 50,
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Center(
+                    child: Text(
+                      company.companyName,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: CompanyColors.primary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: CompanyColors.secondary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        company.sector.isNotEmpty
+                            ? company.sector
+                            : 'Sector not specified',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: CompanyColors.secondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  const Divider(),
+                  const SizedBox(height: 24),
+                  _buildProfileInfoRow(
+                    icon: Icons.alternate_email_outlined,
+                    label: 'Email',
+                    value: email.isNotEmpty ? email : 'Email not provided',
+                  ),
+                  if (contactPills.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    _buildProfileInfoRow(
+                      icon: Icons.contact_phone_outlined,
+                      label: 'Contact',
+                      value: '',
+                      customWidget: Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: contactPills,
+                      ),
+                    ),
+                  ],
+                  if (description.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 24),
+                    const Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: CompanyColors.primary,
+                          size: 20,
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'About the Company',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: CompanyColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: CompanyColors.muted,
+                        height: 1.6,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildProfileActionCard(
+            icon: Icons.group_outlined,
+            title: 'My Followers',
+            onTap: _navigateToFollowersPage,
+          ),
+          const SizedBox(height: 12),
+          _buildProfileActionCard(
+            icon: Icons.star_outline,
+            title: 'My Reviews',
+            onTap: () {
+              if (_company == null) {
+                _showSnackBar(
+                  'Company information is still loading. Please try again.',
+                );
+                return;
+              }
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CompanyReviewsPage(
+                    companyId: _company!.uid!,
+                    companyName: _company!.companyName,
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 32),
+          Card(
+            color: CompanyColors.surface,
+            elevation: CompanySpacing.cardElevation,
+            shape: RoundedRectangleBorder(
+              borderRadius: CompanySpacing.cardRadius,
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(
+                    Icons.logout,
+                    color: CompanyColors.secondary,
+                  ),
+                  title: const Text(
+                    'Log Out',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: CompanyColors.primary,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: CompanyColors.muted,
+                  ),
+                  onTap: () async {
+                    await _authService.signOut();
+                    if (!mounted) return;
+                    Navigator.of(
+                      context,
+                    ).pushNamedAndRemoveUntil('/', (route) => false);
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.delete_forever, color: Colors.red),
+                  title: const Text(
+                    'Delete Account',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: CompanyColors.muted,
+                  ),
+                  onTap: _showDeleteConfirmationDialog,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 100),
         ]),
       ),
     );
@@ -846,8 +859,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       return applicationOpenDate != null && now.isBefore(applicationOpenDate);
     }
 
-    final upcomingOpportunities =
-        _opportunities.where(isUpcoming).toList();
+    final upcomingOpportunities = _opportunities.where(isUpcoming).toList();
 
     final activeOpportunities = _opportunities
         .where((opp) => opp.isActive && !isUpcoming(opp))
@@ -885,136 +897,77 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         delegate: SliverChildListDelegate([
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildGradientButton(
-              text: 'Post New',
-              icon: Icons.add,
-              onPressed: _navigateToPostOpportunityPage,
-            ),
-            Row(
-              children: [
-                const Text(
-                  'Sort by: ',
-                  style: TextStyle(
-                    color: CompanyColors.primary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: CompanyColors.primary.withValues(alpha: 0.2),
-                      width: 1,
-                    ),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _sortBy,
-                      icon: const Icon(
-                        Icons.arrow_drop_down,
-                        color: CompanyColors.primary,
-                      ),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: CompanyColors.primary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      dropdownColor: Colors.white,
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'newest',
-                          child: Text('Newest'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'oldest',
-                          child: Text('Oldest'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _sortBy = value;
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        // Active Opportunities Section
-        const Text(
-          'Active Opportunities',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: CompanyColors.primary,
-          ),
-        ),
-        const SizedBox(height: 16),
-        if (_opportunities.isEmpty)
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
+            children: [
+              _buildGradientButton(
+                text: 'Post New',
+                icon: Icons.add,
+                onPressed: _navigateToPostOpportunityPage,
+              ),
+              Row(
                 children: [
-                  Icon(
-                    Icons.work_outline,
-                    size: 64,
-                    color: CompanyColors.muted.withValues(alpha: 0.5),
-                  ),
-                  const SizedBox(height: 16),
                   const Text(
-                    'No opportunities posted yet',
-                    style: TextStyle(fontSize: 16, color: CompanyColors.muted),
+                    'Sort by: ',
+                    style: TextStyle(
+                      color: CompanyColors.primary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: _navigateToPostOpportunityPage,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Post Your First Opportunity'),
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: CompanyColors.primary.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _sortBy,
+                        icon: const Icon(
+                          Icons.arrow_drop_down,
+                          color: CompanyColors.primary,
+                        ),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: CompanyColors.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        dropdownColor: Colors.white,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'newest',
+                            child: Text('Newest'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'oldest',
+                            child: Text('Oldest'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              _sortBy = value;
+                            });
+                          }
+                        },
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
-          )
-        else if (activeOpportunities.isEmpty)
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 32.0),
-              child: Text(
-                'No active opportunities',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: CompanyColors.muted.withValues(alpha: 0.7),
-                ),
-              ),
-            ),
-          )
-        else
-          ...activeOpportunities.map((opp) => _buildCompactOpportunityCard(opp)),
-
-        if (upcomingOpportunities.isNotEmpty) ...[
-          const SizedBox(height: 32),
-          _buildUpcomingOpportunitiesSection(upcomingOpportunities, now),
-        ],
-
-        // Past Opportunities Section
-        if (pastOpportunities.isNotEmpty) ...[
-          const SizedBox(height: 32),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Active Opportunities Section
           const Text(
-            'Past Opportunities',
+            'Active Opportunities',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1022,9 +975,73 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             ),
           ),
           const SizedBox(height: 16),
-          ...pastOpportunities.map(_buildCompactOpportunityCard),
-        ],
-        const SizedBox(height: 100),
+          if (_opportunities.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.work_outline,
+                      size: 64,
+                      color: CompanyColors.muted.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'No opportunities posted yet',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: CompanyColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: _navigateToPostOpportunityPage,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Post Your First Opportunity'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (activeOpportunities.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32.0),
+                child: Text(
+                  'No active opportunities',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: CompanyColors.muted.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+            )
+          else
+            ...activeOpportunities.map(
+              (opp) => _buildCompactOpportunityCard(opp),
+            ),
+
+          if (upcomingOpportunities.isNotEmpty) ...[
+            const SizedBox(height: 32),
+            _buildUpcomingOpportunitiesSection(upcomingOpportunities, now),
+          ],
+
+          // Past Opportunities Section
+          if (pastOpportunities.isNotEmpty) ...[
+            const SizedBox(height: 32),
+            const Text(
+              'Past Opportunities',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: CompanyColors.primary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...pastOpportunities.map(_buildCompactOpportunityCard),
+          ],
+          const SizedBox(height: 100),
         ]),
       ),
     );
@@ -1415,10 +1432,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       elevation: CompanySpacing.cardElevation,
       shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
       child: Container(
-        constraints: const BoxConstraints(
-          minHeight: 150,
-          maxHeight: 170,
-        ),
+        constraints: const BoxConstraints(minHeight: 150, maxHeight: 170),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1634,8 +1648,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                     ),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor:
-                            CompanyColors.primary.withValues(alpha: 0.12),
+                        backgroundColor: CompanyColors.primary.withValues(
+                          alpha: 0.12,
+                        ),
                         foregroundColor: CompanyColors.primary,
                         child: const Icon(Icons.notifications_outlined),
                       ),
@@ -1763,7 +1778,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     );
   }
 
-Widget _buildUpcomingOpportunitiesSection(
+  Widget _buildUpcomingOpportunitiesSection(
     List<Opportunity> upcomingOpps,
     DateTime now,
   ) {
@@ -1807,10 +1822,7 @@ Widget _buildUpcomingOpportunitiesSection(
         const SizedBox(height: 12),
         const Text(
           'Applications will open soon for these opportunities',
-          style: TextStyle(
-            fontSize: 14,
-            color: CompanyColors.muted,
-          ),
+          style: TextStyle(fontSize: 14, color: CompanyColors.muted),
         ),
         const SizedBox(height: 16),
         ...upcomingOpps.map((opp) {
@@ -1823,7 +1835,8 @@ Widget _buildUpcomingOpportunitiesSection(
           if (daysUntil > 0) {
             opensIn = 'Opens in $daysUntil ${daysUntil == 1 ? 'day' : 'days'}';
           } else if (hoursUntil > 0) {
-            opensIn = 'Opens in $hoursUntil ${hoursUntil == 1 ? 'hour' : 'hours'}';
+            opensIn =
+                'Opens in $hoursUntil ${hoursUntil == 1 ? 'hour' : 'hours'}';
           } else {
             opensIn = 'Opens soon';
           }
