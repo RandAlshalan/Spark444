@@ -2,6 +2,7 @@
 
 // --- IMPORTS ---
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -143,36 +144,31 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       setState(() => _state = ScreenState.loading);
     }
     try {
-      // 1. Fetch all opportunities from the service
+      final rawSearch = _searchController.text.trim();
+
+      // 1. Fetch opportunities from Firestore with server-side filters where possible
       final opportunities = await _opportunityService.getOpportunities(
-        searchQuery: null,
-        type: null,
-        city: null,
-        locationType: null,
-        isPaid: null,
+        searchQuery: rawSearch.isEmpty ? null : rawSearch,
+        type: _activeTypeFilter == 'All' ? null : _activeTypeFilter,
+        city: _selectedCity,
+        locationType: _selectedLocationType,
+        isPaid: _isPaid,
       );
 
-      // 2. Fetch company data for all unique company IDs (Caching)
+      // 2. Fetch company data for all unique company IDs using chunked whereIn queries
+      _companyCache = {};
       if (opportunities.isNotEmpty) {
         final companyIds = opportunities
             .map((opp) => opp.companyId)
             .toSet()
             .toList();
         if (companyIds.isNotEmpty) {
-          final companyDocs = await FirebaseFirestore.instance
-              .collection('companies')
-              .where(FieldPath.documentId, whereIn: companyIds)
-              .get();
-          // Store company data in the cache
-          _companyCache = {
-            for (var doc in companyDocs.docs)
-              doc.id: Company.fromFirestore(doc),
-          };
+          _companyCache = await _fetchCompaniesInChunks(companyIds);
         }
       }
 
-      // 3. Apply client-side filtering (search and filters)
-      final query = _searchController.text.toLowerCase();
+      // 3. Apply client-side filtering for company name search & duration
+      final query = rawSearch.toLowerCase();
       final filtered = opportunities.where((opp) {
         // Check Type Filter
         final matchesType =
@@ -411,6 +407,29 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         );
       }
     }
+  }
+
+  Future<Map<String, Company>> _fetchCompaniesInChunks(
+    List<String> companyIds,
+  ) async {
+    const chunkSize = 10;
+    final collection = FirebaseFirestore.instance.collection('companies');
+    final results = <String, Company>{};
+
+    for (var i = 0; i < companyIds.length; i += chunkSize) {
+      final chunk = companyIds.sublist(
+        i,
+        math.min(i + chunkSize, companyIds.length),
+      );
+      final snapshot = await collection
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+      for (final doc in snapshot.docs) {
+        results[doc.id] =
+            Company.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>);
+      }
+    }
+    return results;
   }
 
   // --- 5. Navigation & View Switching ---

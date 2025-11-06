@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
+import 'dart:math' as math;
+
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:spark/models/Application.dart';
@@ -8,6 +10,7 @@ import 'package:spark/models/opportunity.dart';
 import 'package:spark/models/resume.dart';
 import 'package:spark/services/applicationService.dart';
 import 'package:spark/services/authService.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:spark/services/bookmarkService.dart';
 import 'package:spark/studentScreens/applicationConfirmationDialog.dart';
 import 'package:spark/studentScreens/resumeSelectionDialog.dart';
@@ -35,6 +38,7 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
   Opportunity? _selectedOpportunity; // Selected opportunity for detail view
   Application? _currentApplication; // Holds application for the selected opportunity
   bool _isApplying = false; // Tracks if an application is being submitted/fetched
+  Map<String, Company> _companyCache = const {};
 
   @override
   Widget build(BuildContext context) {
@@ -115,17 +119,38 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
 
         final savedOpportunities = snapshot.data ?? [];
 
-        // Empty state
         if (savedOpportunities.isEmpty) {
           return _buildEmptyState();
         }
 
-        // Success → build list
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: savedOpportunities.length,
-          itemBuilder: (context, index) {
-            return _buildOpportunityCard(savedOpportunities[index]);
+        return FutureBuilder<Map<String, Company>>(
+          future: _loadCompanies(savedOpportunities),
+          builder: (context, companySnapshot) {
+            if (companySnapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(
+                  color: StudentTheme.primaryColor,
+                ),
+              );
+            }
+            if (companySnapshot.hasError) {
+              return Center(
+                child: Text(
+                  'Error loading companies.',
+                  style: GoogleFonts.lato(color: StudentTheme.errorColor),
+                ),
+              );
+            }
+
+            _companyCache = companySnapshot.data ?? _companyCache;
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: savedOpportunities.length,
+              itemBuilder: (context, index) {
+                return _buildOpportunityCard(savedOpportunities[index]);
+              },
+            );
           },
         );
       },
@@ -163,6 +188,7 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
 
   /// --- Build single opportunity card ---
   Widget _buildOpportunityCard(Opportunity opportunity) {
+    final company = _companyCache[opportunity.companyId];
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: StudentTheme.cardDecoration,
@@ -176,41 +202,34 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Company logo
-                FutureBuilder<Company?>(
-                  future: _authService.getCompany(opportunity.companyId),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return CircleAvatar(
-                        radius: 28,
-                        backgroundColor: StudentTheme.primaryColor.withValues(alpha: 0.08),
-                      );
-                    }
-                    final company = snapshot.data!;
-                    return Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
-                      child: CircleAvatar(
-                        radius: 28,
-                        backgroundColor: StudentTheme.primaryColor.withValues(alpha: 0.08),
-                        backgroundImage: (company.logoUrl != null &&
-                                company.logoUrl!.isNotEmpty)
-                            ? CachedNetworkImageProvider(company.logoUrl!)
-                            : null,
-                        child: (company.logoUrl == null ||
-                                company.logoUrl!.isEmpty)
-                            ? Icon(Icons.business, color: StudentTheme.primaryColor)
-                            : null,
-                      ),
-                    );
-                  },
+                    ],
+                  ),
+                  child: CircleAvatar(
+                    radius: 28,
+                    backgroundColor:
+                        StudentTheme.primaryColor.withValues(alpha: 0.08),
+                    backgroundImage: () {
+                      final logoUrl = company?.logoUrl ?? '';
+                      return logoUrl.isNotEmpty
+                          ? CachedNetworkImageProvider(logoUrl)
+                          : null;
+                    }(),
+                    child: () {
+                      final logoUrl = company?.logoUrl ?? '';
+                      return logoUrl.isEmpty
+                          ? Icon(Icons.business, color: StudentTheme.primaryColor)
+                          : null;
+                    }(),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 // Role and name
@@ -228,7 +247,7 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        opportunity.name,
+                        company?.companyName ?? opportunity.name,
                         style: GoogleFonts.lato(
                           fontSize: 15,
                           color: StudentTheme.textColor.withValues(alpha: 0.7),
@@ -340,6 +359,40 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
         );
       }
     }
+  }
+
+  Future<Map<String, Company>> _loadCompanies(
+    List<Opportunity> opportunities,
+  ) async {
+    final missingIds = opportunities
+        .map((opp) => opp.companyId)
+        .where((id) => id.isNotEmpty && !_companyCache.containsKey(id))
+        .toSet()
+        .toList();
+
+    if (missingIds.isEmpty) {
+      return _companyCache;
+    }
+
+    const chunkSize = 10;
+    final collection = FirebaseFirestore.instance.collection('companies');
+    final updated = Map<String, Company>.from(_companyCache);
+
+    for (var i = 0; i < missingIds.length; i += chunkSize) {
+      final chunk = missingIds.sublist(
+        i,
+        math.min(i + chunkSize, missingIds.length),
+      );
+      final snapshot = await collection
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+      for (final doc in snapshot.docs) {
+        updated[doc.id] =
+            Company.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>);
+      }
+    }
+
+    return updated;
   }
 
   /// --- Navigation Function ---

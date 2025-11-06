@@ -1,5 +1,8 @@
 // lib/studentScreens/studentCompaniesPage.dart
 
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -38,15 +41,44 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
   final Map<String, bool> _optimisticFollowing = {};
   bool _modified = false;
   String _query = '';
+  Set<String> _followedCompanies = {};
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+      _studentSubscription;
 
   // --- NAV BAR STATE START ---
   int _currentIndex = 1; // Companies tab
   // --- NAV BAR STATE END ---
 
   @override
+  void initState() {
+    super.initState();
+    _listenToFollowedCompanies();
+  }
+
+  @override
   void dispose() {
+    _studentSubscription?.cancel();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _listenToFollowedCompanies() {
+    final studentId = _auth.currentUser?.uid;
+    if (studentId == null) return;
+    _studentSubscription = _db
+        .collection(kStudentsCollection)
+        .doc(studentId)
+        .snapshots()
+        .listen((snapshot) {
+      final data = snapshot.data();
+      if (data == null) return;
+      final newFollowed = Set<String>.from(
+        (data['followedCompanies'] ?? const []) as List,
+      );
+      if (!setEquals(newFollowed, _followedCompanies)) {
+        setState(() => _followedCompanies = newFollowed);
+      }
+    });
   }
 
   Future<void> _toggleFollow({
@@ -177,11 +209,6 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
     }
 
     final companiesStream = _service.searchByName(_query);
-    final studentDocStream = _db
-        .collection(kStudentsCollection)
-        .doc(studentId)
-        .snapshots(includeMetadataChanges: true);
-
     return WillPopScope(
       onWillPop: () async {
         Navigator.pop(context, _modified);
@@ -255,19 +282,10 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
                     return const Center(child: Text('No companies found.'));
                   }
 
-                  return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                    stream: studentDocStream,
-                    builder: (context, stuSnap) {
-                      final data = stuSnap.data?.data();
-                      final followed = Set<String>.from(
-                        (data?['followedCompanies'] ?? const []) as List,
-                      );
-                      return _buildList(
-                        companies,
-                        studentId,
-                        followed: followed,
-                      );
-                    },
+                  return _buildList(
+                    companies,
+                    studentId,
+                    followed: _followedCompanies,
                   );
                 },
               ),

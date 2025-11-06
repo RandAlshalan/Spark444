@@ -1,5 +1,6 @@
 // --- IMPORTS ---
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -102,39 +103,31 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
           .map((doc) => Application.fromFirestore(doc))
           .toList();
 
-      // 2. Get unique Opportunity IDs from the applications
+      // 2. Get unique Opportunity IDs and load in batches (Firestore whereIn limit)
       if (applications.isNotEmpty) {
         final opportunityIds =
             applications.map((app) => app.opportunityId).toSet().toList();
-        
-        // 3. Fetch all required opportunities in one batch
-        final oppDocs = await FirebaseFirestore.instance
-            .collection('opportunities')
-            .where(FieldPath.documentId, whereIn: opportunityIds)
-            .get();
-        // 4. Store opportunities in the cache
-        _opportunityDetailsCache = {
-          for (var doc in oppDocs.docs) doc.id: Opportunity.fromFirestore(doc)
-        };
+        _opportunityDetailsCache = await _fetchDocumentsInChunks<Opportunity>(
+          collectionPath: 'opportunities',
+          ids: opportunityIds,
+          parser: (doc) => Opportunity.fromFirestore(doc),
+        );
       }
 
-      // 5. Get unique Company IDs from the cached opportunities
+      // 3. Get unique Company IDs from cached opportunities and load in batches
       if (_opportunityDetailsCache.isNotEmpty) {
         final companyIds = _opportunityDetailsCache.values
             .map((opp) => opp.companyId)
             .toSet()
             .toList();
-            
+
         if (companyIds.isNotEmpty) {
-          // 6. Fetch all required companies in one batch
-          final companyDocs = await FirebaseFirestore.instance
-              .collection('companies')
-              .where(FieldPath.documentId, whereIn: companyIds)
-              .get();
-          // 7. Store companies in the cache
-          _companyDetailsCache = {
-            for (var doc in companyDocs.docs) doc.id: Company.fromFirestore(doc)
-          };
+          _companyDetailsCache = await _fetchDocumentsInChunks<Company>(
+            collectionPath: 'companies',
+            ids: companyIds,
+            parser: (doc) =>
+                Company.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>),
+          );
         }
       }
 
@@ -150,6 +143,29 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       debugPrint("Error fetching applications: $e");
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Helper to fetch documents in chunks to respect Firestore whereIn limits.
+  Future<Map<String, T>> _fetchDocumentsInChunks<T>({
+    required String collectionPath,
+    required List<String> ids,
+    required T Function(DocumentSnapshot<Map<String, dynamic>> doc) parser,
+  }) async {
+    const chunkSize = 10; // Firestore whereIn limit per query
+    final collection =
+        FirebaseFirestore.instance.collection(collectionPath);
+    final results = <String, T>{};
+
+    for (var i = 0; i < ids.length; i += chunkSize) {
+      final chunk = ids.sublist(i, math.min(i + chunkSize, ids.length));
+      final snapshot = await collection
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+      for (final doc in snapshot.docs) {
+        results[doc.id] = parser(doc);
+      }
+    }
+    return results;
   }
 
   /// Called when search text changes. Uses a debounce to wait 500ms
