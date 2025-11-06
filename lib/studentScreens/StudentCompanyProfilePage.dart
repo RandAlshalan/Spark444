@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 
 // --- Make sure these paths are correct for your project ---
 import '../models/company.dart';
@@ -22,7 +23,7 @@ const _pink = Color(0xFFD64483);
 
 // New: review length limits
 const int _reviewMinLength = 1;
-const int _reviewMaxLength = 500;
+const int _reviewMaxLength = 300;
 // ---------------------------------------------------------
 
 // =========================================================================
@@ -746,6 +747,9 @@ class _ReviewsTabState extends State<_ReviewsTab> {
   final Map<String, bool> _replyAuthorVisible = {};
   final Map<String, bool> _isReplySubmitting = {};
 
+  // Track whether a reply field currently has any text (true => enable Reply button).
+  final Map<String, bool> _replyHasText = {};
+
   // --- New: character counters & inline errors ---
   int _reviewRemaining = _reviewMaxLength;
   String? _reviewInlineError;
@@ -770,16 +774,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
   @override
   void initState() {
     super.initState();
-    // initialize review remaining and listener
-    _reviewRemaining = _reviewMaxLength - _reviewController.text.trim().length;
-    _reviewInlineError = _validateTextLength(_reviewController.text);
-    _reviewController.addListener(() {
-      final text = _reviewController.text.trim();
-      setState(() {
-        _reviewRemaining = _reviewMaxLength - text.length;
-        _reviewInlineError = _validateTextLength(text);
-      });
-    });
+    // Do not attach a listener that calls setState on each keystroke to avoid continuous rebuilds.
   }
 
   @override
@@ -808,17 +803,12 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     });
 
     if (created) {
-      // initialize counters and error
-      _replyRemaining[parentId] = _reviewMaxLength - controller.text.trim().length;
-      _replyInlineError[parentId] = _validateTextLength(controller.text, label: 'reply');
-
-      controller.addListener(() {
-        final text = controller.text.trim();
-        setState(() {
-          _replyRemaining[parentId] = _reviewMaxLength - text.length;
-          _replyInlineError[parentId] = _validateTextLength(text, label: 'reply');
-        });
-      });
+      // initialize author-visibility default for this reply controller
+      _replyAuthorVisible[parentId] = true;
+      // Initialize the "hasText" flag based on current controller content.
+      _replyHasText[parentId] = controller.text.trim().isNotEmpty;
+      // IMPORTANT: do NOT attach a listener that calls setState() on every keystroke.
+      // We'll update _replyHasText via the TextField.onChanged handler only when toggling.
     }
     return controller;
   }
@@ -869,7 +859,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     // Client-side validation (length)
     final inlineErr = _validateTextLength(text, label: 'review');
     if (inlineErr != null) {
-      setState(() => _reviewInlineError = inlineErr);
+      setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(inlineErr), backgroundColor: Colors.red.shade700));
       return;
     }
@@ -936,7 +926,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     // Client-side validation (length)
     final inlineErr = _validateTextLength(text, label: 'reply');
     if (inlineErr != null) {
-      setState(() => _replyInlineError[parentReviewId] = inlineErr);
+      setState(() => _isReplySubmitting[parentReviewId] = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(inlineErr), backgroundColor: Colors.red.shade700));
       return;
     }
@@ -1024,9 +1014,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
 
   Widget _buildWriteReviewSection() {
     if (widget.studentId == null) return const SizedBox.shrink();
-    final remaining = _reviewRemaining;
-    final error = _reviewInlineError;
-    final isValid = error == null && _reviewController.text.trim().isNotEmpty;
+    final isValid = _validateTextLength(_reviewController.text.trim()) == null;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 16.0),
@@ -1071,10 +1059,10 @@ class _ReviewsTabState extends State<_ReviewsTab> {
               // Inline error / helper text
               Expanded(
                 child: Text(
-                  error ?? '${remaining < 0 ? 0 : remaining} characters remaining',
+                  '${_reviewMaxLength - _reviewController.text.trim().length} characters remaining',
                   style: GoogleFonts.lato(
                     fontSize: 13,
-                    color: error != null ? Colors.red.shade700 : Colors.grey.shade600,
+                    color: Colors.grey.shade600,
                   ),
                 ),
               ),
@@ -1183,10 +1171,10 @@ class _ReviewsTabState extends State<_ReviewsTab> {
               children: [
                 Expanded(
                   child: Text(
-                    _replyInlineError[parentId] ?? '${(_replyRemaining[parentId] ?? _reviewMaxLength) < 0 ? 0 : (_replyRemaining[parentId] ?? _reviewMaxLength)} characters remaining',
+                    _replyAuthorVisible[parentId] == true ? 'Visible to all' : 'Anonymous',
                     style: GoogleFonts.lato(
                       fontSize: 13,
-                      color: _replyInlineError[parentId] != null ? Colors.red.shade700 : Colors.grey.shade600,
+                      color: Colors.grey.shade600,
                     ),
                   ),
                 ),
@@ -1198,7 +1186,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
                 ]),
                 const SizedBox(width: 8),
                 ElevatedButton(
-                  onPressed: (_isReplySubmitting[parentId] ?? false) || (_replyInlineError[parentId] != null) ? null : () => _submitReply(parentId),
+                  onPressed: (_isReplySubmitting[parentId] ?? false) || (_validateTextLength(_replyControllers[parentId]!.text.trim()) != null) ? null : () => _submitReply(parentId),
                   style: ElevatedButton.styleFrom(backgroundColor: _purple),
                   child: (_isReplySubmitting[parentId] ?? false) ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text('Reply', style: GoogleFonts.lato(color: Colors.white)),
                 ),

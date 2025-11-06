@@ -287,7 +287,8 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
                 final createdTs = data['createdAt'] as Timestamp?;
                 final created = createdTs?.toDate();
                 final rating = (data['rating'] ?? 0);
-                final snippet = text.length > 180 ? '${text.substring(0, 180)}…' : text;
+                // allow displaying up to 300 characters (reviews are limited to 300 elsewhere)
+                final snippet = text.length > 300 ? '${text.substring(0, 300)}…' : text;
                 final isReply = (parentId != null) && parentId.toString().trim().isNotEmpty;
 
                 // Ensure we have the company meta (async fetch with caching)
