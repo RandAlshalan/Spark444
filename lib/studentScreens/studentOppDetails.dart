@@ -224,34 +224,47 @@ class OpportunityDetailsContent extends StatelessWidget {
   }) {
     return Container(
       padding: EdgeInsets.fromLTRB(
+        20,
         16,
-        12,
-        16,
-        12 + MediaQuery.of(context).padding.bottom,
+        20,
+        16 + MediaQuery.of(context).padding.bottom,
       ),
       decoration: BoxDecoration(
-        color: _profileBackgroundColor,
+        color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
       child: SizedBox(
         width: double.infinity,
-        child: ElevatedButton.icon(
+        child: ElevatedButton(
           onPressed: onPressed,
-          icon: Icon(icon),
-          label: Text(label),
           style: ElevatedButton.styleFrom(
             backgroundColor: color,
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 18),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
             ),
+            elevation: 0,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.lato(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Icon(icon, size: 20),
+            ],
           ),
         ),
       ),
@@ -296,60 +309,128 @@ class OpportunityDetailsContent extends StatelessWidget {
   Widget _buildDetailHeader(BuildContext context, Opportunity opportunity) {
     return InkWell(
       onTap: () => onNavigateToCompany(opportunity.companyId),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(20),
       child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 0,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.grey.shade200),
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(20.0),
           child: FutureBuilder<Company?>(
             future: _authService.getCompany(opportunity.companyId),
             builder: (context, snapshot) {
-              return Row(
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundColor: Colors.grey.shade200,
-                    backgroundImage:
-                        (snapshot.data?.logoUrl != null &&
-                            snapshot.data!.logoUrl!.isNotEmpty)
-                        ? CachedNetworkImageProvider(snapshot.data!.logoUrl!)
-                        : null,
-                    child:
-                        (snapshot.data?.logoUrl == null ||
-                            snapshot.data!.logoUrl!.isEmpty)
-                        ? const Icon(
-                            Icons.business,
-                            size: 30,
-                            color: Colors.grey,
-                          )
-                        : null,
+                  Row(
+                    children: [
+                      // Enhanced company logo with shadow
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: CircleAvatar(
+                          radius: 36,
+                          backgroundColor: const Color(0xFF422F5D).withValues(alpha: 0.08),
+                          backgroundImage:
+                              (snapshot.data?.logoUrl != null &&
+                                  snapshot.data!.logoUrl!.isNotEmpty)
+                              ? CachedNetworkImageProvider(snapshot.data!.logoUrl!)
+                              : null,
+                          child:
+                              (snapshot.data?.logoUrl == null ||
+                                  snapshot.data!.logoUrl!.isEmpty)
+                              ? const Icon(
+                                  Icons.business,
+                                  size: 32,
+                                  color: Color(0xFF422F5D),
+                                )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              snapshot.data?.companyName ?? 'Loading...',
+                              style: GoogleFonts.lato(
+                                fontSize: 15,
+                                color: Colors.grey.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF422F5D).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                opportunity.type,
+                                style: GoogleFonts.lato(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF422F5D),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 28),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          opportunity.role,
-                          style: GoogleFonts.lato(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: _sparkPrimaryPurple,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          snapshot.data?.companyName ?? 'Loading...',
-                          style: GoogleFonts.lato(
-                            fontSize: 16,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 16),
+                  // Job Title - Large and prominent
+                  Text(
+                    opportunity.role,
+                    style: GoogleFonts.lato(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF1A1A1A),
+                      height: 1.2,
                     ),
                   ),
-                  const Icon(Icons.chevron_right, color: Colors.grey),
+                  const SizedBox(height: 12),
+                  // Quick info chips
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (opportunity.location != null && opportunity.location!.isNotEmpty)
+                        _buildQuickInfoChip(
+                          Icons.location_on_outlined,
+                          opportunity.location!,
+                        ),
+                      if (opportunity.workMode != null && opportunity.workMode!.isNotEmpty)
+                        _buildQuickInfoChip(
+                          Icons.laptop_chromebook_outlined,
+                          opportunity.workMode!,
+                        ),
+                      _buildQuickInfoChip(
+                        opportunity.isPaid
+                            ? Icons.attach_money_outlined
+                            : Icons.money_off_outlined,
+                        opportunity.isPaid ? 'Paid' : 'Unpaid',
+                      ),
+                    ],
+                  ),
                 ],
               );
             },
@@ -398,55 +479,120 @@ class OpportunityDetailsContent extends StatelessWidget {
 
   // --- Reusable Helper Widgets ---
 
+  Widget _buildQuickInfoChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: const Color(0xFF422F5D)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: GoogleFonts.lato(
+              color: const Color(0xFF1A1A1A),
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInfoTile({
     required IconData icon,
     required String title,
     required String value,
     Color? valueColor,
   }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: Colors.grey.shade200),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
       ),
-      child: ListTile(
-        leading: Icon(icon, color: _sparkPrimaryPurple),
-        title: Text(
-          title,
-          style: GoogleFonts.lato(
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade600,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF422F5D).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: _sparkPrimaryPurple, size: 22),
           ),
-        ),
-        subtitle: Text(
-          value,
-          style: GoogleFonts.lato(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: valueColor ?? _profileTextColor,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.lato(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: GoogleFonts.lato(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: valueColor ?? const Color(0xFF1A1A1A),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildDetailSection({required String title, required Widget content}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20.0),
+      padding: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: GoogleFonts.lato(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: _sparkPrimaryPurple,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 4,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF422F5D),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: GoogleFonts.lato(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1A1A1A),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           content,
         ],
       ),
@@ -454,6 +600,35 @@ class OpportunityDetailsContent extends StatelessWidget {
   }
 
   Widget _buildChipList(List<String> items) {
+    return Wrap(
+      spacing: 10.0,
+      runSpacing: 10.0,
+      children: items
+          .map(
+            (item) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: const Color(0xFF422F5D).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: const Color(0xFF422F5D).withValues(alpha: 0.2),
+                ),
+              ),
+              child: Text(
+                item,
+                style: GoogleFonts.lato(
+                  color: const Color(0xFF422F5D),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildChipListOld(List<String> items) {
     return Wrap(
       spacing: 8.0,
       runSpacing: 8.0,
