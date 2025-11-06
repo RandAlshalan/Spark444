@@ -17,18 +17,7 @@ import '../studentScreens/studentResume.dart';
 // === ADD THIS IMPORT FOR THE NEW APPLICATIONS SCREEN ===
 // Make sure the path is correct for your project structure.
 import '../studentScreens/studentApplications.dart';
-
-// A placeholder for the login screen to navigate to after logout
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    // FIX: Return a real widget, like a Scaffold, to prevent a crash.
-    return const Scaffold(
-      body: Center(child: Text('You have been logged out.')),
-    );
-  }
-}
+import 'StudentMyReviewsPage.dart';
 
 // --- Color Constants inspired by Spark Logo ---
 const Color _sparkPrimaryPurple = Color(
@@ -515,8 +504,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
                       ),
                     ),
                   ],
-                ),
-              );
+                ));
             },
           ),
           const SizedBox(height: 20),
@@ -741,7 +729,6 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
     );
   }
 
-
   Widget _buildGeneratedResumesView() {
     return _InfoCard(
       title: 'Generated Resumes',
@@ -828,17 +815,35 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
       _MenuSection(
         title: 'Career',
         items: [
-          // =================== NEW MENU ITEM ADDED HERE ===================
+          // NEW: My Reviews entry
+          _MenuItemData(
+            icon: Icons.rate_review_outlined,
+            title: 'My Reviews',
+            subtitle: 'View and manage your reviews',
+            onTap: () {
+              if (_student?.id != null) {
+                // Keep existing behavior: open student's own reviews page.
+                _openScreen(const StudentMyReviewsPage());
+                // NOTE for implementer of StudentMyReviewsPage:
+                // when building each review list tile, if that review belongs to
+                // another student and is public/unhidden, call:
+                // ReviewNavigationHelper.openStudentPublicProfileFromReview(context, otherStudentId);
+                // This will show the single-student profile (styled like followers page,
+                // without a "Following" label).
+              } else {
+                _showInfoMessage('Could not retrieve student profile ID.');
+              }
+            },
+          ),
+
           _MenuItemData(
             icon: Icons.article_outlined, // A fitting icon for applications
             title: 'My Applications',
             subtitle: 'Track your submissions and status',
             onTap: () {
-              // Ensure your Student model has an 'id' field containing the Firestore document ID.
               if (_student?.id != null) {
                 _openScreen(StudentApplicationsScreen(studentId: _student!.id));
               } else {
-                // Fallback in case the student ID is not available
                 _showInfoMessage('Could not retrieve student profile ID.');
               }
             },

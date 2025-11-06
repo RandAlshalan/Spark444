@@ -13,6 +13,7 @@ import '../services/bookmarkService.dart';
 import '../models/review.dart';
 import '../models/Application.dart'; 
 import '../services/applicationService.dart';
+import 'StudentSingleProfilePage.dart'; // NEW: single-student followers-style view
 // ---------------------------------------------------------
 
 // --- Constants ---
@@ -603,7 +604,7 @@ class _OpportunityCard extends StatelessWidget {
           ),
         ],
       );
-    }
+  }
 
     return Card(
       elevation: 1,
@@ -710,6 +711,13 @@ class _OpportunityCard extends StatelessWidget {
 // == REVIEWS TAB WIDGET
 // =========================================================================
 
+/* Small helper type to represent a review thread (top-level review + its replies) */
+class _ReviewThread {
+  final Review review;
+  final List<Review> replies;
+  _ReviewThread({required this.review, required this.replies});
+}
+
 class _ReviewsTab extends StatefulWidget {
   const _ReviewsTab({required this.companyId, required this.studentId});
   final String companyId;
@@ -724,27 +732,82 @@ class _ReviewsTabState extends State<_ReviewsTab> {
   double _currentRating = 0;
   bool _isSubmitting = false;
 
+  // control whether the review shows the student's profile (visible) or is anonymous
+  bool _authorVisible = true;
+
+  // Helper to open the company-facing single-student page (only if authorVisible)
+  void _openStudentProfile({required String studentId, required bool authorVisible}) {
+    if (!authorVisible) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This profile is posted anonymously')));
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StudentSingleProfilePage(studentId: studentId),
+      ),
+    );
+  }
+  
   @override
   void dispose() {
     _reviewController.dispose();
     super.dispose();
   }
 
-  Stream<List<Review>> _getReviewsStream() {
+  // Fetch all reviews for the company in a single query, then group them into threads.
+  Stream<List<_ReviewThread>> _getReviewsStream() {
     return FirebaseFirestore.instance
         .collection('reviews')
         .where('companyId', isEqualTo: widget.companyId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => Review.fromFirestore(doc)).toList());
+        .map((snapshot) {
+      // Map documents to Review and parentId
+      final items = snapshot.docs.map((doc) {
+        final r = Review.fromFirestore(doc);
+        final data = doc.data() as Map<String, dynamic>;
+        final parentIdRaw = data['parentId'];
+        final parentId = (parentIdRaw is String && parentIdRaw.trim().isNotEmpty)
+            ? parentIdRaw
+            : null;
+        return {'review': r, 'parentId': parentId};
+      }).toList();
+
+      // Build map of parentId -> replies
+      final Map<String, List<Review>> repliesMap = {};
+      for (var item in items) {
+        final Review r = item['review'] as Review;
+        final String? pid = item['parentId'] as String?;
+        if (pid != null) {
+          repliesMap.putIfAbsent(pid, () => []).add(r);
+        }
+      }
+
+      // Build top-level threads: parentId == null
+      final threads = items
+          .where((i) => (i['parentId'] as String?) == null)
+          .map((i) {
+        final Review top = i['review'] as Review;
+        final replies = repliesMap[top.id] ?? [];
+        // Sort replies oldest-first for natural conversation order
+        replies.sort((a, b) =>
+            a.createdAt.toDate().compareTo(b.createdAt.toDate()));
+        return _ReviewThread(review: top, replies: replies);
+      }).toList();
+
+      // Ensure top-level reviews are newest-first
+      threads.sort((a, b) =>
+          b.review.createdAt.toDate().compareTo(a.review.createdAt.toDate()));
+
+      return threads;
+    });
   }
 
   Future<void> _submitReview() async {
     if (_currentRating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please select a rating before submitting.')),
+        const SnackBar(content: Text('Please select a rating before submitting.')),
       );
       return;
     }
@@ -768,27 +831,26 @@ class _ReviewsTabState extends State<_ReviewsTab> {
           .collection('student')
           .doc(widget.studentId)
           .get();
-      final studentName =
-          '${studentDoc['firstName']} ${studentDoc['lastName']}'.trim();
+      final first = (studentDoc.data()?['firstName'] ?? '').toString();
+      final last = (studentDoc.data()?['lastName'] ?? '').toString();
+      final studentName = ('$first $last').trim();
 
-      final newReview = Review(
-        id: '', // Firestore will generate this
-        studentId: widget.studentId!,
-        studentName: studentName,
-        companyId: widget.companyId,
-        rating: _currentRating,
-        reviewText: _reviewController.text.trim(),
-        createdAt: Timestamp.now(),
-      );
+      final reviewData = {
+        'studentId': widget.studentId!,
+        'studentName': studentName,
+        'companyId': widget.companyId,
+        'rating': _currentRating,
+        'reviewText': _reviewController.text.trim(),
+        'createdAt': Timestamp.now(),
+        'authorVisible': _authorVisible,
+        // parentId: omitted for top-level reviews; when implementing replies include parentId
+      };
 
-      await FirebaseFirestore.instance.collection('reviews').add(newReview.toMap());
+      await FirebaseFirestore.instance.collection('reviews').add(reviewData);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Thank you for your review!'),
-            backgroundColor: Colors.green,
-          ),
+          const SnackBar(content: Text('Thank you for your review!'), backgroundColor: Colors.green),
         );
         _reviewController.clear();
         setState(() => _currentRating = 0);
@@ -796,109 +858,82 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to submit review: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Failed to submit review: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   Widget _buildWriteReviewSection() {
-    if (widget.studentId == null) {
-      return const SizedBox.shrink();
-    }
+    if (widget.studentId == null) return const SizedBox.shrink();
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 16.0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Write a Review',
-              style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Write a Review', style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (index) {
+              return IconButton(
+                onPressed: () => setState(() => _currentRating = index + 1.0),
+                icon: Icon(index < _currentRating ? Icons.star : Icons.star_border,
+                    color: const Color(0xFFF99D46), size: 32),
+              );
+            }),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Show my profile', style: GoogleFonts.lato()),
+              Switch(value: _authorVisible, activeColor: _purple, onChanged: (v) => setState(() => _authorVisible = v)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _reviewController,
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: 'Share your experience...',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (index) {
-                return IconButton(
-                  onPressed: () => setState(() => _currentRating = index + 1.0),
-                  icon: Icon(
-                    index < _currentRating ? Icons.star : Icons.star_border,
-                    color: const Color(0xFFF99D46),
-                    size: 32,
-                  ),
-                );
-              }),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton(
+              onPressed: _isSubmitting ? null : _submitReview,
+              style: ElevatedButton.styleFrom(backgroundColor: _purple, foregroundColor: Colors.white),
+              child: _isSubmitting
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Submit'),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _reviewController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Share your experience...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submitReview,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _purple,
-                  foregroundColor: Colors.white,
-                ),
-                child: _isSubmitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('Submit'),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ]),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Review>>(
+    return StreamBuilder<List<_ReviewThread>>(
       stream: _getReviewsStream(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
+        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+        if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
 
-        final reviews = snapshot.data ?? [];
+        final threads = snapshot.data ?? [];
 
         return ListView(
           padding: const EdgeInsets.only(top: 8, bottom: 16),
           children: [
             _buildWriteReviewSection(),
-            if (reviews.isEmpty)
-              _buildEmptyState()
-            else
-              ...reviews.map((review) => _buildReviewCard(review)).toList(),
+            if (threads.isEmpty) _buildEmptyState() else ...threads.map((t) => _buildReviewThreadCard(t)).toList(),
           ],
         );
       },
@@ -909,115 +944,146 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 48.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.rate_review_outlined,
-              size: 64,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No reviews yet.',
-              style: GoogleFonts.lato(
-                fontSize: 16,
-                color: Colors.grey.shade600,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Be the first to share your experience!',
-              style: GoogleFonts.lato(
-                fontSize: 14,
-                color: Colors.grey.shade500,
-              ),
-            ),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.rate_review_outlined, size: 64, color: Colors.grey.shade400),
+          const SizedBox(height: 16),
+          Text('No reviews yet.', style: GoogleFonts.lato(fontSize: 16, color: Colors.grey.shade600)),
+          const SizedBox(height: 4),
+          Text('Be the first to share your experience!', style: GoogleFonts.lato(fontSize: 14, color: Colors.grey.shade500)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildReviewThreadCard(_ReviewThread thread) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _buildReviewCard(thread.review),
+          if (thread.replies.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Divider(color: Colors.grey.shade300),
+            const SizedBox(height: 8),
+            ...thread.replies.map((r) => _buildReplyTile(r)).toList(),
           ],
-        ),
+        ]),
       ),
     );
   }
 
   Widget _buildReviewCard(Review review) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header: Name and Rating
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        review.studentName,
-                        style: GoogleFonts.lato(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: _purple,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _buildStarRating(review.rating.toInt()),
-              ],
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _openStudentProfile(studentId: review.studentId, authorVisible: (review.authorVisible ?? true)),
+            child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance.collection('student').doc(review.studentId).snapshots(),
+              builder: (context, studentSnap) {
+                String currentName = review.studentName;
+                if (studentSnap.hasData && studentSnap.data?.data() != null) {
+                  final sd = studentSnap.data!.data()!;
+                  final fn = (sd['firstName'] ?? '').toString().trim();
+                  final ln = (sd['lastName'] ?? '').toString().trim();
+                  final combined = '$fn ${ln}'.trim();
+                  if (combined.isNotEmpty) currentName = combined;
+                }
+
+                final visible = (review.authorVisible ?? true);
+                final displayName = visible ? (currentName.isNotEmpty ? currentName : review.studentName) : 'Anonymous';
+
+                return Text(displayName,
+                    style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700, color: _purple));
+              },
             ),
-            const SizedBox(height: 12),
-            // Review text
-            Text(
-              review.reviewText,
-              style: GoogleFonts.lato(
-                fontSize: 14,
-                color: Colors.black87,
-                height: 1.5,
+          ),
+        ),
+        _buildStarRating(review.rating.toInt()),
+      ]),
+      const SizedBox(height: 8),
+      Text(review.reviewText, style: GoogleFonts.lato(fontSize: 14, color: Colors.black87, height: 1.5)),
+      const SizedBox(height: 8),
+      Row(children: [
+        Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
+        const SizedBox(width: 4),
+        Text(DateFormat('MMM d, yyyy').format(review.createdAt.toDate()), style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
+      ]),
+    ]);
+  }
+
+  Widget _buildReplyTile(Review reply) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8.0, top: 8.0, bottom: 8.0),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        CircleAvatar(
+          radius: 16,
+          backgroundColor: Colors.grey.shade200,
+          child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance.collection('student').doc(reply.studentId).snapshots(),
+            builder: (context, studentSnap) {
+              String initials = '';
+              String nameForInitials = reply.studentName;
+              if (studentSnap.hasData && studentSnap.data?.data() != null) {
+                final sd = studentSnap.data!.data()!;
+                final fn = (sd['firstName'] ?? '').toString().trim();
+                final ln = (sd['lastName'] ?? '').toString().trim();
+                final combined = '$fn ${ln}'.trim();
+                if (combined.isNotEmpty) nameForInitials = combined;
+              }
+              initials = (nameForInitials.isNotEmpty)
+                  ? nameForInitials.split(' ').map((s) => s.isNotEmpty ? s[0] : '').take(2).join().toUpperCase()
+                  : '';
+              return Text(initials, style: GoogleFonts.lato(fontSize: 12, color: _purple));
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            GestureDetector(
+              onTap: () => _openStudentProfile(studentId: reply.studentId, authorVisible: (reply.authorVisible ?? true)),
+              child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                stream: FirebaseFirestore.instance.collection('student').doc(reply.studentId).snapshots(),
+                builder: (context, studentSnap) {
+                  String currentName = reply.studentName;
+                  if (studentSnap.hasData && studentSnap.data?.data() != null) {
+                    final sd = studentSnap.data!.data()!;
+                    final fn = (sd['firstName'] ?? '').toString().trim();
+                    final ln = (sd['lastName'] ?? '').toString().trim();
+                    final combined = '$fn ${ln}'.trim();
+                    if (combined.isNotEmpty) currentName = combined;
+                  }
+
+                  final visible = (reply.authorVisible ?? true);
+                  final displayName = visible ? (currentName.isNotEmpty ? currentName : reply.studentName) : 'Anonymous';
+
+                  return Text(displayName, style: GoogleFonts.lato(fontWeight: FontWeight.w700, color: _purple));
+                },
               ),
             ),
-            const SizedBox(height: 12),
-            // Date
-            Row(
-              children: [
-                Icon(
-                  Icons.access_time,
-                  size: 14,
-                  color: Colors.grey.shade500,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  DateFormat('MMM d, yyyy').format(review.createdAt.toDate()),
-                  style: GoogleFonts.lato(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ],
+            const SizedBox(height: 4),
+            Text(reply.reviewText, style: GoogleFonts.lato(fontSize: 13, color: Colors.black87, height: 1.4)),
+            const SizedBox(height: 6),
+            Row(children: [
+              Icon(Icons.access_time, size: 12, color: Colors.grey.shade500),
+              const SizedBox(width: 4),
+              Text(DateFormat('MMM d, yyyy').format(reply.createdAt.toDate()), style: GoogleFonts.lato(fontSize: 11, color: Colors.grey.shade600)),
+            ]),
+          ]),
         ),
-      ),
+      ]),
     );
   }
 
   Widget _buildStarRating(int rating) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (index) {
-        return Icon(
-          index < rating ? Icons.star : Icons.star_border,
-          color: index < rating ? const Color(0xFFF99D46) : Colors.grey.shade400,
-          size: 20,
-        );
-      }),
-    );
+    return Row(mainAxisSize: MainAxisSize.min, children: List.generate(5, (index) {
+      return Icon(index < rating ? Icons.star : Icons.star_border,
+          color: index < rating ? const Color(0xFFF99D46) : Colors.grey.shade400, size: 20);
+    }));
   }
 }
 
@@ -1690,5 +1756,3 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
     }
   }
 }
-
-// Simple extension to capitalize strings, useful for status chips

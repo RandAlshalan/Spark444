@@ -8,6 +8,10 @@ class Review {
   final double rating;
   final String reviewText;
   final Timestamp createdAt;
+  final String? parentId;
+
+  // ADDED: per-review privacy flag
+  final bool authorVisible;
 
   Review({
     required this.id,
@@ -17,19 +21,24 @@ class Review {
     required this.rating,
     required this.reviewText,
     required this.createdAt,
+    this.parentId,
+    this.authorVisible = true,
   });
 
   /// Creates a Review object from a Firestore document.
   factory Review.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    final data = doc.data() as Map<String, dynamic>? ?? {};
     return Review(
       id: doc.id,
-      studentId: data['studentId'] ?? '',
-      studentName: data['studentName'] ?? 'Anonymous',
-      companyId: data['companyId'] ?? '',
-      rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
-      reviewText: data['reviewText'] ?? '',
+      studentId: (data['studentId'] ?? '') as String,
+      studentName: (data['studentName'] ?? '') as String,
+      companyId: (data['companyId'] ?? '') as String,
+      rating: ((data['rating'] ?? 0) as num).toDouble(),
+      reviewText: (data['reviewText'] ?? '') as String,
       createdAt: data['createdAt'] as Timestamp? ?? Timestamp.now(),
+      parentId: data['parentId'] as String?,
+      // Respect stored flag; default to true when missing
+      authorVisible: data.containsKey('authorVisible') ? (data['authorVisible'] == true) : true,
     );
   }
 
@@ -42,6 +51,8 @@ class Review {
       'rating': rating,
       'reviewText': reviewText,
       'createdAt': createdAt,
+      'parentId': parentId,
+      'authorVisible': authorVisible,
     };
   }
 }
