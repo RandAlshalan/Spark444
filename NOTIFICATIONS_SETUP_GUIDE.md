@@ -343,6 +343,36 @@ routes: {
 
 ---
 
+## 🔔 Automatic Notifications for Followed Companies
+
+**NEW**: Students now automatically receive notifications when companies they follow post new opportunities!
+
+### **How It Works:**
+1. Student follows a company (added to `following` array in Firestore)
+2. Company posts a new opportunity
+3. Cloud Function automatically detects it
+4. All followers receive push notifications instantly
+
+### **Setup Required:**
+Deploy the Cloud Functions to activate this feature:
+
+```bash
+cd functions
+firebase deploy --only functions
+```
+
+📖 **Complete deployment guide**: [CLOUD_FUNCTIONS_DEPLOYMENT_GUIDE.md](CLOUD_FUNCTIONS_DEPLOYMENT_GUIDE.md)
+
+### **Cloud Function Features:**
+- ✅ Automatically triggers on new opportunity creation
+- ✅ Queries all students who follow the company
+- ✅ Sends push notifications to all followers
+- ✅ Creates notification history in Firestore
+- ✅ Handles invalid tokens and cleanup
+- ✅ Comprehensive logging for debugging
+
+---
+
 ## 📦 Required Packages
 
 Ensure these are in your `pubspec.yaml`:
@@ -359,14 +389,17 @@ dependencies:
 
 ## 🎉 You're All Set!
 
-Your Spark app now has a robust notification system that:
+Your Spark app now has a complete notification system that:
 - ✅ Works on both Android and iOS
 - ✅ Handles foreground, background, and terminated states
 - ✅ Saves FCM tokens to Firestore
 - ✅ Navigates users when they tap notifications
 - ✅ Allows manual local notifications
+- ✅ **Automatic notifications when followed companies post opportunities**
 
 **Need help?** Check the detailed comments in [lib/services/notification_service.dart](lib/services/notification_service.dart)!
+
+**Deploy Cloud Functions**: See [CLOUD_FUNCTIONS_DEPLOYMENT_GUIDE.md](CLOUD_FUNCTIONS_DEPLOYMENT_GUIDE.md)
 
 ---
 
