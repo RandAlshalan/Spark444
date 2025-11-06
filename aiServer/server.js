@@ -1,3 +1,4 @@
+
 import express from "express";
 import fetch from "node-fetch";
 import dotenv from "dotenv";
@@ -5,30 +6,67 @@ import cors from "cors";
 
 dotenv.config();
 const app = express();
-app.use(express.json());
-app.use(cors());
+app.use(express.json()); // Middleware to parse JSON bodies
+app.use(cors()); // Middleware to enable Cross-Origin Resource Sharing
 
+// Check for the essential API key on startup
 if (!process.env.OPENAI_API_KEY) {
-  console.error("Missing OPENAI_API_KEY");
+  console.error("FATAL ERROR: Missing OPENAI_API_KEY");
   process.exit(1);
 }
 
+// OpenAI API endpoint
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+
 app.post("/chat", async (req, res) => {
   try {
-   
-    const userMessage = (req.body.message ?? "").toString().trim();
-    if (!userMessage) {
-      return res.status(400).json({ error: "Message is required." });
+    // --- The most important change: Receive the messages array and other variables ---
+    const { messages, resumeId, trainingType } = req.body;
+
+    // Validate that 'messages' is a non-empty array
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: "Messages array is required." });
     }
 
-    
-    const systemPrompt = `
-You are an AI interview coach. Answer interview questions in a professional, general way suitable for students preparing for job interviews.
-DO NOT use, request, or reference any personal or profile data about the user (name, university, skills, email, GPA, etc.), even if that data is provided.
-Provide concise, actionable, and neutral answers. Offer example responses, tips for improvement, and follow-up questions when appropriate.
-    `.trim();
+    // --- Intelligently build the System Prompt ---
+    // This tells the AI how to behave based on the inputs
+    const SYSTEM_PROMPT = `
+You are an expert AI interview coach. Your tone is supportive, encouraging, and professional. Your goal is to help students feel confident and prepared.
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+**CRITICAL RULE:** You must *never* ask for or use any personal user data (name, school, GPA, etc.). All answers must be general and educational.
+
+**When a student asks for help with a specific interview question (e.g., "Tell me about a time you failed"):**
+1.  **Explain the 'Why':**
+    * Briefly explain *why* interviewers ask this question (e.g., "They want to see your self-awareness, problem-solving skills, and resilience.").
+2.  **Give a Framework:**
+    * Provide a clear structure. For behavioral questions, **always introduce and recommend the STAR method** (Situation, Task, Action, Result).
+    * Briefly explain what each part of STAR means.
+3.  **Provide an Example:**
+    * Give a strong, *general* example answer that follows the STAR framework.
+4.  **Offer Key Tips:**
+    * List 2-3 concise tips or common pitfalls for that specific question.
+
+**When a student asks for general advice (e.g., "tips for body language" or "what questions should I ask?"):**
+* Give clear, actionable advice.
+* Use **bolding** and **bullet points** to make the information scannable and easy to read.
+
+**Always conclude your response by offering a next step,** such as "Would you like to practice another question?" or "Do you want to go deeper into the STAR method?"
+`.trim();
+
+    if (resumeId) {
+      systemPrompt += `\n\n**User Context:** You MUST tailor your answers based on the user's resume (ID: ${resumeId}). Refer to their skills and experience when providing examples.`;
+    }
+    if (trainingType) {
+      systemPrompt += `\n\n**Training Context:** The user is in a specific training program: '${trainingType}'. Focus your advice on this area (e.g., job roles, skills) related to this training.`;
+    }
+
+    // Combine the dynamic system prompt with the chat history
+    const apiMessages = [
+      { role: "system", content: systemPrompt.trim() },
+      ...messages, // Add all previous messages (from user and AI)
+    ];
+
+    const response = await fetch(OPENAI_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -36,25 +74,23 @@ Provide concise, actionable, and neutral answers. Offer example responses, tips 
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage }
-        ],
+        messages: apiMessages, // Send the full history + system prompt
         max_tokens: 800,
         temperature: 0.7,
       }),
     });
 
     const data = await response.json();
-    
-if (response.status === 429) {
+
+    // Handle API-specific errors
+    if (response.status === 429) {
       return res.status(429).json({
         error: "AI service is currently overloaded. Please try again shortly.",
       });
     }
     if (!response.ok) {
       console.error("OpenAI error:", data);
-      return res.status(response.status).json({ error: data });
+      return res.status(response.status).json({ error: data.error?.message || "OpenAI API error" });
     }
 
     const reply = data.choices?.[0]?.message?.content?.trim() ?? "No response from AI.";
@@ -66,4 +102,4 @@ if (response.status === 429) {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(` AI server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ AI server (with history) running on port ${PORT}`));

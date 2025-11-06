@@ -9,7 +9,7 @@ import 'package:pdf/widgets.dart' as pw; // 'pw' is a prefix for PDF widgets
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/resume.dart';
-import '../studentScreens/studentPdfReview.dart';
+import 'studentPdfPreview.dart';
 import '../studentScreens/studentResumeForm.dart';
 
 // --- WIDGET DEFINITION ---

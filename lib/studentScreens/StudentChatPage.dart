@@ -1,41 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import '../services/chat_service.dart';
-import 'dart:async'; // لاستخدام Future.delayed
+import '../services/chat_service.dart'; // Make sure this path is correct
+import 'dart:async'; // For using Future.delayed
 
-// --- 1. تعريف الألوان الرئيسية ---
-// استخدام الألوان الثابتة يمنح التطبيق هوية موحدة
-const Color _primaryColor = Color(0xFF422F5D); // لون أساسي داكن (كما في ملفاتك السابقة)
-const Color _aiBubbleColor = Color(0xFFF1F1F1); // لون فاتح لرسائل الـ AI
-const Color _scaffoldBgColor = Color(0xFFF8F9FA); // لون خلفية خفيف جداً
+// --- 1. Define key colors ---
+const Color _primaryColor = Color(0xFF422F5D);
+const Color _aiBubbleColor = Color(0xFFF1F1F1);
+const Color _scaffoldBgColor = Color(0xFFF8F9FA);
 
-class ChatPage extends StatefulWidget {
-  const ChatPage({super.key});
+// Renamed to StudentChatPage
+class StudentChatPage extends StatefulWidget {
+  const StudentChatPage({super.key});
 
   @override
-  State<ChatPage> createState() => _ChatPageState();
+  State<StudentChatPage> createState() => _StudentChatPageState();
 }
 
-class _ChatPageState extends State<ChatPage> {
+// Renamed to _StudentChatPageState
+class _StudentChatPageState extends State<StudentChatPage> {
   final TextEditingController _controller = TextEditingController();
   final ChatService _chatService = ChatService();
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
 
-  // --- 2. إضافة ScrollController ---
-  // هذا ضروري لتحريك القائمة للأسفل تلقائياً
   final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Add a friendly welcome message
+    _messages.add({
+      'role': 'ai',
+      'text':
+          "Hi! I'm your AI Interview Coach. 👋\n\nAsk me any question to prepare for your interview."
+    });
+  }
 
   @override
   void dispose() {
     _controller.dispose();
-    _scrollController.dispose(); // لا تنسى التخلص منه
+    _scrollController.dispose();
     super.dispose();
   }
 
-  // --- 3. دالة لتحريك القائمة للأسفل ---
+  // Function to scroll to the bottom
   void _scrollToBottom() {
-    // ننتظر لحظة قصيرة ليتم بناء الواجهة، ثم نحرك
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -47,48 +56,69 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
+  // --- UPDATED Send Message Function ---
   void _sendMessage() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isLoading) return;
 
+    // --- (Example) Assume you get these IDs from your app's state ---
+    // You must replace these with your real variables
+    final String? currentResumeId = 'resume_12345'; // (Example: Get this from your state)
+    final String? currentTrainingType = 'Software Development'; // (Example)
+
+    final userMessage = {'role': 'user', 'text': text};
+    
     setState(() {
-      _messages.add({'role': 'user', 'text': text});
+      _messages.add(userMessage);
       _controller.clear();
-      _isLoading = true; // --- 4. إظهار مؤشر "الكتابة" ---
+      _isLoading = true;
     });
 
-    _scrollToBottom(); // تحريك بعد إرسال رسالة المستخدم
+    _scrollToBottom();
+
+    // --- Filter out the welcome message from the history ---
+    final history = _messages.where((msg) {
+        return !(msg['role'] == 'ai' && msg['text']!.startsWith("Hi! I'm your AI Interview Coach"));
+    }).toList();
+
 
     try {
-      final reply = await _chatService.sendMessage(text);
+      // --- FIXED: The call now matches the ChatService ---
+      final reply = await _chatService.sendMessage(
+        history, // Send the history List
+        resumeId: currentResumeId,       // Send the extra parameters
+        trainingType: currentTrainingType,
+      );
+      
       setState(() {
         _messages.add({'role': 'ai', 'text': reply});
       });
     } catch (e) {
       setState(() {
-        _messages.add({'role': 'ai', 'text': 'Error: ${e.toString()}'});
+        // Show the error from the ChatService
+        _messages.add({'role': 'ai', 'text': 'Oops! ${e.toString()} 😟'});
       });
     } finally {
       setState(() {
-        _isLoading = false; // إخفاء مؤشر "الكتابة"
+        _isLoading = false;
       });
-      _scrollToBottom(); // تحريك بعد استلام رسالة الـ AI
+      _scrollToBottom();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _scaffoldBgColor, // --- 5. لون خلفية مخصص ---
+      backgroundColor: _scaffoldBgColor,
       appBar: AppBar(
         title: const Text(
           'AI Interview Coach',
           style: TextStyle(
-            color: Colors.white, // لون أبيض ليتناسب مع الخلفية الداكنة
+            color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: _primaryColor, // --- 6. استخدام اللون الأساسي ---
+        backgroundColor: _primaryColor,
         elevation: 2,
         centerTitle: true,
       ),
@@ -96,13 +126,11 @@ class _ChatPageState extends State<ChatPage> {
         children: [
           Expanded(
             child: ListView.builder(
-              controller: _scrollController, // --- 7. ربط الـ Controller ---
+              controller: _scrollController,
               padding: const EdgeInsets.all(12),
-              // --- 8. إضافة مكان لمؤشر "الكتابة" ---
               itemCount: _messages.length + (_isLoading ? 1 : 0),
               itemBuilder: (context, index) {
                 
-                // --- 9. إظهار مؤشر "الكتابة" ---
                 if (_isLoading && index == _messages.length) {
                   return _buildTypingIndicator();
                 }
@@ -113,8 +141,6 @@ class _ChatPageState extends State<ChatPage> {
                 return Align(
                   alignment:
                       isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  // --- 10. تحديد عرض أقصى للرسائل ---
-                  // هذا يمنع الرسائل من ملء الشاشة عرضياً
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
                       maxWidth: MediaQuery.of(context).size.width * 0.75,
@@ -123,7 +149,6 @@ class _ChatPageState extends State<ChatPage> {
                       margin: const EdgeInsets.symmetric(vertical: 6),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        // --- 11. ألوان جديدة للرسائل ---
                         color: isUser ? _primaryColor : _aiBubbleColor,
                         borderRadius: BorderRadius.only(
                           topLeft: const Radius.circular(16),
@@ -135,18 +160,21 @@ class _ChatPageState extends State<ChatPage> {
                       child: msg['role'] == 'ai'
                           ? MarkdownBody(
                               data: msg['text'] ?? '',
+                              selectable: true, // Allows student to copy text
                               styleSheet: MarkdownStyleSheet(
-                                p: const TextStyle(fontSize: 15, color: Colors.black87),
-                                // ... (يمكنك تخصيص باقي الـ styles هنا)
-                                // ...
+                                p: const TextStyle(
+                                    fontSize: 15, color: Colors.black87),
+                                strong: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                                listBullet: const TextStyle(
+                                    fontSize: 15, color: Colors.black87),
                               ),
                             )
                           : Text(
                               msg['text'] ?? '',
-                              // --- 12. نص أبيض لرسالة المستخدم ---
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 15,
-                                color: isUser ? Colors.white : Colors.black87,
+                                color: Colors.white,
                               ),
                             ),
                     ),
@@ -156,23 +184,22 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ),
           
-          // --- 13. فصل منطقة الإدخال في ودجت خاص ---
           _buildInputArea(),
         ],
       ),
     );
   }
 
-  /// ودجت لمؤشر "الكتابة" الخاص بالـ AI
+  /// Widget for the AI's "typing" indicator
   Widget _buildTypingIndicator() {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6),
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: _aiBubbleColor,
-          borderRadius: const BorderRadius.only(
+          borderRadius: BorderRadius.only(
             topLeft: Radius.circular(16),
             topRight: Radius.circular(16),
             bottomRight: Radius.circular(16),
@@ -189,12 +216,8 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  /// ودجت لمنطقة إدخال النص في الأسفل
+  /// Widget for the text input area at the bottom
   Widget _buildInputArea() {
-    // --- 14. استخدام SafeArea و Container ---
-    // هذا يضمن عدم تداخل الواجهة مع شريط سفلي (مثل iPhone)
-    // ويمنحنا خلفية بيضاء ثابتة
-    
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.all(12.0),
@@ -209,8 +232,11 @@ class _ChatPageState extends State<ChatPage> {
             Expanded(
               child: TextField(
                 controller: _controller,
+                enabled: !_isLoading,
                 decoration: InputDecoration(
-                  hintText: 'Type your interview question...',
+                  hintText: _isLoading
+                      ? 'Coach is typing...'
+                      : 'Type your interview question...',
                   filled: true,
                   fillColor: Colors.grey[100],
                   border: OutlineInputBorder(
@@ -222,15 +248,15 @@ class _ChatPageState extends State<ChatPage> {
                     vertical: 12,
                   ),
                 ),
-                onSubmitted: (_) => _sendMessage(),
+                onSubmitted: _isLoading ? null : (_) => _sendMessage(),
               ),
             ),
             const SizedBox(width: 8),
             CircleAvatar(
-              backgroundColor: _primaryColor, // --- 15. استخدام اللون الأساسي ---
+              backgroundColor: _isLoading ? Colors.grey : _primaryColor,
               child: IconButton(
                 icon: const Icon(Icons.send, color: Colors.white),
-                onPressed: _sendMessage,
+                onPressed: _isLoading ? null : _sendMessage,
               ),
             ),
           ],
@@ -238,5 +264,4 @@ class _ChatPageState extends State<ChatPage> {
       ),
     );
   }
-  
 }

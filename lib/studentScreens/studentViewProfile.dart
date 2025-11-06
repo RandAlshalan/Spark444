@@ -226,7 +226,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
 
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => ChatPage()),
+          MaterialPageRoute(builder: (context) =>  StudentChatPage()),
         );
         break;
       case 3: // Opportunities
