@@ -23,7 +23,7 @@ import 'package:spark/studentScreens/studentCompaniesPage.dart';
 import '../studentScreens/studentViewProfile.dart';
 import '../widgets/CustomBottomNavBar.dart';
 import '../studentScreens/studentSavedOpp.dart';
-
+import '../studentScreens/StudentChatPage.dart';
 // --- COLOR CONSTANTS ---
 const Color _sparkPrimaryPurple = Color(0xFF422F5D);
 const Color _pageBackgroundColor = Color(0xFFF8F9FA);
@@ -56,7 +56,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
   ScreenState _state =
       ScreenState.initialLoading; // Current state of the screen
   String? _errorMessage; // Stores error message if something goes wrong
-  int _currentIndex = 2; // Current active index for the bottom navigation bar
+  int _currentIndex = 3; // Current active index for the bottom navigation bar
 
   // In-page Detail View State
   Opportunity? _selectedOpportunity; // Holds the opportunity being viewed
@@ -471,7 +471,14 @@ class _studentOppPgaeState extends State<studentOppPgae> {
           NoTransitionRoute(page: const StudentCompaniesPage()),
         );
         break;
-      case 3:
+              case 2: 
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ChatPage(profileInfo: 'Student',)),
+        );
+        break;
+      case 4:
         // Go to Profile Page
         Navigator.pushReplacement(
           context,
