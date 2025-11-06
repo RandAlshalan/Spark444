@@ -9,14 +9,11 @@ Future<String> sendMessage(String message, {
   String? trainingType,
 }) async {
   final response = await http.post(
-    Uri.parse('https://YOUR_SERVER_URL/chat'),
-    headers: {'Content-Type': 'application/json'},
-    body: jsonEncode({
-      'message': message,
-      'resumeId': resumeId,
-      'trainingType': trainingType,
-    }),
-  );
+  Uri.parse('$baseUrl/chat'),
+  headers: {'Content-Type': 'application/json'},
+  body: jsonEncode({'message': message}),
+);
+
 
   if (response.statusCode == 200) {
     final data = jsonDecode(response.body);
