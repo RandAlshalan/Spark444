@@ -113,43 +113,58 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
     double? minGpa;
     double? maxGpa;
 
-    final studentCache = <String, Student?>{};
-    final studentFutureCache = <String, Future<Student?>>{};
+    final opportunityApplications = await Future.wait(
+      opportunities.map(
+        (opportunity) async => _OpportunityApplications(
+          opportunity: opportunity,
+          applications: await _applicationService
+              .getApplicationsForOpportunity(opportunity.id),
+        ),
+      ),
+    );
 
-    Future<Student?> _getStudentCached(String studentId) {
-      if (studentCache.containsKey(studentId)) {
-        return Future.value(studentCache[studentId]);
+    final studentIds = <String>{};
+    for (final entry in opportunityApplications) {
+      for (final application in entry.applications) {
+        studentIds.add(application.studentId);
       }
-      final pending = studentFutureCache[studentId];
-      if (pending != null) return pending;
-      final future = _authService.getStudent(studentId).then((student) {
-        studentCache[studentId] = student;
-        studentFutureCache.remove(studentId);
-        return student;
-      });
-      studentFutureCache[studentId] = future;
-      return future;
     }
 
-    for (final opportunity in opportunities) {
-      final applications = await _applicationService
-          .getApplicationsForOpportunity(opportunity.id);
-
-      if (applications.isEmpty) continue;
-
-      final fetchFutures = applications.map((applicationModel) async {
-        final student = await _getStudentCached(applicationModel.studentId);
-        if (student == null) return null;
-        return _ApplicantRecord(
-          application: applicationModel,
-          student: student,
-          opportunity: opportunity,
+    final studentDocs = <String, Student>{};
+    if (studentIds.isNotEmpty) {
+      final studentCollection =
+          FirebaseFirestore.instance.collection('student');
+      const chunkSize = 10;
+      final idsList = studentIds.toList();
+      for (var i = 0; i < idsList.length; i += chunkSize) {
+        final chunk = idsList.sublist(
+          i,
+          math.min(i + chunkSize, idsList.length),
         );
-      }).toList();
+        final snapshot = await studentCollection
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get();
+        for (final doc in snapshot.docs) {
+          studentDocs[doc.id] = Student.fromFirestore(doc);
+        }
+      }
+    }
 
-      final records = (await Future.wait(fetchFutures))
-          .whereType<_ApplicantRecord>()
-          .toList();
+    for (final entry in opportunityApplications) {
+      if (entry.applications.isEmpty) continue;
+
+      final records = <_ApplicantRecord>[];
+      for (final applicationModel in entry.applications) {
+        final student = studentDocs[applicationModel.studentId];
+        if (student == null) continue;
+        records.add(
+          _ApplicantRecord(
+            application: applicationModel,
+            student: student,
+            opportunity: entry.opportunity,
+          ),
+        );
+      }
 
       if (records.isEmpty) continue;
       for (final record in records) {
@@ -1612,6 +1627,16 @@ class _StatusColors {
   final Color foreground;
 
   const _StatusColors({required this.background, required this.foreground});
+}
+
+class _OpportunityApplications {
+  final Opportunity opportunity;
+  final List<app_model.Application> applications;
+
+  const _OpportunityApplications({
+    required this.opportunity,
+    required this.applications,
+  });
 }
 
 class _ApplicantRecord {

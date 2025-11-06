@@ -29,9 +29,11 @@ import '../studentScreens/StudentChatPage.dart';
 import 'resumeSelectionDialog.dart';
 import '../widgets/application_success_dialog.dart';
 import 'applicationConfirmationDialog.dart';
-// --- COLOR CONSTANTS ---
-const Color _sparkPrimaryPurple = Color(0xFF422F5D);
-const Color _pageBackgroundColor = Color(0xFFF8F9FA);
+import '../theme/student_theme.dart';
+
+// --- COLOR CONSTANTS (Use StudentTheme for consistency) ---
+const Color _sparkPrimaryPurple = StudentTheme.primaryColor;
+const Color _pageBackgroundColor = StudentTheme.backgroundColor;
 
 // Enum for clearer state management
 enum ScreenState { initialLoading, loading, success, error, empty }

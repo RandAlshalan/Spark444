@@ -7,11 +7,12 @@ import '../models/Application.dart';
 import '../models/company.dart';
 import '../models/opportunity.dart';
 import '../services/authService.dart';
+import '../theme/student_theme.dart';
 
-// --- Color Constants ---
-const Color _sparkPrimaryPurple = Color(0xFF422F5D);
-const Color _profileBackgroundColor = Color(0xFFF8F9FA);
-const Color _profileTextColor = Color(0xFF1E1E1E);
+// --- Color Constants (Use StudentTheme for consistency) ---
+const Color _sparkPrimaryPurple = StudentTheme.primaryColor;
+const Color _profileBackgroundColor = StudentTheme.backgroundColor;
+const Color _profileTextColor = StudentTheme.textColor;
 
 /// A flexible widget to display opportunity details.
 ///

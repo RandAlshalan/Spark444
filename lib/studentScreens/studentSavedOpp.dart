@@ -12,9 +12,10 @@ import 'package:spark/services/bookmarkService.dart';
 import 'package:spark/studentScreens/applicationConfirmationDialog.dart';
 import 'package:spark/studentScreens/resumeSelectionDialog.dart';
 import 'package:spark/studentScreens/studentApplications.dart';
-import 'package:spark/studentScreens/studentCompanyProfilePage.dart'; // For company profile page
+import 'package:spark/studentScreens/studentCompanyProfilePage.dart';
 import 'package:spark/widgets/application_success_dialog.dart';
-import '../studentScreens/studentOppDetails.dart'; // Contains OpportunityDetailsContent
+import '../studentScreens/studentOppDetails.dart';
+import '../theme/student_theme.dart';
 
 class SavedstudentOppPgae extends StatefulWidget {
   final String studentId;
@@ -43,10 +44,15 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
           _selectedOpportunity == null
               ? 'Saved Opportunities'
               : 'Opportunity Details',
-          style: GoogleFonts.lato(fontWeight: FontWeight.bold),
+          style: GoogleFonts.lato(
+            fontWeight: FontWeight.bold,
+            color: StudentTheme.textColor,
+          ),
         ),
-        backgroundColor: Colors.white,
-        elevation: 1,
+        backgroundColor: StudentTheme.cardColor,
+        elevation: 0,
+        surfaceTintColor: StudentTheme.cardColor,
+        shadowColor: Colors.black.withValues(alpha: 0.05),
         leading: _selectedOpportunity != null
             ? IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -71,8 +77,8 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
     if (_selectedOpportunity != null) {
       // If we are fetching the application status
       if (_isApplying) {
-        return const Center(
-            child: CircularProgressIndicator(color: Color(0xFF422F5D)));
+        return Center(
+            child: CircularProgressIndicator(color: StudentTheme.primaryColor));
       }
 
       // If loading is complete, show details
@@ -93,8 +99,8 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
       builder: (context, snapshot) {
         // Loading state
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF422F5D)));
+          return Center(
+              child: CircularProgressIndicator(color: StudentTheme.primaryColor));
         }
 
         // Error state
@@ -102,7 +108,7 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
           return Center(
             child: Text(
               'Error loading saved opportunities.',
-              style: GoogleFonts.lato(color: Colors.red),
+              style: GoogleFonts.lato(color: StudentTheme.errorColor),
             ),
           );
         }
@@ -132,17 +138,23 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.bookmark_remove_outlined,
-              size: 60, color: Colors.grey),
+          Icon(Icons.bookmark_remove_outlined,
+              size: 60, color: StudentTheme.textColor.withValues(alpha: 0.4)),
           const SizedBox(height: 16),
           Text(
             'No Saved Opportunities',
-            style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold),
+            style: GoogleFonts.lato(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: StudentTheme.textColor,
+            ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Your saved items will appear here.',
-            style: TextStyle(color: Colors.grey),
+            style: GoogleFonts.lato(
+              color: StudentTheme.textColor.withValues(alpha: 0.6),
+            ),
           ),
         ],
       ),
@@ -151,11 +163,9 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
 
   /// --- Build single opportunity card ---
   Widget _buildOpportunityCard(Opportunity opportunity) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.1),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      decoration: StudentTheme.cardDecoration,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -170,23 +180,35 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
                   future: _authService.getCompany(opportunity.companyId),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
-                      return const CircleAvatar(
-                        radius: 25,
-                        backgroundColor: Colors.grey,
+                      return CircleAvatar(
+                        radius: 28,
+                        backgroundColor: StudentTheme.primaryColor.withValues(alpha: 0.08),
                       );
                     }
                     final company = snapshot.data!;
-                    return CircleAvatar(
-                      radius: 25,
-                      backgroundColor: Colors.grey.shade200,
-                      backgroundImage: (company.logoUrl != null &&
-                              company.logoUrl!.isNotEmpty)
-                          ? CachedNetworkImageProvider(company.logoUrl!)
-                          : null,
-                      child: (company.logoUrl == null ||
-                              company.logoUrl!.isEmpty)
-                          ? const Icon(Icons.business, color: Colors.grey)
-                          : null,
+                    return Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: CircleAvatar(
+                        radius: 28,
+                        backgroundColor: StudentTheme.primaryColor.withValues(alpha: 0.08),
+                        backgroundImage: (company.logoUrl != null &&
+                                company.logoUrl!.isNotEmpty)
+                            ? CachedNetworkImageProvider(company.logoUrl!)
+                            : null,
+                        child: (company.logoUrl == null ||
+                                company.logoUrl!.isEmpty)
+                            ? Icon(Icons.business, color: StudentTheme.primaryColor)
+                            : null,
+                      ),
                     );
                   },
                 ),
@@ -199,20 +221,25 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
                       Text(
                         opportunity.role,
                         style: GoogleFonts.lato(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: StudentTheme.textColor,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         opportunity.name,
                         style: GoogleFonts.lato(
-                            fontSize: 15, color: Colors.grey.shade700),
+                          fontSize: 15,
+                          color: StudentTheme.textColor.withValues(alpha: 0.7),
+                        ),
                       ),
                     ],
                   ),
                 ),
                 // Bookmark icon (remove)
                 IconButton(
-                  icon: const Icon(Icons.bookmark, color: Color(0xFF422F5D)),
+                  icon: Icon(Icons.bookmark, color: StudentTheme.primaryColor),
                   onPressed: () => _toggleBookmark(opportunity),
                   tooltip: 'Remove Bookmark',
                 ),
@@ -231,18 +258,18 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
                 _buildInfoChip(
                   Icons.attach_money,
                   opportunity.isPaid ? 'Paid' : 'Unpaid',
-                  color: opportunity.isPaid ? Colors.green : Colors.orange,
+                  color: opportunity.isPaid ? StudentTheme.successColor : StudentTheme.warningColor,
                 ),
                 if (opportunity.responseDeadlineVisible == true &&
                     opportunity.responseDeadline != null)
                   _buildInfoChip(
                     Icons.event_available,
                     'Respond by ${DateFormat('MMM d, yyyy').format(opportunity.responseDeadline!.toDate())}',
-                    color: Colors.blueGrey,
+                    color: StudentTheme.infoColor,
                   ),
               ],
             ),
-            const Padding(padding: EdgeInsets.only(top: 12.0), child: Divider()),
+            const Padding(padding: EdgeInsets.only(top: 12.0), child: Divider(color: StudentTheme.dividerColor)),
             // --- View More button ---
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -252,10 +279,12 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
                     // Call the function that fetches status and shows details
                     _viewOpportunityDetails(opportunity);
                   },
-                  child: const Text(
+                  child: Text(
                     'View More',
-                    style: TextStyle(
-                        color: Color(0xFF422F5D), fontWeight: FontWeight.bold),
+                    style: GoogleFonts.lato(
+                      color: StudentTheme.primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -268,12 +297,12 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
 
   /// --- Info Chip Widget ---
   Widget _buildInfoChip(IconData icon, String label, {Color? color}) {
-    final chipColor = color ?? const Color(0xFF422F5D);
+    final chipColor = color ?? StudentTheme.primaryColor;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: chipColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
+        color: chipColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(StudentTheme.radiusSM),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

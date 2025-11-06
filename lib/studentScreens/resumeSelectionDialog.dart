@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../models/resume.dart';
+import '../theme/student_theme.dart';
 
 /// A dialog that allows students to select a resume and optionally add a cover letter
 /// when applying for an opportunity.

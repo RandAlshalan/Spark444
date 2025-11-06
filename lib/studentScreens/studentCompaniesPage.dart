@@ -8,6 +8,7 @@ import 'package:spark/studentScreens/StudentCompanyProfilePage.dart';
 
 import '../services/companyService.dart';
 import '../models/company.dart';
+import '../theme/student_theme.dart';
 
 // --- NAV BAR IMPORTS START ---
 import 'package:google_fonts/google_fonts.dart';
@@ -18,7 +19,6 @@ import '../studentScreens/studentSavedOpp.dart';
 import '../studentScreens/studentOppPage.dart';
 // --- NAV BAR IMPORTS END ---
 
-const _purple = Color(0xFF422F5D);
 const String kStudentsCollection = 'student';
 
 class StudentCompaniesPage extends StatefulWidget {
@@ -190,16 +190,17 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
       child: Scaffold(
         appBar: AppBar(
           centerTitle: true,
-          title: const Text(
+          title: Text(
             'Companies',
-            style: TextStyle(
+            style: GoogleFonts.lato(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black,
+              color: StudentTheme.textColor,
             ),
           ),
-          backgroundColor: Colors.white,
+          backgroundColor: StudentTheme.cardColor,
           elevation: 0,
+          surfaceTintColor: StudentTheme.cardColor,
           automaticallyImplyLeading: false,
           actions: [
             IconButton(
@@ -212,8 +213,9 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
 
         body: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            Container(
+              color: StudentTheme.cardColor,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               child: TextField(
                 controller: _searchCtrl,
                 textInputAction: TextInputAction.search,
@@ -221,15 +223,22 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
                     setState(() => _query = v.toLowerCase().trim()),
                 decoration: InputDecoration(
                   hintText: 'Search by company name…',
-                  prefixIcon: const Icon(Icons.search),
+                  hintStyle: GoogleFonts.lato(color: Colors.grey),
+                  prefixIcon: Icon(Icons.search, color: StudentTheme.primaryColor),
                   filled: true,
-                  fillColor: Theme.of(
-                    context,
-                  ).colorScheme.surfaceVariant.withOpacity(0.35),
+                  fillColor: StudentTheme.surfaceColor,
                   contentPadding: const EdgeInsets.symmetric(vertical: 14),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(StudentTheme.radiusMD),
                     borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(StudentTheme.radiusMD),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(StudentTheme.radiusMD),
+                    borderSide: BorderSide(color: StudentTheme.primaryColor, width: 2),
                   ),
                 ),
               ),
@@ -278,10 +287,12 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
     String studentId, {
     required Set<String> followed,
   }) {
-    return ListView.separated(
-      itemCount: companies.length,
-      separatorBuilder: (ctx, __) => const Divider(height: 1),
-      itemBuilder: (ctx, i) {
+    return Container(
+      color: StudentTheme.backgroundColor,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(top: 8, bottom: 16),
+        itemCount: companies.length,
+        itemBuilder: (ctx, i) {
         final c = companies[i];
         final id = c.uid ?? '';
 
@@ -290,27 +301,55 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
         final isFollowing = optimistic ?? isFollowingStream;
         final pending = _pendingToggles.contains(id);
 
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 6,
-          ),
-          leading: (c.logoUrl != null && c.logoUrl!.isNotEmpty)
-              ? CircleAvatar(backgroundImage: CachedNetworkImageProvider(c.logoUrl!))
-              : const CircleAvatar(child: Icon(Icons.apartment)),
-          title: Text(
-            c.companyName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Text(
-            [
-              if (c.sector.isNotEmpty) c.sector,
-              if ((c.description ?? '').isNotEmpty) c.description!,
-            ].join(' • '),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: StudentTheme.cardDecoration,
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            leading: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: (c.logoUrl != null && c.logoUrl!.isNotEmpty)
+                  ? CircleAvatar(
+                      radius: 28,
+                      backgroundColor: StudentTheme.primaryColor.withValues(alpha: 0.08),
+                      backgroundImage: CachedNetworkImageProvider(c.logoUrl!),
+                    )
+                  : CircleAvatar(
+                      radius: 28,
+                      backgroundColor: StudentTheme.primaryColor.withValues(alpha: 0.08),
+                      child: Icon(Icons.apartment, color: StudentTheme.primaryColor),
+                    ),
+            ),
+            title: Text(
+              c.companyName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.lato(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: StudentTheme.textColor,
+              ),
+            ),
+            subtitle: c.sector.isEmpty
+                ? null
+                : Text(
+                    c.sector,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.lato(
+                      fontSize: 13,
+                      color: StudentTheme.textColor.withValues(alpha: 0.7),
+                    ),
+                  ),
 
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
@@ -330,9 +369,9 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
                       vertical: 6,
                     ),
                     shape: const StadiumBorder(),
-                    foregroundColor: isFollowing ? Colors.white : _purple,
-                    backgroundColor: isFollowing ? _purple : Colors.transparent,
-                    side: const BorderSide(color: _purple),
+                    foregroundColor: isFollowing ? Colors.white : StudentTheme.primaryColor,
+                    backgroundColor: isFollowing ? StudentTheme.primaryColor : Colors.transparent,
+                    side: BorderSide(color: StudentTheme.primaryColor),
                     textStyle: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -347,22 +386,24 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
                       : Text(isFollowing ? 'Following' : 'Follow'),
                 ),
             ],
-          ),
-          onTap: () {
-            if (id.isEmpty) {
-              ScaffoldMessenger.of(ctx).showSnackBar(
-                const SnackBar(content: Text('Company ID is missing')),
+            ),
+            onTap: () {
+              if (id.isEmpty) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('Company ID is missing')),
+                );
+                return;
+              }
+              Navigator.of(ctx).push(
+                MaterialPageRoute(
+                  builder: (_) => StudentCompanyProfilePage(companyId: id),
+                ),
               );
-              return;
-            }
-            Navigator.of(ctx).push(
-              MaterialPageRoute(
-                builder: (_) => StudentCompanyProfilePage(companyId: id),
-              ),
-            );
-          },
+            },
+          ),
         );
-      },
+        },
+      ),
     );
   }
 }

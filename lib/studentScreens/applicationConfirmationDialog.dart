@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../models/opportunity.dart';
 import '../models/resume.dart';
+import '../theme/student_theme.dart';
 
 /// Enhanced confirmation dialog for application submission
 ///
