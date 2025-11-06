@@ -113,27 +113,43 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
     double? minGpa;
     double? maxGpa;
 
+    final studentCache = <String, Student?>{};
+    final studentFutureCache = <String, Future<Student?>>{};
+
+    Future<Student?> _getStudentCached(String studentId) {
+      if (studentCache.containsKey(studentId)) {
+        return Future.value(studentCache[studentId]);
+      }
+      final pending = studentFutureCache[studentId];
+      if (pending != null) return pending;
+      final future = _authService.getStudent(studentId).then((student) {
+        studentCache[studentId] = student;
+        studentFutureCache.remove(studentId);
+        return student;
+      });
+      studentFutureCache[studentId] = future;
+      return future;
+    }
+
     for (final opportunity in opportunities) {
       final applications = await _applicationService
           .getApplicationsForOpportunity(opportunity.id);
 
       if (applications.isEmpty) continue;
 
-      final List<_ApplicantRecord> records = [];
-      for (final app_model.Application applicationModel in applications) {
-        final student =
-            await _authService.getStudent(applicationModel.studentId);
-        if (student == null) {
-          continue;
-        }
-        records.add(
-          _ApplicantRecord(
-            application: applicationModel,
-            student: student,
-            opportunity: opportunity,
-          ),
+      final fetchFutures = applications.map((applicationModel) async {
+        final student = await _getStudentCached(applicationModel.studentId);
+        if (student == null) return null;
+        return _ApplicantRecord(
+          application: applicationModel,
+          student: student,
+          opportunity: opportunity,
         );
-      }
+      }).toList();
+
+      final records = (await Future.wait(fetchFutures))
+          .whereType<_ApplicantRecord>()
+          .toList();
 
       if (records.isEmpty) continue;
       for (final record in records) {

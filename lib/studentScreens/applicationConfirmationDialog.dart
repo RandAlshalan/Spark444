@@ -20,19 +20,40 @@ class ApplicationConfirmationDialog extends StatelessWidget {
     this.coverLetter,
   });
 
+  // Cache text styles for performance
+  static final _titleStyle = GoogleFonts.lato(
+    fontSize: 22,
+    fontWeight: FontWeight.bold,
+    color: const Color(0xFF422F5D),
+  );
+
+  static final _sectionHeaderStyle = GoogleFonts.lato(
+    fontSize: 16,
+    fontWeight: FontWeight.bold,
+    color: const Color(0xFF422F5D),
+  );
+
   @override
   Widget build(BuildContext context) {
     final hasCoverLetter = coverLetter != null && coverLetter!.trim().isNotEmpty;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Dialog(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: screenWidth > 600 ? 550 : screenWidth * 0.9,
+          maxHeight: screenHeight * 0.9,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(28.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,11 +80,7 @@ class ApplicationConfirmationDialog extends StatelessWidget {
                         children: [
                           Text(
                             'Review Application',
-                            style: GoogleFonts.lato(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF422F5D),
-                            ),
+                            style: _titleStyle,
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -153,23 +170,22 @@ class ApplicationConfirmationDialog extends StatelessWidget {
                       value: '${coverLetter!.trim().length} characters',
                       icon: Icons.edit_note_outlined,
                       valueWidget: Container(
-                        padding: const EdgeInsets.all(12),
+                        constraints: const BoxConstraints(maxHeight: 300),
+                        padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: Colors.grey[300]!),
                         ),
-                        child: Text(
-                          coverLetter!.trim().length > 200
-                              ? '${coverLetter!.trim().substring(0, 200)}...'
-                              : coverLetter!.trim(),
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[800],
-                            height: 1.4,
+                        child: SingleChildScrollView(
+                          child: Text(
+                            coverLetter!.trim(),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[900],
+                              height: 1.5,
+                            ),
                           ),
-                          maxLines: 4,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
@@ -208,15 +224,19 @@ class ApplicationConfirmationDialog extends StatelessWidget {
 
                 // Action Buttons
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.of(context).pop(false),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: const BorderSide(color: Color(0xFF422F5D)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: const BorderSide(
+                            color: Color(0xFF422F5D),
+                            width: 1.5,
+                          ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         child: const Text(
@@ -224,31 +244,38 @@ class ApplicationConfirmationDialog extends StatelessWidget {
                           style: TextStyle(
                             color: Color(0xFF422F5D),
                             fontWeight: FontWeight.w600,
+                            fontSize: 15,
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      flex: 2,
-                      child: ElevatedButton.icon(
+                      child: ElevatedButton(
                         onPressed: () => Navigator.of(context).pop(true),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF422F5D),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 2,
                         ),
-                        icon: const Icon(Icons.send_rounded, size: 20),
-                        label: const Text(
-                          'Submit Application',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Text(
+                              'Submit',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.send_rounded, size: 20),
+                          ],
                         ),
                       ),
                     ),
@@ -256,7 +283,9 @@ class ApplicationConfirmationDialog extends StatelessWidget {
                 ),
               ],
             ),
-          ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -269,11 +298,7 @@ class ApplicationConfirmationDialog extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           title,
-          style: GoogleFonts.lato(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF422F5D),
-          ),
+          style: _sectionHeaderStyle,
         ),
       ],
     );

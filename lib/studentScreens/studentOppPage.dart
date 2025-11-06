@@ -1131,25 +1131,26 @@ class _OpportunityCard extends StatelessWidget {
   String formatDate(DateTime? date) =>
       date == null ? 'N/A' : DateFormat('MMM d, yyyy').format(date);
 
-  // --- (NEW) HELPER FOR INFO CHIPS ---
+  // Enhanced info chips
   Widget _buildInfoChip(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.grey.shade700),
+          Icon(icon, size: 15, color: const Color(0xFF422F5D)),
           const SizedBox(width: 6),
           Text(
             label,
             style: GoogleFonts.lato(
-              color: Colors.grey.shade800,
+              color: const Color(0xFF1A1A1A),
               fontWeight: FontWeight.w600,
-              fontSize: 12,
+              fontSize: 13,
             ),
           ),
         ],
@@ -1160,68 +1161,114 @@ class _OpportunityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 20),
-      elevation: 3,
-      shadowColor: Colors.black.withOpacity(0.15),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.08),
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onViewMore, // Go to detail view on tap
+        borderRadius: BorderRadius.circular(20),
+        onTap: onViewMore,
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Company Logo
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: Colors.grey.shade200,
-                    backgroundImage:
-                        (company?.logoUrl != null &&
-                            company!.logoUrl!.isNotEmpty)
-                        ? CachedNetworkImageProvider(company!.logoUrl!)
-                        : null,
-                    child:
-                        (company?.logoUrl == null || company!.logoUrl!.isEmpty)
-                        ? const Icon(Icons.business, color: Colors.grey)
-                        : null,
+                  // Company Logo - Enhanced with shadow
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.06),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      radius: 32,
+                      backgroundColor: const Color(0xFF422F5D).withValues(alpha: 0.08),
+                      backgroundImage:
+                          (company?.logoUrl != null &&
+                              company!.logoUrl!.isNotEmpty)
+                          ? CachedNetworkImageProvider(company!.logoUrl!)
+                          : null,
+                      child:
+                          (company?.logoUrl == null || company!.logoUrl!.isEmpty)
+                          ? Icon(Icons.business, color: const Color(0xFF422F5D), size: 28)
+                          : null,
+                    ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Role Title
+                        // Role Title - Enhanced
                         Text(
                           opportunity.role,
                           style: GoogleFonts.lato(
-                            fontSize: 18,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1A1A1A),
+                            height: 1.2,
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        // Opportunity Name
-                        Text(
-                          opportunity.name,
-                          style: GoogleFonts.lato(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF422F5D),
-                          ),
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 2),
-                        // Company Name
-                        Text(
-                          company?.companyName ?? "...",
-                          style: GoogleFonts.lato(
-                            fontSize: 13,
-                            color: Colors.grey.shade600,
+                        const SizedBox(height: 6),
+                        // Opportunity Type Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
                           ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF422F5D).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            opportunity.type,
+                            style: GoogleFonts.lato(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF422F5D),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        // Company Name - Enhanced
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.business_outlined,
+                              size: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                company?.companyName ?? "...",
+                                style: GoogleFonts.lato(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -1246,41 +1293,56 @@ class _OpportunityCard extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Column(
-                children: [
-                  Row(
-                    children: [
-                      _buildDateInfo(
-                        Icons.calendar_today_outlined,
-                        'Duration',
-                        '${formatDate(opportunity.startDate?.toDate())} - ${formatDate(opportunity.endDate?.toDate())}',
-                      ),
-                      const SizedBox(width: 16),
-                      _buildDateInfo(
-                        Icons.event_available_outlined,
-                        'Apply By',
-                        formatDate(opportunity.applicationDeadline?.toDate()),
-                      ),
-                    ],
+              const SizedBox(height: 16),
+              // Date info in containers with subtle background
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF422F5D).withValues(alpha: 0.03),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF422F5D).withValues(alpha: 0.08),
                   ),
-                  // Show response deadline if visible and exists
-                  if (opportunity.responseDeadlineVisible == true &&
-                      opportunity.responseDeadline != null) ...[
-                    const SizedBox(height: 8),
+                ),
+                child: Column(
+                  children: [
                     Row(
                       children: [
                         _buildDateInfo(
-                          Icons.schedule_outlined,
-                          'Response By',
-                          formatDate(opportunity.responseDeadline?.toDate()),
+                          Icons.calendar_today_outlined,
+                          'Duration',
+                          '${formatDate(opportunity.startDate?.toDate())} - ${formatDate(opportunity.endDate?.toDate())}',
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _buildDateInfo(
+                          Icons.event_available_outlined,
+                          'Apply By',
+                          formatDate(opportunity.applicationDeadline?.toDate()),
+                        ),
+                      ],
+                    ),
+                    // Show response deadline if visible and exists
+                    if (opportunity.responseDeadlineVisible == true &&
+                        opportunity.responseDeadline != null) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _buildDateInfo(
+                            Icons.schedule_outlined,
+                            'Response By',
+                            formatDate(opportunity.responseDeadline?.toDate()),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               // --- (NEW) INFO CHIPS ADDED ---
               Wrap(
                 spacing: 8.0,
@@ -1306,24 +1368,36 @@ class _OpportunityCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12.0),
-                child: Divider(),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: onViewMore,
-                    child: const Text(
-                      'View More',
-                      style: TextStyle(
-                        color: _sparkPrimaryPurple,
-                        fontWeight: FontWeight.bold,
-                      ),
+              const SizedBox(height: 16),
+              // Enhanced View More button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: onViewMore,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF422F5D),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    elevation: 0,
                   ),
-                ],
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'View Details',
+                        style: GoogleFonts.lato(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.arrow_forward, size: 18),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -1335,27 +1409,42 @@ class _OpportunityCard extends StatelessWidget {
   /// Helper widget to build the date info sections in the card
   Widget _buildDateInfo(IconData icon, String title, String value) {
     return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: Colors.grey.shade600),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: GoogleFonts.lato(
-                  fontSize: 13,
-                  color: Colors.grey.shade600,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF422F5D).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: const Color(0xFF422F5D)),
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: GoogleFonts.lato(fontSize: 14, fontWeight: FontWeight.w600),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.lato(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: GoogleFonts.lato(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1A1A1A),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ],
       ),

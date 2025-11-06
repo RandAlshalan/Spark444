@@ -30,6 +30,36 @@ class _ResumeSelectionDialogState extends State<ResumeSelectionDialog> {
   List<Resume> _resumes = [];
   String? _errorMessage;
 
+  // Cache text styles for performance
+  static final _titleStyle = GoogleFonts.lato(
+    fontSize: 24,
+    fontWeight: FontWeight.bold,
+    color: const Color(0xFF422F5D),
+  );
+
+  static final _sectionTitleStyle = GoogleFonts.lato(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: const Color(0xFF422F5D),
+  );
+
+  static final _sectionTitleGreenStyle = GoogleFonts.lato(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: Colors.green[900],
+  );
+
+  static final _resumeTitleStyle = GoogleFonts.lato(
+    fontSize: 16,
+    fontWeight: FontWeight.bold,
+    color: const Color(0xFF422F5D),
+  );
+
+  static final _emptyStateTitleStyle = GoogleFonts.lato(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -102,45 +132,74 @@ class _ResumeSelectionDialogState extends State<ResumeSelectionDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Dialog(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: screenWidth > 700 ? 650 : screenWidth * 0.9,
+          maxHeight: screenHeight * 0.85,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(28, 28, 28, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               // Header
               Row(
                 children: [
-                  const Icon(
-                    Icons.description_outlined,
-                    color: Color(0xFF422F5D),
-                    size: 28,
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF422F5D).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.description_outlined,
+                      color: Color(0xFF422F5D),
+                      size: 28,
+                    ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   Expanded(
-                    child: Text(
-                      'Select Resume',
-                      style: GoogleFonts.lato(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF422F5D),
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Select Your Resume',
+                          style: _titleStyle,
+                        ),
+                        if (_resumes.isNotEmpty)
+                          Text(
+                            '${_resumes.length} resume${_resumes.length == 1 ? '' : 's'} available',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: _cancel,
                     tooltip: 'Cancel',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.grey[100],
+                    ),
                   ),
                 ],
               ),
-              const Divider(height: 24),
+              const Divider(height: 32, thickness: 1),
 
               // Content
               if (_isLoading)
@@ -186,10 +245,7 @@ class _ResumeSelectionDialogState extends State<ResumeSelectionDialog> {
                       const SizedBox(height: 16),
                       Text(
                         'No Resumes Available',
-                        style: GoogleFonts.lato(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: _emptyStateTitleStyle,
                       ),
                       const SizedBox(height: 8),
                       const Text(
@@ -206,146 +262,237 @@ class _ResumeSelectionDialogState extends State<ResumeSelectionDialog> {
                   ),
                 )
               else
-                Flexible(
+                Expanded(
                   child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
                       children: [
                         // Resume Selection Section
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.description,
-                              size: 20,
-                              color: Color(0xFF422F5D),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF422F5D).withValues(alpha: 0.03),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFF422F5D).withValues(alpha: 0.1),
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Choose a resume to attach',
-                              style: GoogleFonts.lato(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF422F5D),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Select the resume that best highlights your qualifications for this opportunity',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        ..._resumes.map((resume) => _buildResumeCard(resume)),
-
-                        const SizedBox(height: 28),
-
-                        // Cover Letter Section
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.edit_note,
-                              size: 20,
-                              color: Color(0xFF422F5D),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Cover Letter',
-                              style: GoogleFonts.lato(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF422F5D),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.description,
+                                    size: 20,
+                                    color: Color(0xFF422F5D),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Choose a resume',
+                                      style: _sectionTitleStyle,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red[50],
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: Colors.red[200]!),
+                                    ),
+                                    child: Text(
+                                      'Required',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.red[700],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[300],
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'Optional',
+                              const SizedBox(height: 8),
+                              Text(
+                                'Select the resume that best showcases your qualifications',
                                 style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  color: Colors.grey[700],
+                                  height: 1.3,
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Stand out by explaining why you\'re interested in this opportunity',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
+                              const SizedBox(height: 16),
+                              ..._resumes.map((resume) => _buildResumeCard(resume)),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _coverLetterController,
-                          maxLines: 6,
-                          maxLength: 1000,
-                          decoration: InputDecoration(
-                            hintText:
-                                'Dear Hiring Manager,\n\nI am excited to apply for this position because...',
-                            hintStyle: TextStyle(color: Colors.grey[400]),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(
-                                color: Color(0xFF422F5D),
-                                width: 2,
+
+                        const SizedBox(height: 24),
+
+                        // Cover Letter Section
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.green[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.green[200]!),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.lightbulb_outline,
+                                    size: 20,
+                                    color: Colors.green[700],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Cover Letter',
+                                      style: _sectionTitleGreenStyle,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green[100],
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      'Optional',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green[800],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            contentPadding: const EdgeInsets.all(16),
-                            counterStyle: TextStyle(color: Colors.grey[500]),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Stand out! A cover letter significantly increases your chances of getting noticed.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.green[900],
+                                  height: 1.3,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _coverLetterController,
+                                maxLines: 8,
+                                maxLength: 1000,
+                                decoration: InputDecoration(
+                                  hintText:
+                                      'Dear Hiring Manager,\n\nI am excited to apply for this position because...',
+                                  hintStyle: TextStyle(color: Colors.grey[400]),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(color: Colors.grey[300]!),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(color: Colors.grey[300]!),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFF422F5D),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  contentPadding: const EdgeInsets.all(16),
+                                  counterStyle: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
+                  ],
+                ),
+              ),
+            ),
 
-              const SizedBox(height: 20),
-
-              // Action Buttons
-              if (!_isLoading && _errorMessage == null && _resumes.isNotEmpty)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+            // Action Buttons (outside scrollable area)
+            if (!_isLoading && _errorMessage == null && _resumes.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(28.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    TextButton(
-                      onPressed: _cancel,
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF422F5D),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _cancel,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: const BorderSide(
+                            color: Color(0xFF422F5D),
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Color(0xFF422F5D),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
-                      child: const Text('Continue'),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _submit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF422F5D),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Text(
+                              'Continue',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward, size: 20),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -411,11 +558,7 @@ class _ResumeSelectionDialogState extends State<ResumeSelectionDialog> {
                 children: [
                   Text(
                     resume.title,
-                    style: GoogleFonts.lato(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF422F5D),
-                    ),
+                    style: _resumeTitleStyle,
                   ),
                   const SizedBox(height: 4),
                   Text(
