@@ -1090,6 +1090,15 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     return;
   }
 
+  if (widget.studentId == null) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be signed in to delete your content.'), backgroundColor: Colors.red),
+      );
+    }
+    return;
+  }
+
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
@@ -1102,22 +1111,72 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     ),
   );
 
-  if (confirmed == true) {
-    try {
-      final reviewsCol = FirebaseFirestore.instance.collection('reviews');
-      if (isParent) {
-        final repliesSnap = await reviewsCol.where('parentId', isEqualTo: reviewId).get();
-        final batch = FirebaseFirestore.instance.batch();
-        for (final d in repliesSnap.docs) batch.delete(d.reference);
-        batch.delete(reviewsCol.doc(reviewId));
-        await batch.commit();
-      } else {
-        await reviewsCol.doc(reviewId).delete();
+  if (confirmed != true) return;
+
+  try {
+    final reviewsCol = FirebaseFirestore.instance.collection('reviews');
+
+    if (isParent) {
+      // Only allow deleting the parent review if the current student is the author.
+      final parentDocRef = reviewsCol.doc(reviewId);
+      final parentSnap = await parentDocRef.get();
+      if (!parentSnap.exists) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Review not found.'), backgroundColor: Colors.red));
+        return;
       }
+      final parentData = parentSnap.data() as Map<String, dynamic>? ?? {};
+      final parentStudentId = (parentData['studentId'] ?? '').toString();
+
+      if (parentStudentId != widget.studentId) {
+        // Not the owner — do not allow mass deletion.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You can only delete your own review.'), backgroundColor: Colors.red));
+        }
+        return;
+      }
+
+      // Delete the parent document (the student's own review)
+      // Also delete any child replies authored by this same student (but do NOT delete other users' replies or company replies)
+      final batch = FirebaseFirestore.instance.batch();
+
+      // Delete child replies authored by this student (top-level docs with parentId + studentId)
+      final childRepliesSnap = await reviewsCol
+          .where('parentId', isEqualTo: reviewId)
+          .where('studentId', isEqualTo: widget.studentId)
+          .get();
+      for (final d in childRepliesSnap.docs) {
+        batch.delete(d.reference);
+      }
+
+      batch.delete(parentDocRef);
+      await batch.commit();
+
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deleted'), backgroundColor: Colors.green));
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red));
+    } else {
+      // Deleting a single reply document. Allow only if the current student is the author.
+      final docRef = reviewsCol.doc(reviewId);
+      final snap = await docRef.get();
+      if (!snap.exists) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reply not found.'), backgroundColor: Colors.red));
+        return;
+      }
+      final data = snap.data() as Map<String, dynamic>? ?? {};
+      final replyStudentId = (data['studentId'] ?? '').toString();
+      final authorType = (data['authorType'] ?? '').toString();
+
+      if (replyStudentId != widget.studentId) {
+        // Not the author. If it's a company reply (authorType == 'company') students cannot delete it here.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You can only delete your own replies.'), backgroundColor: Colors.red));
+        }
+        return;
+      }
+
+      await docRef.delete();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reply deleted'), backgroundColor: Colors.green));
     }
+  } catch (e) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red));
   }
 }
 
@@ -1279,7 +1338,88 @@ class _ReviewsTabState extends State<_ReviewsTab> {
           ...thread.companyReplies.map((cr) => _buildCompanyReplyTile(cr)).toList(),
 
           // existing reply input/toggle UI (show reply button, reply textbox etc)
-          // ...existing reply UI...
+          // Reply toggle + input area for students
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  final cur = _showReplyBox[parentId] ?? false;
+                  _showReplyBox[parentId] = !cur;
+                  if (_showReplyBox[parentId] == true) {
+                    // ensure controller exists before the user types
+                    _ensureReplyController(parentId);
+                  }
+                });
+              },
+              icon: Icon(
+                (_showReplyBox[parentId] ?? false) ? Icons.expand_less : Icons.reply,
+                color: _purple,
+              ),
+              label: Text(
+                (_showReplyBox[parentId] ?? false) ? 'Hide' : 'Reply',
+                style: const TextStyle(color: _purple),
+              ),
+            ),
+          ),
+
+          if (_showReplyBox[parentId] ?? false) ...[
+            const SizedBox(height: 8),
+            // Reply input
+            TextField(
+              controller: _replyControllers[parentId],
+              maxLines: 3,
+              minLines: 1,
+              inputFormatters: [LengthLimitingTextInputFormatter(_reviewMaxLength)],
+              decoration: InputDecoration(
+                hintText: 'Write a reply…',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                contentPadding: const EdgeInsets.all(12),
+                counterText: '',
+              ),
+              onChanged: (v) {
+                // update internal flag without setState to avoid rebuilds per keystroke
+                final has = v.trim().isNotEmpty;
+                _replyHasText[parentId] = has;
+              },
+            ),
+            const SizedBox(height: 8),
+
+            // Author visibility + send button
+            Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Switch(
+                        value: _replyAuthorVisible[parentId] ?? true,
+                        activeColor: _purple,
+                        onChanged: (val) {
+                          setState(() {
+                            _replyAuthorVisible[parentId] = val;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                      Text('Show my profile', style: GoogleFonts.lato(fontSize: 14)),
+                    ],
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: (_isReplySubmitting[parentId] ?? false)
+                      ? null
+                      : () {
+                          // Submit: call existing submit handler which performs validation & shows snackbars
+                          _submitReply(parentId);
+                        },
+                  icon: (_isReplySubmitting[parentId] ?? false)
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.send),
+                  label: Text((_isReplySubmitting[parentId] ?? false) ? 'Sending' : 'Reply'),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     ),
@@ -1371,7 +1511,19 @@ Widget _buildReviewCard(Review review) {
     }
   }),
 ),
-        _buildStarRating(review.rating.toInt()),
+        // Stars + optional delete for owner
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildStarRating(review.rating.toInt()),
+            if ((review.studentId ?? '') == (widget.studentId ?? ''))
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                tooltip: 'Delete your review',
+                onPressed: () => _confirmAndDelete(review.id, isParent: true),
+              ),
+          ],
+        ),
       ]),
       const SizedBox(height: 8),
       Text(review.reviewText, style: GoogleFonts.lato(fontSize: 14, color: Colors.black87, height: 1.5)),
@@ -1460,8 +1612,12 @@ Widget _buildReviewCard(Review review) {
             children: [
               Text(DateFormat('MMM d, yyyy').format(reply.createdAt.toDate()), style: GoogleFonts.lato(fontSize: 11, color: Colors.grey.shade600)),
               const SizedBox(width: 8),
-              // Delete button for replies where current user is author (existing logic unchanged)
-              // ... Keep whatever existing delete controls you had here (not shown in excerpt) ...
+              if ((reply.studentId ?? '') == (widget.studentId ?? ''))
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+                  tooltip: 'Delete your reply',
+                  onPressed: () => _confirmAndDelete(reply.id, isParent: false),
+                ),
             ],
           ),
         ]),
@@ -2009,9 +2165,10 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
       if (daysUntil > 0) {
         timeMessage = 'Opens in $daysUntil ${daysUntil == 1 ? 'day' : 'days'}';
       } else if (hoursUntil > 0) {
+
         timeMessage = 'Opens in $hoursUntil ${hoursUntil == 1 ? 'hour' : 'hours'}';
       } else {
-        timeMessage = 'Opens soon';
+               timeMessage = 'Opens soon';
       }
 
       return SizedBox(
@@ -2028,7 +2185,7 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              style: ElevatedButton.styleFrom(
+                           style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.grey.shade300,
                 foregroundColor: Colors.grey.shade700,
                 padding: const EdgeInsets.symmetric(vertical: 16),
