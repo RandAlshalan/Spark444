@@ -125,47 +125,64 @@ class _CompanyReviewThreadCard extends StatelessWidget {
 
                 final displayName = review.authorVisible ? (review.studentName.isNotEmpty ? review.studentName : 'Student') : 'Anonymous';
 
-                return Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 22,
-                      backgroundColor: _purple.withOpacity(.1),
-                      backgroundImage: (photoUrl != null && photoUrl.isNotEmpty) ? NetworkImage(photoUrl) : null,
-                      child: (photoUrl == null || photoUrl.isEmpty)
-                          ? Text(
-                              displayName.isNotEmpty ? displayName[0].toUpperCase() : 'S',
-                              style: const TextStyle(
-                                color: _purple,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        displayName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: _purple,
-                        ),
+                // make the review header tappable — navigate to student profile when available
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    final sid = (review.studentId ?? '').trim();
+                    if (sid.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Unable to open profile: missing id')),
+                      );
+                      return;
+                    }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => CompanyStudentProfilePage(studentId: sid)),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor: _purple.withOpacity(.1),
+                        backgroundImage: (photoUrl != null && photoUrl.isNotEmpty) ? NetworkImage(photoUrl) : null,
+                        child: (photoUrl == null || photoUrl.isEmpty)
+                            ? Text(
+                                displayName.isNotEmpty ? displayName[0].toUpperCase() : 'S',
+                                style: const TextStyle(
+                                  color: _purple,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : null,
                       ),
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          review.rating.toStringAsFixed(1),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          displayName,
                           style: const TextStyle(
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
                             color: _purple,
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.star, color: Colors.amber, size: 18),
-                      ],
-                    ),
-                  ],
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            review.rating.toStringAsFixed(1),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: _purple,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.star, color: Colors.amber, size: 18),
+                        ],
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -462,36 +479,53 @@ class _CompanyStudentReplyTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayName = (reply.authorVisible ?? true) ? (reply.studentName.isNotEmpty ? reply.studentName : 'Student') : 'Anonymous';
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(10, 10, 8, 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9F8FB),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: Colors.grey.shade200,
-            child: Text(
-              displayName.isNotEmpty ? displayName[0].toUpperCase() : 'S',
-              style: const TextStyle(color: _purple, fontWeight: FontWeight.bold),
+    // make each student reply tappable to open the student's profile
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        final sid = (reply.studentId ?? '').trim();
+        if (sid.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Unable to open profile: missing id')),
+          );
+          return;
+        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => CompanyStudentProfilePage(studentId: sid)),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.fromLTRB(10, 10, 8, 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9F8FB),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: Colors.grey.shade200,
+              child: Text(
+                displayName.isNotEmpty ? displayName[0].toUpperCase() : 'S',
+                style: const TextStyle(color: _purple, fontWeight: FontWeight.bold),
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(displayName, style: const TextStyle(fontWeight: FontWeight.w700, color: _purple)),
-              const SizedBox(height: 4),
-              Text(reply.reviewText, style: const TextStyle(fontSize: 14)),
-              const SizedBox(height: 4),
-              Text(reply.createdAt.toDate().toString(), style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            ]),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(displayName, style: const TextStyle(fontWeight: FontWeight.w700, color: _purple)),
+                const SizedBox(height: 4),
+                Text(reply.reviewText, style: const TextStyle(fontSize: 14)),
+                const SizedBox(height: 4),
+                Text(reply.createdAt.toDate().toString(), style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              ]),
+            ),
+          ],
+        ),
       ),
     );
   }
