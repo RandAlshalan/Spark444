@@ -27,6 +27,7 @@ import '../studentScreens/studentViewProfile.dart';
 import '../widgets/CustomBottomNavBar.dart';
 import '../studentScreens/studentSavedOpp.dart';
 import '../studentScreens/StudentChatPage.dart';
+import '../studentScreens/StudentHomePage.dart';
 import 'resumeSelectionDialog.dart';
 import '../widgets/application_success_dialog.dart';
 import 'applicationConfirmationDialog.dart';
@@ -523,7 +524,10 @@ class _studentOppPgaeState extends State<studentOppPgae> {
     if (index == _currentIndex) return; // Do nothing if tapping the same tab
     switch (index) {
       case 0:
-        _showInfoMessage('Coming soon!');
+        Navigator.pushReplacement(
+          context,
+          NoTransitionRoute(page: const StudentHomePage()),
+        );
         break;
       case 1:
         // Go to Companies Page

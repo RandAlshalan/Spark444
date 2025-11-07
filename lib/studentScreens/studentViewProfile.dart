@@ -14,6 +14,7 @@ import '../studentScreens/welcomeScreen.dart';
 import '../widgets/CustomBottomNavBar.dart';
 import '../studentScreens/studentOppPage.dart';
 import '../studentScreens/studentResume.dart';
+import '../studentScreens/StudentHomePage.dart';
 // === ADD THIS IMPORT FOR THE NEW APPLICATIONS SCREEN ===
 // Make sure the path is correct for your project structure.
 import '../studentScreens/studentApplications.dart';
@@ -214,9 +215,10 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
     }
     switch (index) {
       case 0: // Home
-        _showInfoMessage('Home page coming soon!');
-        // When ready:
-        // Navigator.push(context, MaterialPageRoute(builder: (context) => const HomePage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const StudentHomePage()),
+        );
         break;
       case 1: // Companies
         _openScreen(const StudentCompaniesPage());

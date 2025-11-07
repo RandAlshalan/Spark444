@@ -20,6 +20,7 @@ import '../studentScreens/studentViewProfile.dart';
 import '../studentScreens/StudentChatPage.dart';
 import '../studentScreens/studentSavedOpp.dart';
 import '../studentScreens/studentOppPage.dart';
+import '../studentScreens/StudentHomePage.dart';
 // --- NAV BAR IMPORTS END ---
 
 const String kStudentsCollection = 'student';
@@ -122,7 +123,10 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
 
     switch (index) {
       case 0:
-        _showInfoMessage('Coming soon!');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const StudentHomePage()),
+        );
         break;
        case 2: 
         Navigator.push(
