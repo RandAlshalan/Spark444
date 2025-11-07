@@ -1,0 +1,207 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import '../models/notification.dart';
+
+/// Helper service for creating and managing in-app notifications
+class NotificationHelper {
+  static final NotificationHelper _instance = NotificationHelper._internal();
+  factory NotificationHelper() => _instance;
+  NotificationHelper._internal();
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  /// Creates notifications for all students following a specific company
+  /// Called when a company posts a new opportunity
+  Future<void> notifyFollowersOfNewOpportunity({
+    required String companyId,
+    required String companyName,
+    required String opportunityId,
+    required String opportunityRole,
+  }) async {
+    try {
+      // Get all students following this company
+      final studentsSnapshot = await _firestore
+          .collection('student')
+          .where('followedCompanies', arrayContains: companyId)
+          .get();
+
+      if (studentsSnapshot.docs.isEmpty) {
+        debugPrint('No students following company $companyId');
+        return;
+      }
+
+      // Create batch to write all notifications at once
+      final batch = _firestore.batch();
+      final notificationsRef = _firestore.collection('notifications');
+
+      for (final studentDoc in studentsSnapshot.docs) {
+        final studentId = studentDoc.id;
+
+        final notification = AppNotification(
+          id: '', // Will be set by Firestore
+          userId: studentId,
+          type: 'new_opportunity',
+          title: '$companyName posted a new opportunity!',
+          body: 'Check out the $opportunityRole position',
+          data: {
+            'companyId': companyId,
+            'companyName': companyName,
+            'opportunityId': opportunityId,
+            'opportunityRole': opportunityRole,
+            'route': '/opportunities',
+          },
+          read: false,
+          createdAt: Timestamp.now(),
+        );
+
+        final docRef = notificationsRef.doc();
+        batch.set(docRef, notification.toFirestore());
+      }
+
+      // Commit all notifications
+      await batch.commit();
+      debugPrint('✅ Created notifications for ${studentsSnapshot.docs.length} students');
+    } catch (e) {
+      debugPrint('❌ Error creating notifications: $e');
+    }
+  }
+
+  /// Creates a notification for a student when their application status is updated
+  Future<void> notifyApplicationStatusUpdate({
+    required String studentId,
+    required String companyName,
+    required String opportunityRole,
+    required String status,
+    required String opportunityId,
+  }) async {
+    try {
+      final notification = AppNotification(
+        id: '',
+        userId: studentId,
+        type: 'application_update',
+        title: 'Application update from $companyName',
+        body: 'Your application for $opportunityRole has been $status',
+        data: {
+          'companyName': companyName,
+          'opportunityId': opportunityId,
+          'opportunityRole': opportunityRole,
+          'status': status,
+          'route': '/applications',
+        },
+        read: false,
+        createdAt: Timestamp.now(),
+      );
+
+      await _firestore.collection('notifications').add(notification.toFirestore());
+      debugPrint('✅ Created application update notification for student $studentId');
+    } catch (e) {
+      debugPrint('❌ Error creating application update notification: $e');
+    }
+  }
+
+  /// Creates a notification when someone replies to a student's review
+  Future<void> notifyReviewReply({
+    required String studentId,
+    required String companyName,
+    required String reviewId,
+  }) async {
+    try {
+      final notification = AppNotification(
+        id: '',
+        userId: studentId,
+        type: 'review_reply',
+        title: '$companyName replied to your review',
+        body: 'Check out their response',
+        data: {
+          'companyName': companyName,
+          'reviewId': reviewId,
+          'route': '/reviews',
+        },
+        read: false,
+        createdAt: Timestamp.now(),
+      );
+
+      await _firestore.collection('notifications').add(notification.toFirestore());
+      debugPrint('✅ Created review reply notification for student $studentId');
+    } catch (e) {
+      debugPrint('❌ Error creating review reply notification: $e');
+    }
+  }
+
+  /// Marks a notification as read
+  Future<void> markAsRead(String notificationId) async {
+    try {
+      await _firestore.collection('notifications').doc(notificationId).update({
+        'read': true,
+      });
+    } catch (e) {
+      debugPrint('❌ Error marking notification as read: $e');
+    }
+  }
+
+  /// Marks all notifications for a user as read
+  Future<void> markAllAsRead(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('notifications')
+          .where('userId', isEqualTo: userId)
+          .where('read', isEqualTo: false)
+          .get();
+
+      final batch = _firestore.batch();
+      for (final doc in snapshot.docs) {
+        batch.update(doc.reference, {'read': true});
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('❌ Error marking all notifications as read: $e');
+    }
+  }
+
+  /// Deletes a notification
+  Future<void> deleteNotification(String notificationId) async {
+    try {
+      await _firestore.collection('notifications').doc(notificationId).delete();
+    } catch (e) {
+      debugPrint('❌ Error deleting notification: $e');
+    }
+  }
+
+  /// Gets unread notification count for a user
+  Future<int> getUnreadCount(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('notifications')
+          .where('userId', isEqualTo: userId)
+          .where('read', isEqualTo: false)
+          .get();
+      return snapshot.docs.length;
+    } catch (e) {
+      debugPrint('❌ Error getting unread count: $e');
+      return 0;
+    }
+  }
+
+  /// Stream of notifications for a user
+  Stream<List<AppNotification>> getNotificationsStream(String userId) {
+    return _firestore
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => AppNotification.fromFirestore(doc))
+            .toList());
+  }
+
+  /// Stream of unread count for a user
+  Stream<int> getUnreadCountStream(String userId) {
+    return _firestore
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .where('read', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+}

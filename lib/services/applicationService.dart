@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/Application.dart';
+import 'notification_helper.dart';
 
 class ApplicationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -150,5 +151,47 @@ class ApplicationService {
     }
 
     await _applicationsCollection.doc(applicationId).update(updateData);
+
+    // Send notification to student about status update
+    try {
+      final appDoc = await _applicationsCollection.doc(applicationId).get();
+      if (appDoc.exists) {
+        final appData = appDoc.data() as Map<String, dynamic>;
+        final studentId = appData['studentId'] as String?;
+        final opportunityId = appData['opportunityId'] as String?;
+
+        if (studentId != null && opportunityId != null) {
+          // Get opportunity and company details
+          final oppDoc = await _firestore.collection('opportunities').doc(opportunityId).get();
+          if (oppDoc.exists) {
+            final oppData = oppDoc.data() as Map<String, dynamic>;
+            final companyId = oppData['companyId'] as String?;
+            final role = oppData['role'] as String? ?? 'Position';
+
+            String companyName = oppData['name'] as String? ?? 'Company';
+
+            // Try to get company name from companies collection
+            if (companyId != null) {
+              final companyDoc = await _firestore.collection('companies').doc(companyId).get();
+              if (companyDoc.exists) {
+                companyName = (companyDoc.data()?['companyName'] as String?) ?? companyName;
+              }
+            }
+
+            // Send notification
+            await NotificationHelper().notifyApplicationStatusUpdate(
+              studentId: studentId,
+              companyName: companyName,
+              opportunityRole: role,
+              status: status,
+              opportunityId: opportunityId,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      // Don't fail the status update if notification fails
+      print('Error sending application status notification: $e');
+    }
   }
 }

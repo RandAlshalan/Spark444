@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/opportunity.dart';
 import 'authService.dart';
+import 'notification_helper.dart';
+import '../models/company.dart';
 
 class OpportunityService {
   //`withConverter`
@@ -68,7 +70,26 @@ class OpportunityService {
 
       data['postedDate'] = FieldValue.serverTimestamp();
 
-      await FirebaseFirestore.instance.collection('opportunities').add(data);
+      // Add the opportunity to Firestore
+      final docRef = await FirebaseFirestore.instance.collection('opportunities').add(data);
+
+      // Get company name for notification
+      final companyDoc = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(opportunity.companyId)
+          .get();
+
+      final companyName = companyDoc.exists
+          ? (companyDoc.data()?['companyName'] as String?) ?? opportunity.name
+          : opportunity.name;
+
+      // Notify all students following this company
+      await NotificationHelper().notifyFollowersOfNewOpportunity(
+        companyId: opportunity.companyId,
+        companyName: companyName,
+        opportunityId: docRef.id,
+        opportunityRole: opportunity.role,
+      );
     } catch (e) {
       print('Error adding opportunity: $e');
       rethrow;
