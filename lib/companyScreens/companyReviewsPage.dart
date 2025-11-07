@@ -393,6 +393,8 @@ class _ReviewRepliesSection extends StatelessWidget {
                               'authorId': companyId,
                               'authorName': companyName,
                               'createdAt': FieldValue.serverTimestamp(),
+                              // NEW: include parent review id to make client-side grouping easier/efficient
+                              'reviewId': repliesRef.parent?.id ?? '',
                             });
                             if (context.mounted) {
                               Navigator.of(dialogCtx).pop();
