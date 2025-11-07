@@ -15,7 +15,7 @@ import '../models/review.dart';
 import '../models/Application.dart'; 
 import '../models/resume.dart';
 import '../services/applicationService.dart';
-import 'StudentSingleProfilePage.dart'; // NEW: single-student followers-style view
+import '../companyScreens/companyStudentProfilePage.dart'; // NEW: company-facing student profile view
 import 'resumeSelectionDialog.dart';
 import 'applicationConfirmationDialog.dart';
 import '../widgets/application_success_dialog.dart';
@@ -30,10 +30,121 @@ const int _reviewMinLength = 1;
 const int _reviewMaxLength = 300;
 // ---------------------------------------------------------
 
-// =========================================================================
-// == MAIN COMPANY PROFILE PAGE (Stateless)
-// =========================================================================
-// (This section is unchanged)
+// ----------------------- VoteButtons widget -----------------------
+class VoteButtons extends StatelessWidget {
+  final DocumentReference docRef;
+
+  const VoteButtons({required this.docRef, super.key});
+
+  Future<void> _toggleVote(DocumentReference targetDocRef, String uid, int clickedVote) async {
+    final voteDocRef = targetDocRef.collection('votes').doc(uid);
+
+    await FirebaseFirestore.instance.runTransaction((tx) async {
+      final voteSnap = await tx.get(voteDocRef);
+      final itemSnap = await tx.get(targetDocRef);
+
+      final currentVote = voteSnap.exists ? (voteSnap.data()!['vote'] as int? ?? 0) : 0;
+      final desiredVote = (currentVote == clickedVote) ? 0 : clickedVote;
+
+      int deltaLikes = 0;
+      int deltaDislikes = 0;
+
+      if (currentVote == 1) deltaLikes -= 1;
+      if (currentVote == -1) deltaDislikes -= 1;
+      if (desiredVote == 1) deltaLikes += 1;
+      if (desiredVote == -1) deltaDislikes += 1;
+
+      if (desiredVote == 0) {
+        if (voteSnap.exists) tx.delete(voteDocRef);
+      } else {
+        tx.set(voteDocRef, {'vote': desiredVote});
+      }
+
+      final updates = <String, dynamic>{};
+      if (deltaLikes != 0) updates['likesCount'] = FieldValue.increment(deltaLikes);
+      if (deltaDislikes != 0) updates['dislikesCount'] = FieldValue.increment(deltaDislikes);
+
+      if (updates.isNotEmpty) {
+        if (itemSnap.exists) {
+          tx.update(targetDocRef, updates);
+        } else {
+          tx.set(targetDocRef, {'likesCount': 0, 'dislikesCount': 0, ...updates}, SetOptions(merge: true));
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    return StreamBuilder<DocumentSnapshot>(
+      stream: docRef.snapshots(),
+      builder: (context, itemSnap) {
+        final data = itemSnap.data?.data() as Map<String, dynamic>? ?? {};
+        final likes = (data['likesCount'] as num?)?.toInt() ?? 0;
+        final dislikes = (data['dislikesCount'] as num?)?.toInt() ?? 0;
+
+        if (uid == null) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(icon: const Icon(Icons.thumb_up, size: 18), color: Colors.grey.shade600, onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please sign in to vote')))),
+              Text('$likes', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+              const SizedBox(width: 12),
+              IconButton(icon: const Icon(Icons.thumb_down, size: 18), color: Colors.grey.shade600, onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please sign in to vote')))),
+              Text('$dislikes', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+            ],
+          );
+        }
+
+        final voteDocRef = docRef.collection('votes').doc(uid);
+
+        return StreamBuilder<DocumentSnapshot>(
+          stream: voteDocRef.snapshots(),
+          builder: (context, voteSnap) {
+            final userVote = voteSnap.data?.exists == true
+                ? ((voteSnap.data!.data() as Map<String, dynamic>?)?['vote'] as int? ?? 0)
+                : 0;
+            final likeActive = userVote == 1;
+            final dislikeActive = userVote == -1;
+
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.thumb_up, size: 18),
+                  color: likeActive ? _purple : Colors.grey.shade600,
+                  onPressed: () async {
+                    try {
+                      await _toggleVote(docRef, uid, 1);
+                    } catch (e) {
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vote failed: $e')));
+                    }
+                  },
+                ),
+                Text('$likes', style: TextStyle(fontSize: 13, color: Colors.grey.shade800)),
+                const SizedBox(width: 12),
+                IconButton(
+                  icon: const Icon(Icons.thumb_down, size: 18),
+                  color: dislikeActive ? _purple : Colors.grey.shade600,
+                  onPressed: () async {
+                    try {
+                      await _toggleVote(docRef, uid, -1);
+                    } catch (e) {
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vote failed: $e')));
+                    }
+                  },
+                ),
+                Text('$dislikes', style: TextStyle(fontSize: 13, color: Colors.grey.shade800)),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+// --------------------- end VoteButtons ---------------------
 
 class StudentCompanyProfilePage extends StatelessWidget {
   const StudentCompanyProfilePage({super.key, required this.companyId});
@@ -824,7 +935,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => StudentSingleProfilePage(studentId: studentId),
+        builder: (_) => CompanyStudentProfilePage(studentId: studentId),
       ),
     );
   }
@@ -1427,7 +1538,17 @@ class _ReviewsTabState extends State<_ReviewsTab> {
 }
 
 // New helper to render a company reply
-Widget _buildCompanyReplyTile(_Reply reply) {
+Widget _buildCompanyReplyTile(_Reply reply, [String? parentReviewId]) {
+  // Compute the docRef for this reply:
+  // Preferred path: reviews/{parentReviewId}/replies/{reply.id} when parentReviewId available.
+  // Fallback: reviews/{reply.id} (harmless but won't reflect the actual reply doc if it's stored in subcollection).
+  DocumentReference docRef;
+  if (parentReviewId != null && parentReviewId.trim().isNotEmpty) {
+    docRef = FirebaseFirestore.instance.collection('reviews').doc(parentReviewId).collection('replies').doc(reply.id);
+  } else {
+    docRef = FirebaseFirestore.instance.collection('reviews').doc(reply.id);
+  }
+
   final createdAt = reply.createdAt.toDate();
   return Container(
     width: double.infinity,
@@ -1446,32 +1567,17 @@ Widget _buildCompanyReplyTile(_Reply reply) {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                reply.text.isEmpty ? '—' : reply.text,
-                style: const TextStyle(fontSize: 14),
-              ),
+              Text(reply.text, style: GoogleFonts.lato(fontSize: 14)),
               const SizedBox(height: 6),
-              Row(
-                children: [
-                  Text(
-                    reply.authorName.isEmpty ? 'Company' : reply.authorName,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    createdAt.toString(),
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-                ],
-              ),
+              Text(reply.authorName, style: GoogleFonts.lato(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 6),
+              Text(DateFormat('MMM d, yyyy').format(createdAt), style: GoogleFonts.lato(fontSize: 11, color: Colors.grey.shade600)),
+              const SizedBox(height: 6),
+              // Votes for the company reply (we computed docRef above)
+              VoteButtons(docRef: docRef),
             ],
           ),
         ),
-        // Students cannot delete company replies here; no delete control shown.
       ],
     ),
   );
@@ -1533,6 +1639,10 @@ Widget _buildReviewCard(Review review) {
         const SizedBox(width: 4),
         Text(DateFormat('MMM d, yyyy').format(review.createdAt.toDate()), style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
       ]),
+      const SizedBox(height: 6),
+      // Votes for the review (safe guard)
+      if (review.id.trim().isNotEmpty)
+        VoteButtons(docRef: FirebaseFirestore.instance.collection('reviews').doc(review.id)),
     ]);
   }
 
@@ -1990,7 +2100,7 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
         children: [
           Text(
             title,
-            style: GoogleFonts.lato(
+                       style: GoogleFonts.lato(
               fontSize: 14,
               color: Colors.grey.shade600,
               fontWeight: FontWeight.w500,

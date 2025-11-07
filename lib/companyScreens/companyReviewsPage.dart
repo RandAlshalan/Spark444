@@ -3,10 +3,149 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // <-- added
 import '../models/review.dart';
 import 'companyStudentProfilePage.dart';
 
 const _purple = Color(0xFF422F5D);
+
+// ----------------------- VoteButtons widget -----------------------
+// Anonymous like/dislike system. Uses per-user vote docs under 'votes' subcollection
+// and keeps atomic counts on the parent doc via transactions.
+// Uses same icon sizes/color palette as existing UI.
+class VoteButtons extends StatelessWidget {
+  final DocumentReference docRef; // Review doc or a reply doc reference
+
+  const VoteButtons({required this.docRef, super.key});
+
+  Future<void> _toggleVote(DocumentReference targetDocRef, String uid, int clickedVote) async {
+    // clickedVote: 1 for like, -1 for dislike
+    final voteDocRef = targetDocRef.collection('votes').doc(uid);
+
+    await FirebaseFirestore.instance.runTransaction((tx) async {
+      final voteSnap = await tx.get(voteDocRef);
+      final itemSnap = await tx.get(targetDocRef);
+
+      final currentVote = voteSnap.exists ? (voteSnap.data()!['vote'] as int? ?? 0) : 0;
+      final desiredVote = (currentVote == clickedVote) ? 0 : clickedVote;
+
+      int deltaLikes = 0;
+      int deltaDislikes = 0;
+
+      if (currentVote == 1) deltaLikes -= 1;
+      if (currentVote == -1) deltaDislikes -= 1;
+      if (desiredVote == 1) deltaLikes += 1;
+      if (desiredVote == -1) deltaDislikes += 1;
+
+      // update vote doc
+      if (desiredVote == 0) {
+        if (voteSnap.exists) tx.delete(voteDocRef);
+      } else {
+        tx.set(voteDocRef, {'vote': desiredVote});
+      }
+
+      // update counts on the parent doc
+      final updates = <String, dynamic>{};
+      if (deltaLikes != 0) updates['likesCount'] = FieldValue.increment(deltaLikes);
+      if (deltaDislikes != 0) updates['dislikesCount'] = FieldValue.increment(deltaDislikes);
+
+      if (updates.isNotEmpty) {
+        if (itemSnap.exists) {
+          tx.update(targetDocRef, updates);
+        } else {
+          // If parent doc missing for some reason, create with counts merged
+          tx.set(targetDocRef, {
+            'likesCount': 0,
+            'dislikesCount': 0,
+            ...updates,
+          }, SetOptions(merge: true));
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    // Stream the parent doc (for live counts)
+    return StreamBuilder<DocumentSnapshot>(
+      stream: docRef.snapshots(),
+      builder: (context, itemSnap) {
+        final data = itemSnap.data?.data() as Map<String, dynamic>? ?? {};
+        final likes = (data['likesCount'] as num?)?.toInt() ?? 0;
+        final dislikes = (data['dislikesCount'] as num?)?.toInt() ?? 0;
+
+        if (uid == null) {
+          // Signed out -> show counts; tapping asks to sign in
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.thumb_up, size: 18),
+                color: Colors.grey.shade600,
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please sign in to vote'))),
+              ),
+              Text('$likes', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+              const SizedBox(width: 12),
+              IconButton(
+                icon: const Icon(Icons.thumb_down, size: 18),
+                color: Colors.grey.shade600,
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please sign in to vote'))),
+              ),
+              Text('$dislikes', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+            ],
+          );
+        }
+
+        final voteDocRef = docRef.collection('votes').doc(uid);
+
+        return StreamBuilder<DocumentSnapshot>(
+          stream: voteDocRef.snapshots(),
+          builder: (context, voteSnap) {
+            final userVote = voteSnap.data?.exists == true
+                ? ((voteSnap.data!.data() as Map<String, dynamic>?)?['vote'] as int? ?? 0)
+                : 0;
+            final likeActive = userVote == 1;
+            final dislikeActive = userVote == -1;
+
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.thumb_up, size: 18),
+                  color: likeActive ? _purple : Colors.grey.shade600,
+                  onPressed: () async {
+                    try {
+                      await _toggleVote(docRef, uid, 1);
+                    } catch (e) {
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vote failed: $e')));
+                    }
+                  },
+                ),
+                Text('$likes', style: TextStyle(fontSize: 13, color: Colors.grey.shade800)),
+                const SizedBox(width: 12),
+                IconButton(
+                  icon: const Icon(Icons.thumb_down, size: 18),
+                  color: dislikeActive ? _purple : Colors.grey.shade600,
+                  onPressed: () async {
+                    try {
+                      await _toggleVote(docRef, uid, -1);
+                    } catch (e) {
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vote failed: $e')));
+                    }
+                  },
+                ),
+                Text('$dislikes', style: TextStyle(fontSize: 13, color: Colors.grey.shade800)),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+// --------------------- end VoteButtons ---------------------
 
 class CompanyReviewsPage extends StatelessWidget {
   final String companyId;
@@ -197,6 +336,17 @@ class _CompanyReviewThreadCard extends StatelessWidget {
               style: const TextStyle(fontSize: 11, color: Colors.grey),
             ),
 
+            const SizedBox(height: 8),
+
+            // Votes row for the top-level review (guard against empty id)
+            if (review.id.trim().isNotEmpty)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: VoteButtons(
+                  docRef: FirebaseFirestore.instance.collection('reviews').doc(review.id),
+                ),
+              ),
+
             const SizedBox(height: 12),
 
             // Combined thread: student replies (top-level docs with parentId) + company replies
@@ -285,6 +435,8 @@ class _CompanyReviewThreadCard extends StatelessWidget {
                           final authorName = (company['authorName'] as String).isNotEmpty ? company['authorName'] as String : companyName;
                           final canDelete = byCompanyId == companyId || (byCompanyId.isEmpty && (company['authorType'] ?? '') == 'company');
 
+                          final docRef = entry['docRef'] as DocumentReference;
+
                           // Company's reply UI (matching previous design)
                           return Container(
                             width: double.infinity,
@@ -317,6 +469,9 @@ class _CompanyReviewThreadCard extends StatelessWidget {
                                         createdAt.toString(),
                                         style: const TextStyle(fontSize: 10, color: Colors.grey),
                                       ),
+                                      const SizedBox(height: 6),
+                                      // Votes for the company reply
+                                      VoteButtons(docRef: docRef),
                                     ],
                                   ),
                                 ),
@@ -473,7 +628,7 @@ class _CompanyReviewThreadCard extends StatelessWidget {
 class _CompanyStudentReplyTile extends StatelessWidget {
   final Review reply;
 
-  const _CompanyStudentReplyTile({required this.reply});
+  const _CompanyStudentReplyTile({required this.reply, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -522,6 +677,10 @@ class _CompanyStudentReplyTile extends StatelessWidget {
                 Text(reply.reviewText, style: const TextStyle(fontSize: 14)),
                 const SizedBox(height: 4),
                 Text(reply.createdAt.toDate().toString(), style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                const SizedBox(height: 6),
+                // Votes for student reply (stored as a top-level review doc with parentId)
+                if (reply.id.trim().isNotEmpty)
+                  VoteButtons(docRef: FirebaseFirestore.instance.collection('reviews').doc(reply.id)),
               ]),
             ),
           ],
@@ -611,6 +770,9 @@ class _CompanyRepliesSubcollection extends StatelessWidget {
                                 color: Colors.grey,
                               ),
                             ),
+                          const SizedBox(height: 6),
+                          // Votes for this reply doc (we have the doc reference)
+                          VoteButtons(docRef: d.reference),
                         ],
                       ),
                     ),
