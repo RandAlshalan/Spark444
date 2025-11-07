@@ -371,9 +371,32 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
+                                  // Left: created date (if available)
                                   if (created != null)
                                     Text(_dateFmt.format(created), style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
-                                  // removed internal Reply chip for replies (label above replaces it)
+
+                                  // Right: read-only likes/dislikes counters (icons + numbers)
+                                  StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                                    stream: d.reference.snapshots(),
+                                    builder: (context, voteSnap) {
+                                      final map = voteSnap.data?.data() ?? {};
+                                      final likes = (map['likesCount'] as num?)?.toInt() ?? 0;
+                                      final dislikes = (map['dislikesCount'] as num?)?.toInt() ?? 0;
+
+                                      return Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.thumb_up, size: 16, color: Colors.grey.shade700),
+                                          const SizedBox(width: 6),
+                                          Text('$likes', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade700)),
+                                          const SizedBox(width: 12),
+                                          Icon(Icons.thumb_down, size: 16, color: Colors.grey.shade700),
+                                          const SizedBox(width: 6),
+                                          Text('$dislikes', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade700)),
+                                        ],
+                                      );
+                                    },
+                                  ),
                                 ],
                               ),
                             ],

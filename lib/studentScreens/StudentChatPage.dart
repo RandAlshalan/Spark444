@@ -107,7 +107,7 @@ class _StudentChatPageState extends State<StudentChatPage> {
     } catch (e) {
       // Show an error message if the API call fails
       setState(() {
-        _messages.add({'role': 'ai', 'text': 'Oops! ${e.toString()} 😟'});
+        _messages.add({'role': 'ai', 'text': 'Oops! '});
       });
     } finally {
       // Whether it succeeded or failed, stop loading
