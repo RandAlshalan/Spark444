@@ -20,6 +20,7 @@ import '../studentScreens/StudentHomePage.dart';
 import '../studentScreens/studentApplications.dart';
 import 'StudentMyReviewsPage.dart';
 import '../studentScreens/StudentChatPage.dart';
+
 // --- Color Constants inspired by Spark Logo ---
 const Color _sparkPrimaryPurple = Color(
   0xFF422F5D,
@@ -224,11 +225,10 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
         _openScreen(const StudentCompaniesPage());
 
         break;
-      case 2: 
-
+      case 2:
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) =>  StudentChatPage()),
+          MaterialPageRoute(builder: (context) => StudentChatPage()),
         );
         break;
       case 3: // Opportunities
@@ -512,7 +512,8 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
                       ),
                     ),
                   ],
-                ));
+                ),
+              );
             },
           ),
           const SizedBox(height: 20),
@@ -923,6 +924,22 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
           ),
         ],
       ),
+      // Debug Section - Only visible in debug mode
+      if (const bool.fromEnvironment('dart.vm.product') == false)
+        _MenuSection(
+          title: '🐛 Debug Tools',
+          items: [
+            _MenuItemData(
+              icon: Icons.notifications_active_outlined,
+              title: 'Test Notifications',
+              subtitle: 'Debug notification functionality',
+              iconColor: Colors.orange,
+              onTap: () {
+                Navigator.of(context).pushNamed('/testNotifications');
+              },
+            ),
+          ],
+        ),
     ];
 
     List<Widget> buildSectionTiles(_MenuSection section) {
