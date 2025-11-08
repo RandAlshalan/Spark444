@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:spark/services/fcm_token_manager.dart';
 import '../models/student.dart';
 import '../models/opportunity.dart';
 import '../services/authService.dart';
@@ -43,7 +44,9 @@ class _StudentHomePageState extends State<StudentHomePage> {
   void initState() {
     super.initState();
     _loadData();
+      FcmTokenManager.saveUserFcmToken();
   }
+
 
   Future<void> _loadData() async {
     setState(() => _loading = true);

@@ -43,7 +43,11 @@ class FcmTokenManager {
         return;
       }
 
-      await _writeToken(user.uid, token);
+      await FirebaseFirestore.instance.collection('student').doc(user.uid).set(
+  {'fcmToken': token},
+  SetOptions(merge: true),
+);
+
       debugPrint('✅ Saved FCM token for ${user.uid}');
 
       // Also keep legacy student/companies collections in sync

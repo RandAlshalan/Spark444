@@ -1,112 +1,138 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
-import * as functions from "firebase-functions";
+/**
+ * Spark App - Notify Followers on New Opportunity
+ * ------------------------------------------------
+ * Cloud Function that sends FCM notifications to all students
+ * who follow a company when it posts a new opportunity.
+ */
+
+import { setGlobalOptions } from "firebase-functions/v2";
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
-import * as crypto from "crypto";
-import * as nodemailer from "nodemailer";
+import { getFirestore } from "firebase-admin/firestore";
+import { getMessaging } from "firebase-admin/messaging";
+import * as logger from "firebase-functions/logger";
 
-admin.initializeApp();
-const db = admin.firestore();
+// Initialize Firebase Admin SDK
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
-// SMTP config from `firebase functions:config:set smtp.*`
-const smtp = (functions.config().smtp as {
-  host?: string;
-  port?: string | number;
-  user?: string;
-  pass?: string;
-  from?: string;
-}) || {};
-
-const transporter = nodemailer.createTransport({
-  host: smtp.host,
-  port: Number(smtp.port || 465),
-  secure: Number(smtp.port || 465) === 465,
-  auth: { user: smtp.user, pass: smtp.pass },
+setGlobalOptions({
+  region: "us-central1",
+  maxInstances: 10,
 });
 
-// Helpers
-const OTP_TTL_MIN = 10;
-const randomCode = () => String(Math.floor(100000 + Math.random() * 900000));
-const hash = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
+// ============================================================================
+// 🔔 Trigger: When a company posts a new opportunity
+// ============================================================================
+export const notifyFollowersOnNewOpportunity = onDocumentCreated(
+  "opportunities/{opportunityId}",
+  async (event) => {
+    try {
+      const snapshot = event.data;
+      if (!snapshot) {
+        logger.warn("No data found in new opportunity event");
+        return null;
+      }
 
-// Send OTP
-export const sendPasswordOtp = onCall(async (request) => {
-  const email = String((request.data?.email || "")).trim().toLowerCase();
-  if (!email) throw new HttpsError("invalid-argument", "Email is required.");
+      const opportunity = snapshot.data();
+      const companyId = opportunity.companyId;
+      const role = opportunity.role || "new opportunity";
 
-  let user;
-  try {
-    user = await admin.auth().getUserByEmail(email);
-  } catch {
-    throw new HttpsError("not-found", "No account for this email.");
+      if (!companyId) {
+        logger.error("Missing companyId in opportunity");
+        return null;
+      }
+
+      const db = getFirestore();
+
+      // Get company details
+      const companyDoc = await db.collection("companies").doc(companyId).get();
+      if (!companyDoc.exists) {
+        logger.error(`Company not found: ${companyId}`);
+        return null;
+      }
+
+      const companyData = companyDoc.data();
+      const companyName = companyData?.companyName || "A company";
+
+      // Find all students following this company
+      const followersSnapshot = await db
+        .collection("student")
+        .where("followedCompanies", "array-contains", companyId)
+        .get();
+
+      if (followersSnapshot.empty) {
+        logger.info(`No followers found for ${companyName}`);
+        return null;
+      }
+
+      const tokens: string[] = [];
+      const studentIds: string[] = [];
+
+      followersSnapshot.forEach((doc) => {
+        const token = doc.data().fcmToken;
+        if (token) {
+          tokens.push(token);
+          studentIds.push(doc.id);
+        }
+      });
+
+      if (tokens.length === 0) {
+        logger.info("No valid FCM tokens found.");
+        return null;
+      }
+
+      // Prepare notification payload
+      const message = {
+        notification: {
+          title: `${companyName} posted a new opportunity!`,
+          body: `Check out the ${role} position.`,
+        },
+        data: {
+          route: "/opportunities",
+          companyId,
+          type: "new_opportunity",
+        },
+      };
+
+      // Send push notifications
+      const messaging = getMessaging();
+      const response = await messaging.sendEachForMulticast({
+        tokens,
+        ...message,
+      });
+
+      logger.info(`✅ Sent ${response.successCount} notifications, failed ${response.failureCount}`);
+
+      // Save notification in Firestore for in-app listing
+      const batch = db.batch();
+      const createdAt = admin.firestore.FieldValue.serverTimestamp();
+
+      studentIds.forEach((studentId) => {
+        const notifRef = db
+          .collection("student")
+          .doc(studentId)
+          .collection("notifications")
+          .doc();
+
+        batch.set(notifRef, {
+          title: message.notification.title,
+          body: message.notification.body,
+          type: "new_opportunity",
+          companyId,
+          read: false,
+          createdAt,
+        });
+      });
+
+      await batch.commit();
+      logger.info("📚 Notification records saved in Firestore");
+
+      return null;
+    } catch (error) {
+      logger.error("❌ Error sending notifications:", error);
+      return null;
+    }
   }
-
-  const code = randomCode();
-  const expiresAt = admin.firestore.Timestamp.fromDate(
-    new Date(Date.now() + OTP_TTL_MIN * 60 * 1000)
-  );
-
-  await db.collection("password_resets").doc(user.uid).set({
-    email,
-    hash: hash(code),
-    expiresAt,
-    attempts: 0,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-
-  await transporter.sendMail({
-    from: smtp.from || smtp.user,
-    to: email,
-    subject: "SPARK password reset code",
-    text: `Your verification code is: ${code} (valid for ${OTP_TTL_MIN} minutes)`,
-    html: `<p>Your verification code is:</p>
-           <h2 style="letter-spacing:3px">${code}</h2>
-           <p>It expires in ${OTP_TTL_MIN} minutes.</p>`,
-  });
-
-  return { ok: true };
-});
-
-// Verify OTP + set new password
-export const verifyPasswordOtp = onCall(async (request) => {
-  const email = String((request.data?.email || "")).trim().toLowerCase();
-  const code = String((request.data?.code || "")).trim();
-  const newPassword = String(request.data?.newPassword || "");
-
-  if (!email || !code || !newPassword) {
-    throw new HttpsError("invalid-argument", "Missing fields.");
-  }
-
-  let user;
-  try {
-    user = await admin.auth().getUserByEmail(email);
-  } catch {
-    throw new HttpsError("not-found", "No account for this email.");
-  }
-
-  const ref = db.collection("password_resets").doc(user.uid);
-  const snap = await ref.get();
-  if (!snap.exists) throw new HttpsError("failed-precondition", "No active reset request.");
-
-  const doc = snap.data()!;
-  const now = admin.firestore.Timestamp.now();
-
-  if (doc.expiresAt.toMillis() < now.toMillis()) {
-    await ref.delete();
-    throw new HttpsError("deadline-exceeded", "Code expired.");
-  }
-
-  if ((doc.attempts || 0) >= 5) {
-    await ref.delete();
-    throw new HttpsError("resource-exhausted", "Too many attempts.");
-  }
-
-  if (doc.hash !== hash(code)) {
-    await ref.update({ attempts: (doc.attempts || 0) + 1 });
-    throw new HttpsError("permission-denied", "Invalid code.");
-  }
-
-  await admin.auth().updateUser(user.uid, { password: newPassword });
-  await ref.delete();
-
-  return { ok: true };
-});
+);
