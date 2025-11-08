@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/opportunity.dart';
 import 'authService.dart';
 import 'notification_helper.dart';
+import 'notification_service.dart';
 import '../models/company.dart';
 
 class OpportunityService {
@@ -71,7 +72,9 @@ class OpportunityService {
       data['postedDate'] = FieldValue.serverTimestamp();
 
       // Add the opportunity to Firestore
-      final docRef = await FirebaseFirestore.instance.collection('opportunities').add(data);
+      final docRef = await FirebaseFirestore.instance
+          .collection('opportunities')
+          .add(data);
 
       // Get company name for notification
       final companyDoc = await FirebaseFirestore.instance
@@ -89,6 +92,13 @@ class OpportunityService {
         companyName: companyName,
         opportunityId: docRef.id,
         opportunityRole: opportunity.role,
+      );
+
+      // Also send local notification banner for immediate visibility
+      await NotificationService().showLocalNotification(
+        title: '🎉 New Opportunity from $companyName',
+        body: 'Check out the ${opportunity.role} position!',
+        route: '/opportunities',
       );
     } catch (e) {
       print('Error adding opportunity: $e');
@@ -132,7 +142,9 @@ class OpportunityService {
 
       // Remove opportunityId from company's opportunitiesPosted array if present
       if (companyId.isNotEmpty) {
-        final companyDoc = firestore.collection(AuthService.kCompanyCol).doc(companyId);
+        final companyDoc = firestore
+            .collection(AuthService.kCompanyCol)
+            .doc(companyId);
         batch.update(companyDoc, {
           'opportunitiesPosted': FieldValue.arrayRemove([opportunityId]),
         });
