@@ -8,6 +8,7 @@ import 'studentScreens/login.dart';
 import 'studentScreens/studentSignup.dart';
 import 'studentScreens/StudentProfilePage.dart';
 import 'studentScreens/welcomeScreen.dart';
+import 'studentScreens/testNotifications.dart';
 import 'services/notification_service.dart';
 
 /// ============================================================================
@@ -93,6 +94,7 @@ class _MyAppState extends State<MyApp> {
         '/signup': (_) => const StudentSignup(),
         '/companySignup': (_) => const CompanySignup(),
         '/profile': (_) => const StudentProfilePage(),
+        '/testNotifications': (_) => const TestNotificationsScreen(),
         // Add route for notifications page (you'll need to create this)
         // '/notifications': (_) => const NotificationsPage(),
       },

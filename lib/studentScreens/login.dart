@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/authService.dart';
+import '../services/notification_service.dart';
 import '../studentScreens/studentViewProfile.dart';
 import '../companyScreens/companyHomePage.dart';
 import 'forgotPasswordScreen.dart';
@@ -188,6 +189,23 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return; // Avoid using BuildContext across async gaps
 
       final String userType = loginResult['userType'];
+
+      // Save FCM token for push notifications
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        try {
+          // Use correct collection based on user type
+          final collection = userType == 'student' ? 'student' : 'companies';
+          await NotificationService().saveFCMToken(
+            currentUser.uid,
+            userType: collection,
+          );
+          debugPrint('✅ FCM token saved for $userType: ${currentUser.uid}');
+        } catch (tokenError) {
+          debugPrint('⚠️ Failed to save FCM token: $tokenError');
+          // Don't block login if token save fails
+        }
+      }
 
       _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
 
@@ -438,6 +456,20 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                 ),
               ),
+              const SizedBox(height: 10),
+              // Debug: Test Notifications Button
+              if (const bool.fromEnvironment('dart.vm.product') == false)
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pushNamed('/testNotifications');
+                  },
+                  icon: const Icon(Icons.bug_report, size: 16),
+                  label: const Text(
+                    "Test Notifications (Debug)",
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  style: TextButton.styleFrom(foregroundColor: Colors.grey),
+                ),
             ],
           ),
         ),

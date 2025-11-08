@@ -355,21 +355,23 @@ class NotificationService {
   /// Save FCM Token to Firestore
   /// ========================================================================
   /// Call this after user logs in to save their device token
+  /// userType should be 'student' or 'companies'
   /// ========================================================================
-  Future<void> saveFCMToken(String userId) async {
+  Future<void> saveFCMToken(String userId, {String userType = 'student'}) async {
     try {
       final String? token = await _firebaseMessaging.getToken();
 
       if (token != null && userId.isNotEmpty) {
+        // Save to the appropriate collection based on user type
         await FirebaseFirestore.instance
-            .collection('users')
+            .collection(userType)
             .doc(userId)
             .set({
           'fcmToken': token,
           'lastTokenUpdate': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
 
-        debugPrint('✅ FCM token saved to Firestore for user: $userId');
+        debugPrint('✅ FCM token saved to Firestore for $userType: $userId');
       } else {
         debugPrint('⚠️ Cannot save FCM token: token or userId is null');
       }
@@ -434,8 +436,9 @@ class NotificationService {
   /// Delete FCM Token
   /// ========================================================================
   /// Call this when user logs out to remove their device token
+  /// userType should be 'student' or 'companies'
   /// ========================================================================
-  Future<void> deleteFCMToken(String userId) async {
+  Future<void> deleteFCMToken(String userId, {String userType = 'student'}) async {
     try {
       // Delete token from Firebase
       await _firebaseMessaging.deleteToken();
@@ -443,7 +446,7 @@ class NotificationService {
       // Remove token from Firestore
       if (userId.isNotEmpty) {
         await FirebaseFirestore.instance
-            .collection('users')
+            .collection(userType)
             .doc(userId)
             .update({
           'fcmToken': FieldValue.delete(),
