@@ -38,14 +38,20 @@ class VoteButtons extends StatelessWidget {
 
   const VoteButtons({required this.docRef, super.key});
 
-  Future<void> _toggleVote(DocumentReference targetDocRef, String uid, int clickedVote) async {
+  Future<void> _toggleVote(
+    DocumentReference targetDocRef,
+    String uid,
+    int clickedVote,
+  ) async {
     final voteDocRef = targetDocRef.collection('votes').doc(uid);
 
     await FirebaseFirestore.instance.runTransaction((tx) async {
       final voteSnap = await tx.get(voteDocRef);
       final itemSnap = await tx.get(targetDocRef);
 
-      final currentVote = voteSnap.exists ? (voteSnap.data()!['vote'] as int? ?? 0) : 0;
+      final currentVote = voteSnap.exists
+          ? (voteSnap.data()!['vote'] as int? ?? 0)
+          : 0;
       final desiredVote = (currentVote == clickedVote) ? 0 : clickedVote;
 
       int deltaLikes = 0;
@@ -63,14 +69,20 @@ class VoteButtons extends StatelessWidget {
       }
 
       final updates = <String, dynamic>{};
-      if (deltaLikes != 0) updates['likesCount'] = FieldValue.increment(deltaLikes);
-      if (deltaDislikes != 0) updates['dislikesCount'] = FieldValue.increment(deltaDislikes);
+      if (deltaLikes != 0)
+        updates['likesCount'] = FieldValue.increment(deltaLikes);
+      if (deltaDislikes != 0)
+        updates['dislikesCount'] = FieldValue.increment(deltaDislikes);
 
       if (updates.isNotEmpty) {
         if (itemSnap.exists) {
           tx.update(targetDocRef, updates);
         } else {
-          tx.set(targetDocRef, {'likesCount': 0, 'dislikesCount': 0, ...updates}, SetOptions(merge: true));
+          tx.set(targetDocRef, {
+            'likesCount': 0,
+            'dislikesCount': 0,
+            ...updates,
+          }, SetOptions(merge: true));
         }
       }
     });
@@ -90,11 +102,29 @@ class VoteButtons extends StatelessWidget {
           return Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(icon: const Icon(Icons.thumb_up, size: 18), color: Colors.grey.shade600, onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please sign in to vote')))),
-              Text('$likes', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+              IconButton(
+                icon: const Icon(Icons.thumb_up, size: 18),
+                color: Colors.grey.shade600,
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please sign in to vote')),
+                ),
+              ),
+              Text(
+                '$likes',
+                style: const TextStyle(fontSize: 13, color: Colors.black54),
+              ),
               const SizedBox(width: 12),
-              IconButton(icon: const Icon(Icons.thumb_down, size: 18), color: Colors.grey.shade600, onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please sign in to vote')))),
-              Text('$dislikes', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+              IconButton(
+                icon: const Icon(Icons.thumb_down, size: 18),
+                color: Colors.grey.shade600,
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please sign in to vote')),
+                ),
+              ),
+              Text(
+                '$dislikes',
+                style: const TextStyle(fontSize: 13, color: Colors.black54),
+              ),
             ],
           );
         }
@@ -105,7 +135,9 @@ class VoteButtons extends StatelessWidget {
           stream: voteDocRef.snapshots(),
           builder: (context, voteSnap) {
             final userVote = voteSnap.data?.exists == true
-                ? ((voteSnap.data!.data() as Map<String, dynamic>?)?['vote'] as int? ?? 0)
+                ? ((voteSnap.data!.data() as Map<String, dynamic>?)?['vote']
+                          as int? ??
+                      0)
                 : 0;
             final likeActive = userVote == 1;
             final dislikeActive = userVote == -1;
@@ -120,11 +152,17 @@ class VoteButtons extends StatelessWidget {
                     try {
                       await _toggleVote(docRef, uid, 1);
                     } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vote failed: $e')));
+                      if (context.mounted)
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Vote failed: $e')),
+                        );
                     }
                   },
                 ),
-                Text('$likes', style: TextStyle(fontSize: 13, color: Colors.grey.shade800)),
+                Text(
+                  '$likes',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
+                ),
                 const SizedBox(width: 12),
                 IconButton(
                   icon: const Icon(Icons.thumb_down, size: 18),
@@ -133,11 +171,17 @@ class VoteButtons extends StatelessWidget {
                     try {
                       await _toggleVote(docRef, uid, -1);
                     } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vote failed: $e')));
+                      if (context.mounted)
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Vote failed: $e')),
+                        );
                     }
                   },
                 ),
-                Text('$dislikes', style: TextStyle(fontSize: 13, color: Colors.grey.shade800)),
+                Text(
+                  '$dislikes',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
+                ),
               ],
             );
           },
@@ -181,14 +225,16 @@ class StudentCompanyProfilePage extends StatelessWidget {
         .doc(studentId)
         .snapshots()
         .map((d) {
-      final data = d.data();
-      final list = List<String>.from(data?['followedCompanies'] ?? []);
-      return list.contains(companyId);
-    });
+          final data = d.data();
+          final list = List<String>.from(data?['followedCompanies'] ?? []);
+          return list.contains(companyId);
+        });
   }
 
-  Future<void> _toggleFollow(
-      {required String studentId, required bool following}) async {
+  Future<void> _toggleFollow({
+    required String studentId,
+    required bool following,
+  }) async {
     final ref = FirebaseFirestore.instance.collection('student').doc(studentId);
     await ref.set({
       'followedCompanies': following
@@ -205,12 +251,15 @@ class StudentCompanyProfilePage extends StatelessWidget {
       stream: _companyDocStream(),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
         if (!snap.hasData || !snap.data!.exists || snap.data!.data() == null) {
           return Scaffold(
-              appBar: AppBar(title: const Text('Company')),
-              body: const Center(child: Text('Company not found')));
+            appBar: AppBar(title: const Text('Company')),
+            body: const Center(child: Text('Company not found')),
+          );
         }
 
         final data = snap.data!.data()!;
@@ -249,20 +298,25 @@ class StudentCompanyProfilePage extends StatelessWidget {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                    color: Colors.black.withOpacity(0.12),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 8))
+                                  color: Colors.black.withOpacity(0.12),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 8),
+                                ),
                               ],
                             ),
                             child: CircleAvatar(
                               radius: 64,
                               backgroundColor: Colors.white,
-                              child: (company.logoUrl != null &&
+                              child:
+                                  (company.logoUrl != null &&
                                       company.logoUrl!.isNotEmpty)
                                   ? CircleAvatar(
                                       radius: 58,
                                       backgroundImage:
-                                          CachedNetworkImageProvider(company.logoUrl!))
+                                          CachedNetworkImageProvider(
+                                            company.logoUrl!,
+                                          ),
+                                    )
                                   : CircleAvatar(
                                       radius: 58,
                                       backgroundColor: Colors.white,
@@ -270,11 +324,11 @@ class StudentCompanyProfilePage extends StatelessWidget {
                                         (company.companyName.trim().isEmpty
                                                 ? ''
                                                 : company.companyName
-                                                    .trim()
-                                                    .split(RegExp(r'\s+'))
-                                                    .take(2)
-                                                    .map((w) => w[0])
-                                                    .join())
+                                                      .trim()
+                                                      .split(RegExp(r'\s+'))
+                                                      .take(2)
+                                                      .map((w) => w[0])
+                                                      .join())
                                             .toUpperCase(),
                                         style: GoogleFonts.lato(
                                           fontSize: 26,
@@ -300,25 +354,33 @@ class StudentCompanyProfilePage extends StatelessWidget {
                                   foregroundColor: Colors.white,
                                   side: const BorderSide(color: Colors.white),
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 18, vertical: 10),
+                                    horizontal: 18,
+                                    vertical: 10,
+                                  ),
                                   shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(22)),
+                                    borderRadius: BorderRadius.circular(22),
+                                  ),
                                 ),
                                 onPressed: () async {
                                   try {
                                     await _toggleFollow(
-                                        studentId: studentId,
-                                        following: following);
+                                      studentId: studentId,
+                                      following: following,
+                                    );
                                   } catch (e) {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(SnackBar(
-                                              content: Text('Failed: $e')));
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(content: Text('Failed: $e')),
+                                      );
                                     }
                                   }
                                 },
-                                child: Text(following ? 'Following' : 'Follow',
-                                    style: GoogleFonts.lato()),
+                                child: Text(
+                                  following ? 'Following' : 'Follow',
+                                  style: GoogleFonts.lato(),
+                                ),
                               );
                             },
                           ),
@@ -399,32 +461,58 @@ class StudentCompanyProfilePage extends StatelessWidget {
                                 final oppCount = oppCountSnap.data ?? 0;
                                 return Center(
                                   child: StreamBuilder<QuerySnapshot>(
-                                    stream: FirebaseFirestore.instance.collection('reviews').where('companyId', isEqualTo: companyId).snapshots(),
+                                    stream: FirebaseFirestore.instance
+                                        .collection('reviews')
+                                        .where(
+                                          'companyId',
+                                          isEqualTo: companyId,
+                                        )
+                                        .snapshots(),
                                     builder: (context, reviewSnap) {
-                                      final reviewsCount = reviewSnap.data?.size ?? 0;
+                                      final reviewsCount =
+                                          reviewSnap.data?.size ?? 0;
                                       return StreamBuilder<QuerySnapshot>(
-                                        stream: FirebaseFirestore.instance.collection('interview_reviews').where('companyId', isEqualTo: companyId).snapshots(),
+                                        stream: FirebaseFirestore.instance
+                                            .collection('interview_reviews')
+                                            .where(
+                                              'companyId',
+                                              isEqualTo: companyId,
+                                            )
+                                            .snapshots(),
                                         builder: (context, interviewSnap) {
-                                          final interviewCount = interviewSnap.data?.size ?? 0;
+                                          final interviewCount =
+                                              interviewSnap.data?.size ?? 0;
                                           return TabBar(
                                             isScrollable: true,
                                             labelColor: Colors.black,
-                                            labelStyle: GoogleFonts.lato(fontWeight: FontWeight.w700),
-                                            unselectedLabelStyle: GoogleFonts.lato(),
-                                            unselectedLabelColor: Colors.black.withOpacity(0.5),
+                                            labelStyle: GoogleFonts.lato(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                            unselectedLabelStyle:
+                                                GoogleFonts.lato(),
+                                            unselectedLabelColor: Colors.black
+                                                .withOpacity(0.5),
                                             indicatorColor: _purple,
                                             indicatorWeight: 3,
                                             dividerColor: Colors.transparent,
                                             tabs: [
                                               const Tab(text: 'Details'),
-                                              Tab(text: 'Opportunities ($oppCount)'),
-                                              Tab(text: 'Reviews ($reviewsCount)'),
-                                              Tab(text: 'Interview ($interviewCount)'),
+                                              Tab(
+                                                text:
+                                                    'Opportunities ($oppCount)',
+                                              ),
+                                              Tab(
+                                                text: 'Reviews ($reviewsCount)',
+                                              ),
+                                              Tab(
+                                                text:
+                                                    'Interview ($interviewCount)',
+                                              ),
                                             ],
                                           );
-                                        }
+                                        },
                                       );
-                                    }
+                                    },
                                   ),
                                 );
                               },
@@ -443,10 +531,7 @@ class StudentCompanyProfilePage extends StatelessWidget {
                       children: [
                         _DetailsTab(company: company, data: data),
                         _OpportunitiesTab(companyId: companyId),
-                        _ReviewsTab(
-                          companyId: companyId,
-                          studentId: studentId,
-                        ),
+                        _ReviewsTab(companyId: companyId, studentId: studentId),
                         _InterviewReviewsTab(
                           companyId: companyId,
                           studentId: studentId,
@@ -487,8 +572,9 @@ class _DetailsTab extends StatelessWidget {
   }
 
   String _extractEmail(String text) {
-    final m = RegExp(r'[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}')
-        .firstMatch(text);
+    final m = RegExp(
+      r'[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}',
+    ).firstMatch(text);
     return (m?.group(0) ?? '').trim();
   }
 
@@ -509,11 +595,15 @@ class _DetailsTab extends StatelessWidget {
     final emailFromText = _extractEmail('$rawContact $about');
     final email = emailFromFields.isNotEmpty ? emailFromFields : emailFromText;
 
-    String phone = (data['phone'] ?? data['contactPhone'] ?? '').toString().trim();
+    String phone = (data['phone'] ?? data['contactPhone'] ?? '')
+        .toString()
+        .trim();
     if (phone.isEmpty) phone = _extractPhone('$rawContact $about');
 
     // Extract location from data
-    final location = (data['location'] ?? data['address'] ?? '').toString().trim();
+    final location = (data['location'] ?? data['address'] ?? '')
+        .toString()
+        .trim();
 
     var contactName = rawContact;
     if (phone.isNotEmpty) {
@@ -533,12 +623,12 @@ class _DetailsTab extends StatelessWidget {
         .trim();
 
     Widget sectionTitle(String t) => Padding(
-          padding: const EdgeInsets.only(top: 4, bottom: 8),
-          child: Text(
-            t,
-            style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-        );
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      child: Text(
+        t,
+        style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700),
+      ),
+    );
 
     return ListView(
       padding: const EdgeInsets.only(top: 8, bottom: 16),
@@ -554,8 +644,9 @@ class _DetailsTab extends StatelessWidget {
         const Divider(height: 28),
         sectionTitle('Contact Details'),
         Card(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Column(
             children: [
               ListTile(
@@ -568,8 +659,9 @@ class _DetailsTab extends StatelessWidget {
                     ? Text(contactName, style: GoogleFonts.lato())
                     : null,
                 trailing: ElevatedButton(
-                    onPressed: email.isEmpty ? null : () => _launchEmail(email),
-                    child: Text('Email', style: GoogleFonts.lato())),
+                  onPressed: email.isEmpty ? null : () => _launchEmail(email),
+                  child: Text('Email', style: GoogleFonts.lato()),
+                ),
               ),
               const Divider(height: 1),
               ListTile(
@@ -579,17 +671,18 @@ class _DetailsTab extends StatelessWidget {
                   style: GoogleFonts.lato(),
                 ),
                 trailing: ElevatedButton(
-                    onPressed: phone.isEmpty ? null : () => _launchPhone(phone),
-                    child: Text('Call', style: GoogleFonts.lato())),
+                  onPressed: phone.isEmpty ? null : () => _launchPhone(phone),
+                  child: Text('Call', style: GoogleFonts.lato()),
+                ),
               ),
               if (location.isNotEmpty) ...[
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.location_on_outlined, color: _purple),
-                  title: Text(
-                    'Location: $location',
-                    style: GoogleFonts.lato(),
+                  leading: const Icon(
+                    Icons.location_on_outlined,
+                    color: _purple,
                   ),
+                  title: Text('Location: $location', style: GoogleFonts.lato()),
                 ),
               ],
             ],
@@ -599,7 +692,6 @@ class _DetailsTab extends StatelessWidget {
     );
   }
 }
-
 
 // =========================================================================
 // == OPPORTUNITIES TAB WIDGET
@@ -658,10 +750,11 @@ class _OpportunitiesTab extends StatelessWidget {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
       return Center(
-          child: Text(
-        'Please sign in to view opportunities.',
-        style: GoogleFonts.lato(),
-      ));
+        child: Text(
+          'Please sign in to view opportunities.',
+          style: GoogleFonts.lato(),
+        ),
+      );
     }
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -673,10 +766,8 @@ class _OpportunitiesTab extends StatelessWidget {
         final oppDocs = oppSnap.data?.docs ?? [];
         if (oppDocs.isEmpty) {
           return Center(
-              child: Text(
-            'No opportunities yet.',
-            style: GoogleFonts.lato(),
-          ));
+            child: Text('No opportunities yet.', style: GoogleFonts.lato()),
+          );
         }
 
         return ListView.separated(
@@ -738,7 +829,7 @@ class _OpportunityCard extends StatelessWidget {
           ),
         ],
       );
-  }
+    }
 
     return Card(
       elevation: 1,
@@ -766,12 +857,16 @@ class _OpportunityCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            buildRow(Icons.location_on_outlined,
-                opportunity.location ?? 'Location not specified'),
+            buildRow(
+              Icons.location_on_outlined,
+              opportunity.location ?? 'Location not specified',
+            ),
             const SizedBox(height: 6),
             if (opportunity.workMode != null)
-              buildRow(Icons.apartment_outlined,
-                  opportunity.workMode ?? 'Work mode not specified'),
+              buildRow(
+                Icons.apartment_outlined,
+                opportunity.workMode ?? 'Work mode not specified',
+              ),
             const SizedBox(height: 6),
             buildRow(
               Icons.payments_outlined,
@@ -848,8 +943,10 @@ class _OpportunityCard extends StatelessWidget {
 /* Small helper type to represent a review thread (top-level review + its replies) */
 class _ReviewThread {
   final Review review;
-  final List<Review> replies; // replies authored by students (stored as top-level reviews with parentId)
-  final List<_Reply> companyReplies; // replies stored in subcollection (company replies)
+  final List<Review>
+  replies; // replies authored by students (stored as top-level reviews with parentId)
+  final List<_Reply>
+  companyReplies; // replies stored in subcollection (company replies)
 
   _ReviewThread({
     required this.review,
@@ -924,11 +1021,15 @@ class _ReviewsTabState extends State<_ReviewsTab> {
   // --- New helper to update review submit state ---
   void _updateReviewButtonState({bool force = false}) {
     final text = _reviewController.text.trim();
-    final textValid = text.length >= _reviewMinLength && text.length <= _reviewMaxLength;
+    final textValid =
+        text.length >= _reviewMinLength && text.length <= _reviewMaxLength;
     final hasRating = _currentRating > 0;
     final newCan = textValid && hasRating;
     // Only setState when the actionable boolean changes to reduce rebuilds.
-    if (force || newCan != _canSubmitReview || textValid != _reviewTextValid || (text.isNotEmpty) != _reviewHasText) {
+    if (force ||
+        newCan != _canSubmitReview ||
+        textValid != _reviewTextValid ||
+        (text.isNotEmpty) != _reviewHasText) {
       setState(() {
         _reviewHasText = text.isNotEmpty;
         _reviewTextValid = textValid;
@@ -940,9 +1041,14 @@ class _ReviewsTabState extends State<_ReviewsTab> {
   }
 
   // Helper to open the single-student page (only if authorVisible)
-  void _openStudentProfile({required String studentId, required bool authorVisible}) {
+  void _openStudentProfile({
+    required String studentId,
+    required bool authorVisible,
+  }) {
     if (!authorVisible) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("This student’s profile is private.")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("This student’s profile is private.")),
+      );
       return;
     }
     Navigator.push(
@@ -959,7 +1065,9 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     // Do not attach a listener that calls setState on each keystroke to avoid continuous rebuilds.
     // Initialize review button state from any existing controller text / rating.
     _reviewHasText = _reviewController.text.trim().isNotEmpty;
-    _reviewTextValid = _reviewController.text.trim().length >= _reviewMinLength && _reviewController.text.trim().length <= _reviewMaxLength;
+    _reviewTextValid =
+        _reviewController.text.trim().length >= _reviewMinLength &&
+        _reviewController.text.trim().length <= _reviewMaxLength;
     _canSubmitReview = _reviewTextValid && _currentRating > 0;
   }
 
@@ -973,10 +1081,17 @@ class _ReviewsTabState extends State<_ReviewsTab> {
   }
 
   // Validate text length and return an inline error message or null.
-  String? _validateTextLength(String text, {int min = _reviewMinLength, int max = _reviewMaxLength, String label = 'review'}) {
+  String? _validateTextLength(
+    String text, {
+    int min = _reviewMinLength,
+    int max = _reviewMaxLength,
+    String label = 'review',
+  }) {
     final len = text.trim().length;
-    if (len < min) return 'Your $label must be between $min and $max characters.';
-    if (len > max) return 'Your $label must be between $min and $max characters.';
+    if (len < min)
+      return 'Your $label must be between $min and $max characters.';
+    if (len > max)
+      return 'Your $label must be between $min and $max characters.';
     return null;
   }
 
@@ -1043,8 +1158,12 @@ class _ReviewsTabState extends State<_ReviewsTab> {
         final repliesCol = doc.reference.collection('replies');
         List<_Reply> companyReplies = [];
         try {
-          final repliesSnapshot = await repliesCol.orderBy('createdAt', descending: false).get();
-          companyReplies = repliesSnapshot.docs.map((d) => _Reply.fromDoc(d)).toList();
+          final repliesSnapshot = await repliesCol
+              .orderBy('createdAt', descending: false)
+              .get();
+          companyReplies = repliesSnapshot.docs
+              .map((d) => _Reply.fromDoc(d))
+              .toList();
         } catch (e) {
           // If a per-review replies fetch fails we swallow and continue (non-fatal).
           // You may want to log this in real app.
@@ -1053,15 +1172,20 @@ class _ReviewsTabState extends State<_ReviewsTab> {
 
         // Merge both lists into a thread; keep student replies in the original order (they already have createdAt).
         // Company replies are ordered by createdAt from the subcollection query above.
-        threads.add(_ReviewThread(
-          review: top,
-          replies: studentReplies,
-          companyReplies: companyReplies,
-        ));
+        threads.add(
+          _ReviewThread(
+            review: top,
+            replies: studentReplies,
+            companyReplies: companyReplies,
+          ),
+        );
       }
 
       // Sort threads by top-level review createdAt descending (newest first)
-      threads.sort((a, b) => b.review.createdAt.toDate().compareTo(a.review.createdAt.toDate()));
+      threads.sort(
+        (a, b) =>
+            b.review.createdAt.toDate().compareTo(a.review.createdAt.toDate()),
+      );
 
       return threads;
     });
@@ -1074,22 +1198,45 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     final inlineErr = _validateTextLength(text, label: 'review');
     if (inlineErr != null) {
       setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(inlineErr), backgroundColor: Colors.red.shade700));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(inlineErr),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
       return;
     }
 
     if (_currentRating == 0) {
       // Prevent submission and show small inline message near stars (and snack for extra visibility)
-      setState(() => _ratingInlineError = 'Please select a rating before submitting your review.');
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a rating before submitting your review.'), backgroundColor: Colors.red));
+      setState(
+        () => _ratingInlineError =
+            'Please select a rating before submitting your review.',
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please select a rating before submitting your review.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
     if (text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please write a review before submitting.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please write a review before submitting.'),
+        ),
+      );
       return;
     }
     if (widget.studentId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You must be logged in to leave a review.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must be logged in to leave a review.'),
+        ),
+      );
       return;
     }
 
@@ -1098,10 +1245,15 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     try {
       // Backend (server-side) validation simulated here: ensure we reject invalid-length text just before storing.
       if (text.length < _reviewMinLength || text.length > _reviewMaxLength) {
-        throw Exception('Your review must be between $_reviewMinLength and $_reviewMaxLength characters.');
+        throw Exception(
+          'Your review must be between $_reviewMinLength and $_reviewMaxLength characters.',
+        );
       }
 
-      final studentDoc = await FirebaseFirestore.instance.collection('student').doc(widget.studentId).get();
+      final studentDoc = await FirebaseFirestore.instance
+          .collection('student')
+          .doc(widget.studentId)
+          .get();
       final first = (studentDoc.data()?['firstName'] ?? '').toString();
       final last = (studentDoc.data()?['lastName'] ?? '').toString();
       final studentName = ('$first $last').trim();
@@ -1120,7 +1272,12 @@ class _ReviewsTabState extends State<_ReviewsTab> {
       await FirebaseFirestore.instance.collection('reviews').add(reviewData);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thank you for your review!'), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Thank you for your review!'),
+            backgroundColor: Colors.green,
+          ),
+        );
         _reviewController.clear();
         setState(() {
           _currentRating = 0;
@@ -1131,9 +1288,13 @@ class _ReviewsTabState extends State<_ReviewsTab> {
         });
       }
     } catch (e) {
-      final msg = (e is Exception) ? e.toString().replaceAll('Exception: ', '') : 'Failed to submit review: $e';
+      final msg = (e is Exception)
+          ? e.toString().replaceAll('Exception: ', '')
+          : 'Failed to submit review: $e';
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red.shade700));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.red.shade700),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -1149,16 +1310,25 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     final inlineErr = _validateTextLength(text, label: 'reply');
     if (inlineErr != null) {
       setState(() => _isReplySubmitting[parentReviewId] = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(inlineErr), backgroundColor: Colors.red.shade700));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(inlineErr),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
       return;
     }
 
     if (widget.studentId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You must be logged in to reply.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be logged in to reply.')),
+      );
       return;
     }
     if (text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reply cannot be empty.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Reply cannot be empty.')));
       return;
     }
 
@@ -1168,18 +1338,28 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     String parentStudentId = '';
     String companyName = '';
     try {
-      parentDoc = await FirebaseFirestore.instance.collection('reviews').doc(parentReviewId).get();
+      parentDoc = await FirebaseFirestore.instance
+          .collection('reviews')
+          .doc(parentReviewId)
+          .get();
       if (!parentDoc.exists) {
         throw Exception('Original review not found. Please refresh.');
       }
       parentData = parentDoc.data() as Map<String, dynamic>?;
       parentStudentId = (parentData?['studentId'] ?? '') as String;
-      final companyDoc = await FirebaseFirestore.instance.collection('companies').doc(widget.companyId).get();
-      companyName = (companyDoc.data()?['companyName'] ?? 'A company') as String;
+      final companyDoc = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(widget.companyId)
+          .get();
+      companyName =
+          (companyDoc.data()?['companyName'] ?? 'A company') as String;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unable to send reply: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Unable to send reply: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
       setState(() => _isReplySubmitting[parentReviewId] = false);
@@ -1189,10 +1369,15 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     try {
       // Backend (server-side) validation simulated here
       if (text.length < _reviewMinLength || text.length > _reviewMaxLength) {
-        throw Exception('Your reply must be between $_reviewMinLength and $_reviewMaxLength characters.');
+        throw Exception(
+          'Your reply must be between $_reviewMinLength and $_reviewMaxLength characters.',
+        );
       }
 
-      final studentDoc = await FirebaseFirestore.instance.collection('student').doc(widget.studentId).get();
+      final studentDoc = await FirebaseFirestore.instance
+          .collection('student')
+          .doc(widget.studentId)
+          .get();
       final first = (studentDoc.data()?['firstName'] ?? '').toString();
       final last = (studentDoc.data()?['lastName'] ?? '').toString();
       final studentName = ('$first $last').trim();
@@ -1225,115 +1410,177 @@ class _ReviewsTabState extends State<_ReviewsTab> {
         _replyHasText[parentReviewId] = false;
       });
     } catch (e) {
-      final msg = (e is Exception) ? e.toString().replaceAll('Exception: ', '') : 'Failed to submit reply: $e';
+      final msg = (e is Exception)
+          ? e.toString().replaceAll('Exception: ', '')
+          : 'Failed to submit reply: $e';
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red.shade700));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.red.shade700),
+        );
       }
     } finally {
       setState(() => _isReplySubmitting[parentReviewId] = false);
     }
   }
 
-  Future<void> _confirmAndDelete(String reviewId, {required bool isParent}) async {
-  // Defensive: avoid calling .doc('') which causes the invalid argument error.
-  if (reviewId.trim().isEmpty) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to delete: invalid review id.'), backgroundColor: Colors.red),
-      );
-    }
-    return;
-  }
-
-  if (widget.studentId == null) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be signed in to delete your content.'), backgroundColor: Colors.red),
-      );
-    }
-    return;
-  }
-
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Delete'),
-      content: const Text('Are you sure you want to delete this item? This cannot be undone.'),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-        ElevatedButton(onPressed: () => Navigator.of(context).pop(true), style: ElevatedButton.styleFrom(backgroundColor: _purple), child: const Text('Delete', style: TextStyle(color: Colors.white))),
-      ],
-    ),
-  );
-
-  if (confirmed != true) return;
-
-  try {
-    final reviewsCol = FirebaseFirestore.instance.collection('reviews');
-
-    if (isParent) {
-      // Only allow deleting the parent review if the current student is the author.
-      final parentDocRef = reviewsCol.doc(reviewId);
-      final parentSnap = await parentDocRef.get();
-      if (!parentSnap.exists) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Review not found.'), backgroundColor: Colors.red));
-        return;
+  Future<void> _confirmAndDelete(
+    String reviewId, {
+    required bool isParent,
+  }) async {
+    // Defensive: avoid calling .doc('') which causes the invalid argument error.
+    if (reviewId.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to delete: invalid review id.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
-      final parentData = parentSnap.data() as Map<String, dynamic>? ?? {};
-      final parentStudentId = (parentData['studentId'] ?? '').toString();
+      return;
+    }
 
-      if (parentStudentId != widget.studentId) {
-        // Not the owner — do not allow mass deletion.
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You can only delete your own review.'), backgroundColor: Colors.red));
+    if (widget.studentId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You must be signed in to delete your content.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete'),
+        content: const Text(
+          'Are you sure you want to delete this item? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: _purple),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final reviewsCol = FirebaseFirestore.instance.collection('reviews');
+
+      if (isParent) {
+        // Only allow deleting the parent review if the current student is the author.
+        final parentDocRef = reviewsCol.doc(reviewId);
+        final parentSnap = await parentDocRef.get();
+        if (!parentSnap.exists) {
+          if (mounted)
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Review not found.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          return;
         }
-        return;
-      }
+        final parentData = parentSnap.data() as Map<String, dynamic>? ?? {};
+        final parentStudentId = (parentData['studentId'] ?? '').toString();
 
-      // Delete the parent document (the student's own review)
-      // Also delete any child replies authored by this same student (but do NOT delete other users' replies or company replies)
-      final batch = FirebaseFirestore.instance.batch();
-
-      // Delete child replies authored by this student (top-level docs with parentId + studentId)
-      final childRepliesSnap = await reviewsCol
-          .where('parentId', isEqualTo: reviewId)
-          .where('studentId', isEqualTo: widget.studentId)
-          .get();
-      for (final d in childRepliesSnap.docs) {
-        batch.delete(d.reference);
-      }
-
-      batch.delete(parentDocRef);
-      await batch.commit();
-
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deleted'), backgroundColor: Colors.green));
-    } else {
-      // Deleting a single reply document. Allow only if the current student is the author.
-      final docRef = reviewsCol.doc(reviewId);
-      final snap = await docRef.get();
-      if (!snap.exists) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reply not found.'), backgroundColor: Colors.red));
-        return;
-      }
-      final data = snap.data() as Map<String, dynamic>? ?? {};
-      final replyStudentId = (data['studentId'] ?? '').toString();
-      final authorType = (data['authorType'] ?? '').toString();
-
-      if (replyStudentId != widget.studentId) {
-        // Not the author. If it's a company reply (authorType == 'company') students cannot delete it here.
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You can only delete your own replies.'), backgroundColor: Colors.red));
+        if (parentStudentId != widget.studentId) {
+          // Not the owner — do not allow mass deletion.
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('You can only delete your own review.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
         }
-        return;
-      }
 
-      await docRef.delete();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reply deleted'), backgroundColor: Colors.green));
+        // Delete the parent document (the student's own review)
+        // Also delete any child replies authored by this same student (but do NOT delete other users' replies or company replies)
+        final batch = FirebaseFirestore.instance.batch();
+
+        // Delete child replies authored by this student (top-level docs with parentId + studentId)
+        final childRepliesSnap = await reviewsCol
+            .where('parentId', isEqualTo: reviewId)
+            .where('studentId', isEqualTo: widget.studentId)
+            .get();
+        for (final d in childRepliesSnap.docs) {
+          batch.delete(d.reference);
+        }
+
+        batch.delete(parentDocRef);
+        await batch.commit();
+
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Deleted'),
+              backgroundColor: Colors.green,
+            ),
+          );
+      } else {
+        // Deleting a single reply document. Allow only if the current student is the author.
+        final docRef = reviewsCol.doc(reviewId);
+        final snap = await docRef.get();
+        if (!snap.exists) {
+          if (mounted)
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Reply not found.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          return;
+        }
+        final data = snap.data() as Map<String, dynamic>? ?? {};
+        final replyStudentId = (data['studentId'] ?? '').toString();
+        final authorType = (data['authorType'] ?? '').toString();
+
+        if (replyStudentId != widget.studentId) {
+          // Not the author. If it's a company reply (authorType == 'company') students cannot delete it here.
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('You can only delete your own replies.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        await docRef.delete();
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Reply deleted'),
+              backgroundColor: Colors.green,
+            ),
+          );
+      }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Delete failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
     }
-  } catch (e) {
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red));
   }
-}
 
   Widget _buildWriteReviewSection() {
     if (widget.studentId == null) return const SizedBox.shrink();
@@ -1344,86 +1591,123 @@ class _ReviewsTabState extends State<_ReviewsTab> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Write a Review', style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(5, (index) {
-              return IconButton(
-                onPressed: () {
-                  // set rating and update submit-button state
-                  setState(() => _currentRating = index + 1.0);
-                  // clear inline rating error and recalc button state
-                  _ratingInlineError = null;
-                  _updateReviewButtonState();
-                },
-                icon: Icon(index < _currentRating ? Icons.star : Icons.star_border, color: const Color(0xFFF99D46), size: 32),
-              );
-            }),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Show my profile', style: GoogleFonts.lato()),
-              Switch(value: _authorVisible, activeColor: _purple, onChanged: (v) => setState(() => _authorVisible = v)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _reviewController,
-            maxLines: 3,
-            maxLength: _reviewMaxLength,
-            inputFormatters: [LengthLimitingTextInputFormatter(_reviewMaxLength)],
-            decoration: InputDecoration(
-              hintText: 'Share your experience...',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              counterText: '', // keep existing appearance
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Write a Review',
+              style: GoogleFonts.lato(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-            // no per-keystroke state changes here (prevents reloads)
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Inline error / helper text
-              Expanded(
-                child: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _reviewController,
-                  builder: (context, value, _) {
-                    final remaining = _reviewMaxLength - value.text.trim().length;
-                    return Text(
-                      '$remaining characters remaining',
-                      style: GoogleFonts.lato(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                      ),
-                    );
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) {
+                return IconButton(
+                  onPressed: () {
+                    // set rating and update submit-button state
+                    setState(() => _currentRating = index + 1.0);
+                    // clear inline rating error and recalc button state
+                    _ratingInlineError = null;
+                    _updateReviewButtonState();
                   },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : _submitReview,
-                  style: ElevatedButton.styleFrom(backgroundColor: _purple, foregroundColor: Colors.white),
-                  child: _isSubmitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Submit'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (_ratingInlineError != null)
-            Padding(
-              padding: const EdgeInsets.only(left: 4.0, bottom: 4.0),
-              child: Text(
-                _ratingInlineError!,
-                style: GoogleFonts.lato(fontSize: 13, color: Colors.red.shade700),
-              ),
+                  icon: Icon(
+                    index < _currentRating ? Icons.star : Icons.star_border,
+                    color: const Color(0xFFF99D46),
+                    size: 32,
+                  ),
+                );
+              }),
             ),
-        ]),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Show my profile', style: GoogleFonts.lato()),
+                Switch(
+                  value: _authorVisible,
+                  activeColor: _purple,
+                  onChanged: (v) => setState(() => _authorVisible = v),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _reviewController,
+              maxLines: 3,
+              maxLength: _reviewMaxLength,
+              inputFormatters: [
+                LengthLimitingTextInputFormatter(_reviewMaxLength),
+              ],
+              decoration: InputDecoration(
+                hintText: 'Share your experience...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                counterText: '', // keep existing appearance
+              ),
+              // no per-keystroke state changes here (prevents reloads)
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Inline error / helper text
+                Expanded(
+                  child: ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _reviewController,
+                    builder: (context, value, _) {
+                      final remaining =
+                          _reviewMaxLength - value.text.trim().length;
+                      return Text(
+                        '$remaining characters remaining',
+                        style: GoogleFonts.lato(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton(
+                    onPressed: _isSubmitting ? null : _submitReview,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _purple,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('Submit'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (_ratingInlineError != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 4.0, bottom: 4.0),
+                child: Text(
+                  _ratingInlineError!,
+                  style: GoogleFonts.lato(
+                    fontSize: 13,
+                    color: Colors.red.shade700,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1433,8 +1717,10 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     return StreamBuilder<List<_ReviewThread>>(
       stream: _getReviewsStream(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const Center(child: CircularProgressIndicator());
+        if (snapshot.hasError)
+          return Center(child: Text('Error: ${snapshot.error}'));
 
         final threads = snapshot.data ?? [];
 
@@ -1442,7 +1728,10 @@ class _ReviewsTabState extends State<_ReviewsTab> {
           padding: const EdgeInsets.only(top: 8, bottom: 16),
           children: [
             _buildWriteReviewSection(),
-            if (threads.isEmpty) _buildEmptyState() else ...threads.map((t) => _buildReviewThreadCard(t)).toList(),
+            if (threads.isEmpty)
+              _buildEmptyState()
+            else
+              ...threads.map((t) => _buildReviewThreadCard(t)).toList(),
           ],
         );
       },
@@ -1453,341 +1742,551 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 48.0),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.rate_review_outlined, size: 64, color: Colors.grey.shade400),
-          const SizedBox(height: 16),
-          Text('No reviews yet.', style: GoogleFonts.lato(fontSize: 16, color: Colors.grey.shade600)),
-          const SizedBox(height: 4),
-          Text('Be the first to share your experience!', style: GoogleFonts.lato(fontSize: 14, color: Colors.grey.shade500)),
-        ]),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.rate_review_outlined,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No reviews yet.',
+              style: GoogleFonts.lato(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Be the first to share your experience!',
+              style: GoogleFonts.lato(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildReviewThreadCard(_ReviewThread thread) {
-  final parentId = thread.review.id;
-  // Ensure reply controller and states exist (existing code may do this)
-  _ensureReplyController(parentId);
-  _showReplyBox.putIfAbsent(parentId, () => false);
-  _replyAuthorVisible.putIfAbsent(parentId, () => true);
-  _isReplySubmitting.putIfAbsent(parentId, () => false);
+    final parentId = thread.review.id;
+    // Ensure reply controller and states exist (existing code may do this)
+    _ensureReplyController(parentId);
+    _showReplyBox.putIfAbsent(parentId, () => false);
+    _replyAuthorVisible.putIfAbsent(parentId, () => true);
+    _isReplySubmitting.putIfAbsent(parentId, () => false);
 
-  return Card(
-    elevation: 2,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    margin: const EdgeInsets.only(bottom: 12),
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // existing parent review UI (author, text, stars...) - keep as-is
+            _buildReviewCard(thread.review),
+
+            const SizedBox(height: 8),
+
+            // Student replies (if any) - existing handling
+            ...thread.replies.map((r) => _buildReplyTile(r)).toList(),
+
+            // Company replies (from subcollection) - rendered in a visually distinct style
+            ...thread.companyReplies
+                .map((cr) => _buildCompanyReplyTile(cr))
+                .toList(),
+
+            // existing reply input/toggle UI (show reply button, reply textbox etc)
+            // Reply toggle + input area for students
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () {
+                  setState(() {
+                    final cur = _showReplyBox[parentId] ?? false;
+                    _showReplyBox[parentId] = !cur;
+                    if (_showReplyBox[parentId] == true) {
+                      // ensure controller exists before the user types
+                      _ensureReplyController(parentId);
+                    }
+                  });
+                },
+                icon: Icon(
+                  (_showReplyBox[parentId] ?? false)
+                      ? Icons.expand_less
+                      : Icons.reply,
+                  color: _purple,
+                ),
+                label: Text(
+                  (_showReplyBox[parentId] ?? false) ? 'Hide' : 'Reply',
+                  style: const TextStyle(color: _purple),
+                ),
+              ),
+            ),
+
+            if (_showReplyBox[parentId] ?? false) ...[
+              const SizedBox(height: 8),
+              // Reply input
+              TextField(
+                controller: _replyControllers[parentId],
+                maxLines: 3,
+                minLines: 1,
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(_reviewMaxLength),
+                ],
+                decoration: InputDecoration(
+                  hintText: 'Write a reply…',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.all(12),
+                  counterText: '',
+                ),
+                onChanged: (v) {
+                  // update internal flag without setState to avoid rebuilds per keystroke
+                  final has = v.trim().isNotEmpty;
+                  _replyHasText[parentId] = has;
+                },
+              ),
+              const SizedBox(height: 8),
+
+              // Author visibility + send button
+              Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Switch(
+                          value: _replyAuthorVisible[parentId] ?? true,
+                          activeColor: _purple,
+                          onChanged: (val) {
+                            setState(() {
+                              _replyAuthorVisible[parentId] = val;
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Show my profile',
+                          style: GoogleFonts.lato(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: (_isReplySubmitting[parentId] ?? false)
+                        ? null
+                        : () {
+                            // Submit: call existing submit handler which performs validation & shows snackbars
+                            _submitReply(parentId);
+                          },
+                    icon: (_isReplySubmitting[parentId] ?? false)
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.send),
+                    label: Text(
+                      (_isReplySubmitting[parentId] ?? false)
+                          ? 'Sending'
+                          : 'Reply',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // New helper to render a company reply
+  Widget _buildCompanyReplyTile(_Reply reply, [String? parentReviewId]) {
+    // Compute the docRef for this reply:
+    // Preferred path: reviews/{parentReviewId}/replies/{reply.id} when parentReviewId available.
+    // Fallback: reviews/{reply.id} (harmless but won't reflect the actual reply doc if it's stored in subcollection).
+    DocumentReference docRef;
+    if (parentReviewId != null && parentReviewId.trim().isNotEmpty) {
+      docRef = FirebaseFirestore.instance
+          .collection('reviews')
+          .doc(parentReviewId)
+          .collection('replies')
+          .doc(reply.id);
+    } else {
+      docRef = FirebaseFirestore.instance.collection('reviews').doc(reply.id);
+    }
+
+    final createdAt = reply.createdAt.toDate();
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8, bottom: 6),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: const Color(
+          0xFFF2F4EF,
+        ), // company reply background, slightly different
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // existing parent review UI (author, text, stars...) - keep as-is
-          _buildReviewCard(thread.review),
-
-          const SizedBox(height: 8),
-
-          // Student replies (if any) - existing handling
-          ...thread.replies.map((r) => _buildReplyTile(r)).toList(),
-
-          // Company replies (from subcollection) - rendered in a visually distinct style
-          ...thread.companyReplies.map((cr) => _buildCompanyReplyTile(cr)).toList(),
-
-          // existing reply input/toggle UI (show reply button, reply textbox etc)
-          // Reply toggle + input area for students
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () {
-                setState(() {
-                  final cur = _showReplyBox[parentId] ?? false;
-                  _showReplyBox[parentId] = !cur;
-                  if (_showReplyBox[parentId] == true) {
-                    // ensure controller exists before the user types
-                    _ensureReplyController(parentId);
-                  }
-                });
-              },
-              icon: Icon(
-                (_showReplyBox[parentId] ?? false) ? Icons.expand_less : Icons.reply,
-                color: _purple,
-              ),
-              label: Text(
-                (_showReplyBox[parentId] ?? false) ? 'Hide' : 'Reply',
-                style: const TextStyle(color: _purple),
-              ),
-            ),
-          ),
-
-          if (_showReplyBox[parentId] ?? false) ...[
-            const SizedBox(height: 8),
-            // Reply input
-            TextField(
-              controller: _replyControllers[parentId],
-              maxLines: 3,
-              minLines: 1,
-              inputFormatters: [LengthLimitingTextInputFormatter(_reviewMaxLength)],
-              decoration: InputDecoration(
-                hintText: 'Write a reply…',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                contentPadding: const EdgeInsets.all(12),
-                counterText: '',
-              ),
-              onChanged: (v) {
-                // update internal flag without setState to avoid rebuilds per keystroke
-                final has = v.trim().isNotEmpty;
-                _replyHasText[parentId] = has;
-              },
-            ),
-            const SizedBox(height: 8),
-
-            // Author visibility + send button
-            Row(
+          const Icon(Icons.reply, size: 18, color: _purple),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Switch(
-                        value: _replyAuthorVisible[parentId] ?? true,
-                        activeColor: _purple,
-                        onChanged: (val) {
-                          setState(() {
-                            _replyAuthorVisible[parentId] = val;
-                          });
-                        },
-                      ),
-                      const SizedBox(width: 6),
-                      Text('Show my profile', style: GoogleFonts.lato(fontSize: 14)),
-                    ],
+                Text(reply.text, style: GoogleFonts.lato(fontSize: 14)),
+                const SizedBox(height: 6),
+                Text(
+                  reply.authorName,
+                  style: GoogleFonts.lato(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  DateFormat('MMM d, yyyy').format(createdAt),
+                  style: GoogleFonts.lato(
+                    fontSize: 11,
+                    color: Colors.grey.shade600,
                   ),
                 ),
-                ElevatedButton.icon(
-                  onPressed: (_isReplySubmitting[parentId] ?? false)
-                      ? null
-                      : () {
-                          // Submit: call existing submit handler which performs validation & shows snackbars
-                          _submitReply(parentId);
-                        },
-                  icon: (_isReplySubmitting[parentId] ?? false)
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.send),
-                  label: Text((_isReplySubmitting[parentId] ?? false) ? 'Sending' : 'Reply'),
-                ),
+                const SizedBox(height: 6),
+                // Votes for the company reply (we computed docRef above)
+                VoteButtons(docRef: docRef),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewCard(Review review) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Builder(
+                builder: (ctx) {
+                  final visible = (review.authorVisible ?? true);
+
+                  // If we have a non-empty studentId, stream the student doc for up-to-date name; otherwise fall back to stored name.
+                  if (review.studentId.isNotEmpty) {
+                    return GestureDetector(
+                      onTap: () => _openStudentProfile(
+                        studentId: review.studentId,
+                        authorVisible: visible,
+                      ),
+                      child:
+                          StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                            stream: FirebaseFirestore.instance
+                                .collection('student')
+                                .doc(review.studentId)
+                                .snapshots(),
+                            builder: (context, studentSnap) {
+                              String currentName = review.studentName;
+                              if (studentSnap.hasData &&
+                                  studentSnap.data?.data() != null) {
+                                final sd = studentSnap.data!.data()!;
+                                final fn = (sd['firstName'] ?? '')
+                                    .toString()
+                                    .trim();
+                                final ln = (sd['lastName'] ?? '')
+                                    .toString()
+                                    .trim();
+                                final combined = '$fn ${ln}'.trim();
+                                if (combined.isNotEmpty) currentName = combined;
+                              }
+                              final displayName = visible
+                                  ? (currentName.isNotEmpty
+                                        ? currentName
+                                        : review.studentName)
+                                  : 'Anonymous';
+                              return Text(
+                                displayName,
+                                style: GoogleFonts.lato(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: _purple,
+                                ),
+                              );
+                            },
+                          ),
+                    );
+                  } else {
+                    // No studentId: render the stored name (or Anonymous) and don't allow navigation.
+                    final displayName = visible
+                        ? (review.studentName.isNotEmpty
+                              ? review.studentName
+                              : 'Student')
+                        : 'Anonymous';
+                    return Text(
+                      displayName,
+                      style: GoogleFonts.lato(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: _purple,
+                      ),
+                    );
+                  }
+                },
+              ),
+            ),
+            // Stars + optional delete for owner
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildStarRating(review.rating.toInt()),
+                if ((review.studentId ?? '') == (widget.studentId ?? ''))
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    tooltip: 'Delete your review',
+                    onPressed: () =>
+                        _confirmAndDelete(review.id, isParent: true),
+                  ),
               ],
             ),
           ],
-        ],
-      ),
-    ),
-  );
-}
-
-// New helper to render a company reply
-Widget _buildCompanyReplyTile(_Reply reply, [String? parentReviewId]) {
-  // Compute the docRef for this reply:
-  // Preferred path: reviews/{parentReviewId}/replies/{reply.id} when parentReviewId available.
-  // Fallback: reviews/{reply.id} (harmless but won't reflect the actual reply doc if it's stored in subcollection).
-  DocumentReference docRef;
-  if (parentReviewId != null && parentReviewId.trim().isNotEmpty) {
-    docRef = FirebaseFirestore.instance.collection('reviews').doc(parentReviewId).collection('replies').doc(reply.id);
-  } else {
-    docRef = FirebaseFirestore.instance.collection('reviews').doc(reply.id);
-  }
-
-  final createdAt = reply.createdAt.toDate();
-  return Container(
-    width: double.infinity,
-    margin: const EdgeInsets.only(top: 8, bottom: 6),
-    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF2F4EF), // company reply background, slightly different
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.reply, size: 18, color: _purple),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(reply.text, style: GoogleFonts.lato(fontSize: 14)),
-              const SizedBox(height: 6),
-              Text(reply.authorName, style: GoogleFonts.lato(fontSize: 12, color: Colors.grey)),
-              const SizedBox(height: 6),
-              Text(DateFormat('MMM d, yyyy').format(createdAt), style: GoogleFonts.lato(fontSize: 11, color: Colors.grey.shade600)),
-              const SizedBox(height: 6),
-              // Votes for the company reply (we computed docRef above)
-              VoteButtons(docRef: docRef),
-            ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          review.reviewText,
+          style: GoogleFonts.lato(
+            fontSize: 14,
+            color: Colors.black87,
+            height: 1.5,
           ),
         ),
-      ],
-    ),
-  );
-}
-
-Widget _buildReviewCard(Review review) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Expanded(
-          child: Builder(builder: (ctx) {
-    final visible = (review.authorVisible ?? true);
-
-    // If we have a non-empty studentId, stream the student doc for up-to-date name; otherwise fall back to stored name.
-    if (review.studentId.isNotEmpty) {
-      return GestureDetector(
-        onTap: () => _openStudentProfile(studentId: review.studentId, authorVisible: visible),
-        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance.collection('student').doc(review.studentId).snapshots(),
-          builder: (context, studentSnap) {
-            String currentName = review.studentName;
-            if (studentSnap.hasData && studentSnap.data?.data() != null) {
-              final sd = studentSnap.data!.data()!;
-              final fn = (sd['firstName'] ?? '').toString().trim();
-              final ln = (sd['lastName'] ?? '').toString().trim();
-              final combined = '$fn ${ln}'.trim();
-              if (combined.isNotEmpty) currentName = combined;
-            }
-            final displayName = visible ? (currentName.isNotEmpty ? currentName : review.studentName) : 'Anonymous';
-            return Text(displayName, style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700, color: _purple));
-          },
-        ),
-      );
-    } else {
-      // No studentId: render the stored name (or Anonymous) and don't allow navigation.
-      final displayName = visible ? (review.studentName.isNotEmpty ? review.studentName : 'Student') : 'Anonymous';
-      return Text(displayName, style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700, color: _purple));
-    }
-  }),
-),
-        // Stars + optional delete for owner
+        const SizedBox(height: 8),
         Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            _buildStarRating(review.rating.toInt()),
-            if ((review.studentId ?? '') == (widget.studentId ?? ''))
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                tooltip: 'Delete your review',
-                onPressed: () => _confirmAndDelete(review.id, isParent: true),
+            Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
+            const SizedBox(width: 4),
+            Text(
+              DateFormat('MMM d, yyyy').format(review.createdAt.toDate()),
+              style: GoogleFonts.lato(
+                fontSize: 12,
+                color: Colors.grey.shade600,
               ),
+            ),
           ],
         ),
-      ]),
-      const SizedBox(height: 8),
-      Text(review.reviewText, style: GoogleFonts.lato(fontSize: 14, color: Colors.black87, height: 1.5)),
-      const SizedBox(height: 8),
-      Row(children: [
-        Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
-        const SizedBox(width: 4),
-        Text(DateFormat('MMM d, yyyy').format(review.createdAt.toDate()), style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
-      ]),
-      const SizedBox(height: 6),
-      // Votes for the review (safe guard)
-      if (review.id.trim().isNotEmpty)
-        VoteButtons(docRef: FirebaseFirestore.instance.collection('reviews').doc(review.id)),
-    ]);
+        const SizedBox(height: 6),
+        // Votes for the review (safe guard)
+        if (review.id.trim().isNotEmpty)
+          VoteButtons(
+            docRef: FirebaseFirestore.instance
+                .collection('reviews')
+                .doc(review.id),
+          ),
+      ],
+    );
   }
 
   Widget _buildReplyTile(Review reply) {
-  // Helper to compute initials from a name string
-  String _initialsFromName(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
-    if (parts.isEmpty) return '';
-    return parts.map((p) => p[0]).take(2).join().toUpperCase();
-  }
+    // Helper to compute initials from a name string
+    String _initialsFromName(String name) {
+      final parts = name
+          .trim()
+          .split(RegExp(r'\s+'))
+          .where((s) => s.isNotEmpty)
+          .toList();
+      if (parts.isEmpty) return '';
+      return parts.map((p) => p[0]).take(2).join().toUpperCase();
+    }
 
-  final hasStudentId = reply.studentId.isNotEmpty;
+    final hasStudentId = reply.studentId.isNotEmpty;
 
-  return Padding(
-    padding: const EdgeInsets.only(left: 8.0, top: 8.0, bottom: 8.0),
-    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      CircleAvatar(
-        radius: 16,
-        backgroundColor: Colors.grey.shade200,
-        child: Builder(builder: (ctx) {
-          if (hasStudentId) {
-            return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance.collection('student').doc(reply.studentId).snapshots(),
-              builder: (context, studentSnap) {
-                String nameForInitials = reply.studentName;
-                if (studentSnap.hasData && studentSnap.data?.data() != null) {
-                  final sd = studentSnap.data!.data()!;
-                  final fn = (sd['firstName'] ?? '').toString().trim();
-                  final ln = (sd['lastName'] ?? '').toString().trim();
-                  final combined = '$fn ${ln}'.trim();
-                  if (combined.isNotEmpty) nameForInitials = combined;
+    return Padding(
+      padding: const EdgeInsets.only(left: 8.0, top: 8.0, bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: Colors.grey.shade200,
+            child: Builder(
+              builder: (ctx) {
+                if (hasStudentId) {
+                  return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('student')
+                        .doc(reply.studentId)
+                        .snapshots(),
+                    builder: (context, studentSnap) {
+                      String nameForInitials = reply.studentName;
+                      if (studentSnap.hasData &&
+                          studentSnap.data?.data() != null) {
+                        final sd = studentSnap.data!.data()!;
+                        final fn = (sd['firstName'] ?? '').toString().trim();
+                        final ln = (sd['lastName'] ?? '').toString().trim();
+                        final combined = '$fn ${ln}'.trim();
+                        if (combined.isNotEmpty) nameForInitials = combined;
+                      }
+                      final initials = _initialsFromName(nameForInitials);
+                      return Text(
+                        initials,
+                        style: GoogleFonts.lato(fontSize: 12, color: _purple),
+                      );
+                    },
+                  );
+                } else {
+                  // No student id: show initials from stored name
+                  final initials = _initialsFromName(reply.studentName);
+                  return Text(
+                    initials,
+                    style: GoogleFonts.lato(fontSize: 12, color: _purple),
+                  );
                 }
-                final initials = _initialsFromName(nameForInitials);
-                return Text(initials, style: GoogleFonts.lato(fontSize: 12, color: _purple));
               },
-            );
-          } else {
-            // No student id: show initials from stored name
-            final initials = _initialsFromName(reply.studentName);
-            return Text(initials, style: GoogleFonts.lato(fontSize: 12, color: _purple));
-          }
-        }),
-      ),
-      const SizedBox(width: 8),
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Builder(builder: (ctx) {
-            final visible = (reply.authorVisible ?? true);
-            if (hasStudentId) {
-              return GestureDetector(
-                onTap: () => _openStudentProfile(studentId: reply.studentId, authorVisible: visible),
-                child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                  stream: FirebaseFirestore.instance.collection('student').doc(reply.studentId).snapshots(),
-                  builder: (context, studentSnap) {
-                    String currentName = reply.studentName;
-                    if (studentSnap.hasData && studentSnap.data?.data() != null) {
-                      final sd = studentSnap.data!.data()!;
-                      final fn = (sd['firstName'] ?? '').toString().trim();
-                      final ln = (sd['lastName'] ?? '').toString().trim();
-                      final combined = '$fn ${ln}'.trim();
-                      if (combined.isNotEmpty) currentName = combined;
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Builder(
+                  builder: (ctx) {
+                    final visible = (reply.authorVisible ?? true);
+                    if (hasStudentId) {
+                      return GestureDetector(
+                        onTap: () => _openStudentProfile(
+                          studentId: reply.studentId,
+                          authorVisible: visible,
+                        ),
+                        child:
+                            StreamBuilder<
+                              DocumentSnapshot<Map<String, dynamic>>
+                            >(
+                              stream: FirebaseFirestore.instance
+                                  .collection('student')
+                                  .doc(reply.studentId)
+                                  .snapshots(),
+                              builder: (context, studentSnap) {
+                                String currentName = reply.studentName;
+                                if (studentSnap.hasData &&
+                                    studentSnap.data?.data() != null) {
+                                  final sd = studentSnap.data!.data()!;
+                                  final fn = (sd['firstName'] ?? '')
+                                      .toString()
+                                      .trim();
+                                  final ln = (sd['lastName'] ?? '')
+                                      .toString()
+                                      .trim();
+                                  final combined = '$fn ${ln}'.trim();
+                                  if (combined.isNotEmpty)
+                                    currentName = combined;
+                                }
+                                final displayName = visible
+                                    ? (currentName.isNotEmpty
+                                          ? currentName
+                                          : reply.studentName)
+                                    : 'Anonymous';
+                                return Text(
+                                  displayName,
+                                  style: GoogleFonts.lato(
+                                    fontWeight: FontWeight.w700,
+                                    color: _purple,
+                                  ),
+                                );
+                              },
+                            ),
+                      );
+                    } else {
+                      final displayName = (reply.authorVisible ?? true)
+                          ? (reply.studentName.isNotEmpty
+                                ? reply.studentName
+                                : 'Student')
+                          : 'Anonymous';
+                      return Text(
+                        displayName,
+                        style: GoogleFonts.lato(
+                          fontWeight: FontWeight.w700,
+                          color: _purple,
+                        ),
+                      );
                     }
-                    final displayName = visible ? (currentName.isNotEmpty ? currentName : reply.studentName) : 'Anonymous';
-                    return Text(displayName, style: GoogleFonts.lato(fontWeight: FontWeight.w700, color: _purple));
                   },
                 ),
-              );
-            } else {
-              final displayName = (reply.authorVisible ?? true) ? (reply.studentName.isNotEmpty ? reply.studentName : 'Student') : 'Anonymous';
-              return Text(displayName, style: GoogleFonts.lato(fontWeight: FontWeight.w700, color: _purple));
-            }
-          }),
-          const SizedBox(height: 4),
-          Text(reply.reviewText, style: GoogleFonts.lato(fontSize: 13, color: Colors.black87, height: 1.4)),
-          const SizedBox(height: 6),
-          Row(
-      children: [
-        Text(DateFormat('MMM d, yyyy').format(reply.createdAt.toDate()), style: GoogleFonts.lato(fontSize: 11, color: Colors.grey.shade600)),
-        const SizedBox(width: 8),
-        if ((reply.studentId ?? '') == (widget.studentId ?? ''))
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red, size: 18),
-            tooltip: 'Delete your reply',
-            onPressed: () => _confirmAndDelete(reply.id, isParent: false),
+                const SizedBox(height: 4),
+                Text(
+                  reply.reviewText,
+                  style: GoogleFonts.lato(
+                    fontSize: 13,
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text(
+                      DateFormat(
+                        'MMM d, yyyy',
+                      ).format(reply.createdAt.toDate()),
+                      style: GoogleFonts.lato(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if ((reply.studentId ?? '') == (widget.studentId ?? ''))
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete,
+                          color: Colors.red,
+                          size: 18,
+                        ),
+                        tooltip: 'Delete your reply',
+                        onPressed: () =>
+                            _confirmAndDelete(reply.id, isParent: false),
+                      ),
+                    // Add spacer then votes so votes appear on the right like other places
+                    const Spacer(),
+                    if (reply.id.trim().isNotEmpty)
+                      VoteButtons(
+                        docRef: FirebaseFirestore.instance
+                            .collection('reviews')
+                            .doc(reply.id),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        // Add spacer then votes so votes appear on the right like other places
-        const Spacer(),
-        if (reply.id.trim().isNotEmpty)
-          VoteButtons(docRef: FirebaseFirestore.instance.collection('reviews').doc(reply.id)),
-      ],
-    ),
-        ]),
+        ],
       ),
-    ]),
-  );
-}
+    );
+  }
 
   Widget _buildStarRating(int rating) {
-    return Row(mainAxisSize: MainAxisSize.min, children: List.generate(5, (index) {
-      return Icon(index < rating ? Icons.star : Icons.star_border, color: index < rating ? const Color(0xFFF99D46) : Colors.grey.shade400, size: 20);
-    }));
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        return Icon(
+          index < rating ? Icons.star : Icons.star_border,
+          color: index < rating
+              ? const Color(0xFFF99D46)
+              : Colors.grey.shade400,
+          size: 20,
+        );
+      }),
+    );
   }
 }
 
@@ -1808,7 +2307,10 @@ class _InterviewReviewThread {
 }
 
 class _InterviewReviewsTab extends StatefulWidget {
-  const _InterviewReviewsTab({required this.companyId, required this.studentId});
+  const _InterviewReviewsTab({
+    required this.companyId,
+    required this.studentId,
+  });
   final String companyId;
   final String? studentId;
 
@@ -1828,7 +2330,13 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
   final _interviewAnswersController = TextEditingController();
   String? _wasAccepted;
 
-  final List<String> _difficultyLevels = ['Very Easy', 'Easy', 'Average', 'Medium', 'Hard'];
+  final List<String> _difficultyLevels = [
+    'Very Easy',
+    'Easy',
+    'Average',
+    'Medium',
+    'Hard',
+  ];
   final List<String> _acceptanceOptions = ['Yes', 'No', 'Not Sure'];
 
   // Reply UI state per root review id
@@ -1894,20 +2402,29 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
         final repliesCol = doc.reference.collection('replies');
         List<_Reply> companyReplies = [];
         try {
-          final repliesSnapshot = await repliesCol.orderBy('createdAt', descending: false).get();
-          companyReplies = repliesSnapshot.docs.map((d) => _Reply.fromDoc(d)).toList();
+          final repliesSnapshot = await repliesCol
+              .orderBy('createdAt', descending: false)
+              .get();
+          companyReplies = repliesSnapshot.docs
+              .map((d) => _Reply.fromDoc(d))
+              .toList();
         } catch (e) {
           companyReplies = [];
         }
 
-        threads.add(_InterviewReviewThread(
-          review: top,
-          replies: studentReplies,
-          companyReplies: companyReplies,
-        ));
+        threads.add(
+          _InterviewReviewThread(
+            review: top,
+            replies: studentReplies,
+            companyReplies: companyReplies,
+          ),
+        );
       }
 
-      threads.sort((a, b) => b.review.createdAt.toDate().compareTo(a.review.createdAt.toDate()));
+      threads.sort(
+        (a, b) =>
+            b.review.createdAt.toDate().compareTo(a.review.createdAt.toDate()),
+      );
 
       return threads;
     });
@@ -1918,10 +2435,12 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
     if (_overallExperience == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select your overall experience (Like or Dislike)'),
+          content: Text(
+            'Please select your overall experience (Like or Dislike)',
+          ),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
-        )
+        ),
       );
       return;
     }
@@ -1933,7 +2452,7 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
           content: Text('Please select interview difficulty'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
-        )
+        ),
       );
       return;
     }
@@ -1945,7 +2464,7 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
           content: Text('Please share what questions they asked you'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
-        )
+        ),
       );
       return;
     }
@@ -1957,14 +2476,16 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
           content: Text('Please indicate if you got accepted'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
-        )
+        ),
       );
       return;
     }
 
     if (widget.studentId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be logged in to leave a review.'))
+        const SnackBar(
+          content: Text('You must be logged in to leave a review.'),
+        ),
       );
       return;
     }
@@ -1972,7 +2493,10 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
     setState(() => _isSubmitting = true);
 
     try {
-      final studentDoc = await FirebaseFirestore.instance.collection('student').doc(widget.studentId).get();
+      final studentDoc = await FirebaseFirestore.instance
+          .collection('student')
+          .doc(widget.studentId)
+          .get();
       final first = (studentDoc.data()?['firstName'] ?? '').toString();
       final last = (studentDoc.data()?['lastName'] ?? '').toString();
       final studentName = ('$first $last').trim();
@@ -1987,23 +2511,34 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
         'studentName': studentName,
         'companyId': widget.companyId,
         'rating': rating,
-        'reviewText': '', // Empty string for compatibility with existing data model
+        'reviewText':
+            '', // Empty string for compatibility with existing data model
         'createdAt': Timestamp.now(),
         'authorVisible': _authorVisible,
         'interviewDifficulty': _selectedDifficulty,
-        'interviewQuestions': _interviewQuestionsController.text.trim().isNotEmpty ? _interviewQuestionsController.text.trim() : null,
-        'interviewAnswers': _interviewAnswersController.text.trim().isNotEmpty ? _interviewAnswersController.text.trim() : null,
+        'interviewQuestions':
+            _interviewQuestionsController.text.trim().isNotEmpty
+            ? _interviewQuestionsController.text.trim()
+            : null,
+        'interviewAnswers': _interviewAnswersController.text.trim().isNotEmpty
+            ? _interviewAnswersController.text.trim()
+            : null,
         'wasAccepted': _wasAccepted,
       };
 
-      await FirebaseFirestore.instance.collection('interview_reviews').add(reviewData);
+      await FirebaseFirestore.instance
+          .collection('interview_reviews')
+          .add(reviewData);
 
       if (mounted) {
         // Close the modal
         Navigator.of(context).pop();
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Thank you for your interview review!'), backgroundColor: Colors.green)
+          const SnackBar(
+            content: Text('Thank you for your interview review!'),
+            backgroundColor: Colors.green,
+          ),
         );
         _reviewController.clear();
         _interviewQuestionsController.clear();
@@ -2017,7 +2552,10 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to submit review: $e'), backgroundColor: Colors.red)
+          SnackBar(
+            content: Text('Failed to submit review: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -2032,19 +2570,23 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
 
     if (widget.studentId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be logged in to reply.'))
+        const SnackBar(content: Text('You must be logged in to reply.')),
       );
       return;
     }
     if (text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reply cannot be empty.'))
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Reply cannot be empty.')));
       return;
     }
     if (text.length < _reviewMinLength || text.length > _reviewMaxLength) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Your reply must be between $_reviewMinLength and $_reviewMaxLength characters.'))
+        SnackBar(
+          content: Text(
+            'Your reply must be between $_reviewMinLength and $_reviewMaxLength characters.',
+          ),
+        ),
       );
       return;
     }
@@ -2055,25 +2597,37 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
     String parentCompanyId = widget.companyId;
 
     try {
-      parentReviewDoc = await FirebaseFirestore.instance.collection('interview_reviews').doc(parentReviewId).get();
+      parentReviewDoc = await FirebaseFirestore.instance
+          .collection('interview_reviews')
+          .doc(parentReviewId)
+          .get();
       if (!parentReviewDoc.exists) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Original review not found. Please refresh and try again.'), backgroundColor: Colors.red),
+            const SnackBar(
+              content: Text(
+                'Original review not found. Please refresh and try again.',
+              ),
+              backgroundColor: Colors.red,
+            ),
           );
         }
         return;
       }
       parentReviewData = parentReviewDoc.data() as Map<String, dynamic>?;
       parentStudentId = (parentReviewData?['studentId'] ?? '') as String;
-      final parentCompanyFromDoc = (parentReviewData?['companyId'] ?? '') as String;
+      final parentCompanyFromDoc =
+          (parentReviewData?['companyId'] ?? '') as String;
       if (parentCompanyFromDoc.isNotEmpty) {
         parentCompanyId = parentCompanyFromDoc;
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unable to send reply (missing parent review): $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Unable to send reply (missing parent review): $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
       return;
@@ -2082,7 +2636,10 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
     if (!mounted) return;
     setState(() => _isReplySubmitting[parentReviewId] = true);
     try {
-      final studentDoc = await FirebaseFirestore.instance.collection('student').doc(widget.studentId).get();
+      final studentDoc = await FirebaseFirestore.instance
+          .collection('student')
+          .doc(widget.studentId)
+          .get();
       final first = (studentDoc.data()?['firstName'] ?? '').toString();
       final last = (studentDoc.data()?['lastName'] ?? '').toString();
       final studentName = ('$first $last').trim();
@@ -2098,25 +2655,9 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
         'parentId': parentReviewId,
       };
 
-      await FirebaseFirestore.instance.collection('interview_reviews').add(replyData);
-
-      if (parentStudentId.isNotEmpty && parentStudentId != widget.studentId) {
-        await NotificationHelper().notifyInterviewReviewReply(
-          recipientId: parentStudentId,
-          companyId: parentCompanyId,
-          reviewId: parentReviewId,
-          replyPreview: text,
-        );
-      }
-
-      if (parentStudentId.isNotEmpty && parentStudentId != widget.studentId) {
-        await NotificationHelper().notifyInterviewReviewReply(
-          recipientId: parentStudentId,
-          companyId: parentCompanyId,
-          reviewId: parentReviewId,
-          replyPreview: text,
-        );
-      }
+      await FirebaseFirestore.instance
+          .collection('interview_reviews')
+          .add(replyData);
 
       if (!mounted) return;
       controller.clear();
@@ -2127,7 +2668,10 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to submit reply: $e'), backgroundColor: Colors.red)
+          SnackBar(
+            content: Text('Failed to submit reply: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -2137,11 +2681,17 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
     }
   }
 
-  Future<void> _confirmAndDelete(String reviewId, {required bool isParent}) async {
+  Future<void> _confirmAndDelete(
+    String reviewId, {
+    required bool isParent,
+  }) async {
     if (reviewId.trim().isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to delete: invalid review id.'), backgroundColor: Colors.red)
+          const SnackBar(
+            content: Text('Unable to delete: invalid review id.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
       return;
@@ -2150,7 +2700,10 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
     if (widget.studentId == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You must be signed in to delete your content.'), backgroundColor: Colors.red)
+          const SnackBar(
+            content: Text('You must be signed in to delete your content.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
       return;
@@ -2160,13 +2713,18 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete'),
-        content: const Text('Are you sure you want to delete this item? This cannot be undone.'),
+        content: const Text(
+          'Are you sure you want to delete this item? This cannot be undone.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(backgroundColor: _purple),
-            child: const Text('Delete', style: TextStyle(color: Colors.white))
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -2175,15 +2733,21 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
     if (confirmed != true) return;
 
     try {
-      final reviewsCol = FirebaseFirestore.instance.collection('interview_reviews');
+      final reviewsCol = FirebaseFirestore.instance.collection(
+        'interview_reviews',
+      );
 
       if (isParent) {
         final parentDocRef = reviewsCol.doc(reviewId);
         final parentSnap = await parentDocRef.get();
         if (!parentSnap.exists) {
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Review not found.'), backgroundColor: Colors.red)
-          );
+          if (mounted)
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Review not found.'),
+                backgroundColor: Colors.red,
+              ),
+            );
           return;
         }
         final parentData = parentSnap.data() as Map<String, dynamic>? ?? {};
@@ -2192,7 +2756,10 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
         if (parentStudentId != widget.studentId) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('You can only delete your own review.'), backgroundColor: Colors.red)
+              const SnackBar(
+                content: Text('You can only delete your own review.'),
+                backgroundColor: Colors.red,
+              ),
             );
           }
           return;
@@ -2211,16 +2778,24 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
         batch.delete(parentDocRef);
         await batch.commit();
 
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Deleted'), backgroundColor: Colors.green)
-        );
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Deleted'),
+              backgroundColor: Colors.green,
+            ),
+          );
       } else {
         final docRef = reviewsCol.doc(reviewId);
         final snap = await docRef.get();
         if (!snap.exists) {
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Reply not found.'), backgroundColor: Colors.red)
-          );
+          if (mounted)
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Reply not found.'),
+                backgroundColor: Colors.red,
+              ),
+            );
           return;
         }
         final data = snap.data() as Map<String, dynamic>? ?? {};
@@ -2229,21 +2804,32 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
         if (replyStudentId != widget.studentId) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('You can only delete your own replies.'), backgroundColor: Colors.red)
+              const SnackBar(
+                content: Text('You can only delete your own replies.'),
+                backgroundColor: Colors.red,
+              ),
             );
           }
           return;
         }
 
         await docRef.delete();
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reply deleted'), backgroundColor: Colors.green)
-        );
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Reply deleted'),
+              backgroundColor: Colors.green,
+            ),
+          );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red)
-      );
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Delete failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
     }
   }
 
@@ -2283,9 +2869,7 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                     child: ListView(
                       controller: controller,
                       padding: const EdgeInsets.all(16),
-                      children: [
-                        _buildWriteInterviewReviewForm(setModalState),
-                      ],
+                      children: [_buildWriteInterviewReviewForm(setModalState)],
                     ),
                   ),
                 ],
@@ -2323,7 +2907,11 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.rate_review, color: Colors.white, size: 28),
+                child: const Icon(
+                  Icons.rate_review,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -2559,13 +3147,19 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
 
             // Color coding for difficulty levels
             Color getDifficultyColor() {
-              switch(level) {
-                case 'Very Easy': return const Color(0xFF10B981);
-                case 'Easy': return const Color(0xFF3B82F6);
-                case 'Average': return const Color(0xFFF59E0B);
-                case 'Medium': return const Color(0xFFEF4444);
-                case 'Hard': return const Color(0xFF991B1B);
-                default: return Colors.grey;
+              switch (level) {
+                case 'Very Easy':
+                  return const Color(0xFF10B981);
+                case 'Easy':
+                  return const Color(0xFF3B82F6);
+                case 'Average':
+                  return const Color(0xFFF59E0B);
+                case 'Medium':
+                  return const Color(0xFFEF4444);
+                case 'Hard':
+                  return const Color(0xFF991B1B);
+                default:
+                  return Colors.grey;
               }
             }
 
@@ -2582,9 +3176,14 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
-                    color: isSelected ? color.withAlpha(25) : Colors.grey.shade50,
+                    color: isSelected
+                        ? color.withAlpha(25)
+                        : Colors.grey.shade50,
                     border: Border.all(
                       color: isSelected ? color : Colors.grey.shade300,
                       width: isSelected ? 2.5 : 1.5,
@@ -2604,7 +3203,9 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                     level,
                     style: GoogleFonts.lato(
                       fontSize: 15,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w600,
                       color: isSelected ? color : Colors.grey.shade700,
                     ),
                   ),
@@ -2653,7 +3254,8 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
           maxLength: 1000,
           style: GoogleFonts.lato(fontSize: 15, height: 1.5),
           decoration: InputDecoration(
-            hintText: 'Share the questions you were asked...\ne.g., "Tell me about yourself", "Describe a challenging project you worked on"',
+            hintText:
+                'Share the questions you were asked...\ne.g., "Tell me about yourself", "Describe a challenging project you worked on"',
             hintStyle: GoogleFonts.lato(
               color: Colors.grey.shade400,
               fontSize: 14,
@@ -2674,7 +3276,10 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
               borderSide: BorderSide(color: _purple, width: 2.5),
             ),
             contentPadding: const EdgeInsets.all(18),
-            counterStyle: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600),
+            counterStyle: GoogleFonts.lato(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
           ),
         ),
         const SizedBox(height: 28),
@@ -2739,7 +3344,10 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
               borderSide: BorderSide(color: _purple, width: 2.5),
             ),
             contentPadding: const EdgeInsets.all(18),
-            counterStyle: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600),
+            counterStyle: GoogleFonts.lato(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
           ),
         ),
         const SizedBox(height: 28),
@@ -2799,24 +3407,36 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        borderSide: BorderSide(
+                          color: Colors.grey.shade300,
+                          width: 1.5,
+                        ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        borderSide: BorderSide(
+                          color: Colors.grey.shade300,
+                          width: 1.5,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(color: _purple, width: 2.5),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                     ),
                     items: _acceptanceOptions.map((String option) {
                       return DropdownMenuItem<String>(
                         value: option,
                         child: Text(
                           option,
-                          style: GoogleFonts.lato(fontSize: 15, color: Colors.black87),
+                          style: GoogleFonts.lato(
+                            fontSize: 15,
+                            color: Colors.black87,
+                          ),
                         ),
                       );
                     }).toList(),
@@ -2851,12 +3471,18 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                             color: _authorVisible ? _purple : Colors.white,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: _authorVisible ? _purple : Colors.grey.shade400,
+                              color: _authorVisible
+                                  ? _purple
+                                  : Colors.grey.shade400,
                               width: 2,
                             ),
                           ),
                           child: _authorVisible
-                              ? const Icon(Icons.check_rounded, size: 18, color: Colors.white)
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  size: 18,
+                                  color: Colors.white,
+                                )
                               : null,
                         ),
                         const SizedBox(width: 14),
@@ -2913,7 +3539,9 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
               backgroundColor: _purple,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               disabledBackgroundColor: Colors.grey.shade300,
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
@@ -2921,7 +3549,10 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                 ? const SizedBox(
                     width: 26,
                     height: 26,
-                    child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: Colors.white,
+                    ),
                   )
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -2988,7 +3619,9 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
     }
 
     return ListView(
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
       children: children,
     );
@@ -3009,12 +3642,14 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
 
     String? mostCommonDifficulty;
     if (difficultyCounts.isNotEmpty) {
-      mostCommonDifficulty = difficultyCounts.entries.reduce(
-        (a, b) => a.value >= b.value ? a : b,
-      ).key;
+      mostCommonDifficulty = difficultyCounts.entries
+          .reduce((a, b) => a.value >= b.value ? a : b)
+          .key;
     }
 
-    final acceptancePercent = total == 0 ? 0 : ((accepted / total) * 100).round();
+    final acceptancePercent = total == 0
+        ? 0
+        : ((accepted / total) * 100).round();
 
     Widget buildStat(String value, String label) {
       return Expanded(
@@ -3151,7 +3786,9 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                noReviews ? 'Be the first to rate this interview' : 'Share your interview experience',
+                noReviews
+                    ? 'Be the first to rate this interview'
+                    : 'Share your interview experience',
                 style: GoogleFonts.lato(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -3173,8 +3810,13 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: canSubmit ? () => _showWriteReviewDialog(context) : null,
-                  icon: Icon(canSubmit ? Icons.rate_review_outlined : Icons.lock_outline, size: 20),
+                  onPressed: canSubmit
+                      ? () => _showWriteReviewDialog(context)
+                      : null,
+                  icon: Icon(
+                    canSubmit ? Icons.rate_review_outlined : Icons.lock_outline,
+                    size: 20,
+                  ),
                   label: Text(canSubmit ? 'Rate Interview' : 'Sign in to rate'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
@@ -3183,7 +3825,9 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                     disabledForegroundColor: _purple.withOpacity(0.5),
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
               ),
@@ -3211,18 +3855,30 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                 end: Alignment.bottomRight,
               ),
             ),
-            child: const Icon(Icons.quiz_outlined, size: 52, color: Colors.white),
+            child: const Icon(
+              Icons.quiz_outlined,
+              size: 52,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 24),
           Text(
             'No interview reviews yet',
-            style: GoogleFonts.lato(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.black87),
+            style: GoogleFonts.lato(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: Colors.black87,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
             'Be the first to share your interview experience and help others prepare!',
-            style: GoogleFonts.lato(fontSize: 14, color: Colors.grey.shade600, height: 1.5),
+            style: GoogleFonts.lato(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+              height: 1.5,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -3257,7 +3913,8 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildInterviewReviewCard(thread.review),
-            if (thread.replies.isNotEmpty || thread.companyReplies.isNotEmpty) ...[
+            if (thread.replies.isNotEmpty ||
+                thread.companyReplies.isNotEmpty) ...[
               const SizedBox(height: 16),
               Divider(color: Colors.grey.shade200, height: 1),
               const SizedBox(height: 12),
@@ -3279,7 +3936,9 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                   });
                 },
                 icon: Icon(
-                  (_showReplyBox[parentId] ?? false) ? Icons.expand_less : Icons.reply,
+                  (_showReplyBox[parentId] ?? false)
+                      ? Icons.expand_less
+                      : Icons.reply,
                   color: _purple,
                 ),
                 label: Text(
@@ -3295,10 +3954,14 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                 controller: _replyControllers[parentId],
                 maxLines: 3,
                 minLines: 1,
-                inputFormatters: [LengthLimitingTextInputFormatter(_reviewMaxLength)],
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(_reviewMaxLength),
+                ],
                 decoration: InputDecoration(
                   hintText: 'Write a reply…',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   contentPadding: const EdgeInsets.all(12),
                   counterText: '',
                 ),
@@ -3322,7 +3985,10 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                           },
                         ),
                         const SizedBox(width: 6),
-                        Text('Show my profile', style: GoogleFonts.lato(fontSize: 14)),
+                        Text(
+                          'Show my profile',
+                          style: GoogleFonts.lato(fontSize: 14),
+                        ),
                       ],
                     ),
                   ),
@@ -3334,10 +4000,17 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                         ? const SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Icon(Icons.send),
-                    label: Text((_isReplySubmitting[parentId] ?? false) ? 'Sending' : 'Reply'),
+                    label: Text(
+                      (_isReplySubmitting[parentId] ?? false)
+                          ? 'Sending'
+                          : 'Reply',
+                    ),
                   ),
                 ],
               ),
@@ -3379,7 +4052,9 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                   radius: 22,
                   backgroundColor: _purple.withAlpha(25),
                   child: Text(
-                    _getInitials((review.authorVisible) ? review.studentName : 'A'),
+                    _getInitials(
+                      (review.authorVisible) ? review.studentName : 'A',
+                    ),
                     style: GoogleFonts.lato(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
@@ -3388,110 +4063,75 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                   ),
                 ),
               ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    (review.authorVisible) ? (review.studentName.isNotEmpty ? review.studentName : 'Student') : 'Anonymous',
-                    style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black87),
-                  ),
-                  Row(
-                    children: [
-                      Icon(Icons.access_time, size: 12, color: Colors.grey.shade500),
-                      const SizedBox(width: 4),
-                      Text(
-                        DateFormat('MMM d, yyyy').format(review.createdAt.toDate()),
-                        style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      (review.authorVisible)
+                          ? (review.studentName.isNotEmpty
+                                ? review.studentName
+                                : 'Student')
+                          : 'Anonymous',
+                      style: GoogleFonts.lato(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
                       ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            if (review.studentId == widget.studentId)
-              IconButton(
-                icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
-                tooltip: 'Delete your review',
-                onPressed: () => _confirmAndDelete(review.id, isParent: true),
-              ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // Overall experience badge
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            // Overall Experience (Like/Dislike)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: review.rating >= 4 ? Colors.green.shade50 : Colors.red.shade50,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: review.rating >= 4 ? Colors.green.shade300 : Colors.red.shade300,
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    review.rating >= 4 ? Icons.thumb_up : Icons.thumb_down,
-                    size: 16,
-                    color: review.rating >= 4 ? Colors.green.shade700 : Colors.red.shade700,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    review.rating >= 4 ? 'Like' : 'Dislike',
-                    style: GoogleFonts.lato(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: review.rating >= 4 ? Colors.green.shade700 : Colors.red.shade700,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            // Difficulty Badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _getDifficultyColor(review.interviewDifficulty ?? 'Medium').withOpacity(0.15),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _getDifficultyColor(review.interviewDifficulty ?? 'Medium').withOpacity(0.3),
-                  width: 1,
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 12,
+                          color: Colors.grey.shade500,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          DateFormat(
+                            'MMM d, yyyy',
+                          ).format(review.createdAt.toDate()),
+                          style: GoogleFonts.lato(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              child: Text(
-                review.interviewDifficulty ?? 'Medium',
-                style: GoogleFonts.lato(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: _getDifficultyColor(review.interviewDifficulty ?? 'Medium'),
+              if (review.studentId == widget.studentId)
+                IconButton(
+                  icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
+                  tooltip: 'Delete your review',
+                  onPressed: () => _confirmAndDelete(review.id, isParent: true),
                 ),
-              ),
-            ),
-            if (review.wasAccepted != null)
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Overall experience badge
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              // Overall Experience (Like/Dislike)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: review.wasAccepted == 'Yes'
+                  color: review.rating >= 4
                       ? Colors.green.shade50
-                      : review.wasAccepted == 'No'
-                          ? Colors.red.shade50
-                          : Colors.orange.shade50,
+                      : Colors.red.shade50,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: review.wasAccepted == 'Yes'
+                    color: review.rating >= 4
                         ? Colors.green.shade300
-                        : review.wasAccepted == 'No'
-                            ? Colors.red.shade300
-                            : Colors.orange.shade300,
+                        : Colors.red.shade300,
                     width: 1,
                   ),
                 ),
@@ -3499,108 +4139,205 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      review.wasAccepted == 'Yes'
-                          ? Icons.check_circle
-                          : review.wasAccepted == 'No'
-                              ? Icons.cancel
-                              : Icons.help_outline,
+                      review.rating >= 4 ? Icons.thumb_up : Icons.thumb_down,
                       size: 16,
-                      color: review.wasAccepted == 'Yes'
+                      color: review.rating >= 4
                           ? Colors.green.shade700
-                          : review.wasAccepted == 'No'
-                              ? Colors.red.shade700
-                              : Colors.orange.shade700,
+                          : Colors.red.shade700,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 6),
                     Text(
-                      review.wasAccepted == 'Yes'
-                          ? 'Accepted'
-                          : review.wasAccepted == 'No'
-                              ? 'Not Accepted'
-                              : 'Not Sure',
+                      review.rating >= 4 ? 'Like' : 'Dislike',
                       style: GoogleFonts.lato(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: review.wasAccepted == 'Yes'
+                        color: review.rating >= 4
                             ? Colors.green.shade700
-                            : review.wasAccepted == 'No'
-                                ? Colors.red.shade700
-                                : Colors.orange.shade700,
+                            : Colors.red.shade700,
                       ),
                     ),
                   ],
                 ),
               ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // Interview questions section
-        if (review.interviewQuestions != null && review.interviewQuestions!.isNotEmpty) ...[
-          Row(
-            children: [
-              Icon(Icons.question_answer, size: 18, color: _purple),
-              const SizedBox(width: 8),
-              Expanded(
+              // Difficulty Badge
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: _getDifficultyColor(
+                    review.interviewDifficulty ?? 'Medium',
+                  ).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _getDifficultyColor(
+                      review.interviewDifficulty ?? 'Medium',
+                    ).withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
                 child: Text(
-                  'Q: What were the main things they asked you?',
-                  style: GoogleFonts.lato(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87),
-                  softWrap: true,
+                  review.interviewDifficulty ?? 'Medium',
+                  style: GoogleFonts.lato(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _getDifficultyColor(
+                      review.interviewDifficulty ?? 'Medium',
+                    ),
+                  ),
                 ),
               ),
+              if (review.wasAccepted != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: review.wasAccepted == 'Yes'
+                        ? Colors.green.shade50
+                        : review.wasAccepted == 'No'
+                        ? Colors.red.shade50
+                        : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: review.wasAccepted == 'Yes'
+                          ? Colors.green.shade300
+                          : review.wasAccepted == 'No'
+                          ? Colors.red.shade300
+                          : Colors.orange.shade300,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        review.wasAccepted == 'Yes'
+                            ? Icons.check_circle
+                            : review.wasAccepted == 'No'
+                            ? Icons.cancel
+                            : Icons.help_outline,
+                        size: 16,
+                        color: review.wasAccepted == 'Yes'
+                            ? Colors.green.shade700
+                            : review.wasAccepted == 'No'
+                            ? Colors.red.shade700
+                            : Colors.orange.shade700,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        review.wasAccepted == 'Yes'
+                            ? 'Accepted'
+                            : review.wasAccepted == 'No'
+                            ? 'Not Accepted'
+                            : 'Not Sure',
+                        style: GoogleFonts.lato(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: review.wasAccepted == 'Yes'
+                              ? Colors.green.shade700
+                              : review.wasAccepted == 'No'
+                              ? Colors.red.shade700
+                              : Colors.orange.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: Text(
-              review.interviewQuestions!,
-              style: GoogleFonts.lato(fontSize: 14, color: Colors.black87, height: 1.6),
-              softWrap: true,
-              overflow: TextOverflow.visible,
-            ),
           ),
           const SizedBox(height: 16),
-        ],
 
-        // Interview answers section (optional)
-        if (review.interviewAnswers != null && review.interviewAnswers!.isNotEmpty) ...[
-          Row(
-            children: [
-              Icon(Icons.lightbulb_outline, size: 18, color: Colors.blue.shade700),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'How did you approach answering?',
-                  style: GoogleFonts.lato(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87),
-                  softWrap: true,
+          // Interview questions section
+          if (review.interviewQuestions != null &&
+              review.interviewQuestions!.isNotEmpty) ...[
+            Row(
+              children: [
+                Icon(Icons.question_answer, size: 18, color: _purple),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Q: What were the main things they asked you?',
+                    style: GoogleFonts.lato(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                    softWrap: true,
+                  ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue.shade200),
+              child: Text(
+                review.interviewQuestions!,
+                style: GoogleFonts.lato(
+                  fontSize: 14,
+                  color: Colors.black87,
+                  height: 1.6,
+                ),
+                softWrap: true,
+                overflow: TextOverflow.visible,
+              ),
             ),
-            child: Text(
-              review.interviewAnswers!,
-              style: GoogleFonts.lato(fontSize: 14, color: Colors.black87, height: 1.6),
-              softWrap: true,
-              overflow: TextOverflow.visible,
+            const SizedBox(height: 16),
+          ],
+
+          // Interview answers section (optional)
+          if (review.interviewAnswers != null &&
+              review.interviewAnswers!.isNotEmpty) ...[
+            Row(
+              children: [
+                Icon(
+                  Icons.lightbulb_outline,
+                  size: 18,
+                  color: Colors.blue.shade700,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'How did you approach answering?',
+                    style: GoogleFonts.lato(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                    softWrap: true,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Text(
+                review.interviewAnswers!,
+                style: GoogleFonts.lato(
+                  fontSize: 14,
+                  color: Colors.black87,
+                  height: 1.6,
+                ),
+                softWrap: true,
+                overflow: TextOverflow.visible,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -3617,7 +4354,7 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
             backgroundColor: Colors.grey.shade200,
             child: Text(
               _getInitials(reply.studentName),
-              style: GoogleFonts.lato(fontSize: 12, color: _purple)
+              style: GoogleFonts.lato(fontSize: 12, color: _purple),
             ),
           ),
           const SizedBox(width: 8),
@@ -3626,24 +4363,48 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  (reply.authorVisible) ? (reply.studentName.isNotEmpty ? reply.studentName : 'Student') : 'Anonymous',
-                  style: GoogleFonts.lato(fontWeight: FontWeight.w700, color: _purple)
+                  (reply.authorVisible)
+                      ? (reply.studentName.isNotEmpty
+                            ? reply.studentName
+                            : 'Student')
+                      : 'Anonymous',
+                  style: GoogleFonts.lato(
+                    fontWeight: FontWeight.w700,
+                    color: _purple,
+                  ),
                 ),
                 const SizedBox(height: 4),
-                Text(reply.reviewText, style: GoogleFonts.lato(fontSize: 13, color: Colors.black87, height: 1.4)),
+                Text(
+                  reply.reviewText,
+                  style: GoogleFonts.lato(
+                    fontSize: 13,
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
                     Text(
-                      DateFormat('MMM d, yyyy').format(reply.createdAt.toDate()),
-                      style: GoogleFonts.lato(fontSize: 11, color: Colors.grey.shade600)
+                      DateFormat(
+                        'MMM d, yyyy',
+                      ).format(reply.createdAt.toDate()),
+                      style: GoogleFonts.lato(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     if (reply.studentId == widget.studentId)
                       IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+                        icon: const Icon(
+                          Icons.delete,
+                          color: Colors.red,
+                          size: 18,
+                        ),
                         tooltip: 'Delete your reply',
-                        onPressed: () => _confirmAndDelete(reply.id, isParent: false),
+                        onPressed: () =>
+                            _confirmAndDelete(reply.id, isParent: false),
                       ),
                   ],
                 ),
@@ -3674,16 +4435,26 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(reply.text.isEmpty ? '—' : reply.text, style: const TextStyle(fontSize: 14)),
+                Text(
+                  reply.text.isEmpty ? '—' : reply.text,
+                  style: const TextStyle(fontSize: 14),
+                ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
                     Text(
                       reply.authorName.isEmpty ? 'Company' : reply.authorName,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Text(createdAt.toString(), style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                    Text(
+                      createdAt.toString(),
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
                   ],
                 ),
               ],
@@ -3695,7 +4466,11 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
   }
 
   String _getInitials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((s) => s.isNotEmpty)
+        .toList();
     if (parts.isEmpty) return '';
     return parts.map((p) => p[0]).take(2).join().toUpperCase();
   }
@@ -3904,10 +4679,12 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
     if (start == null && end == null) {
       return 'Not specified';
     }
-    final String startDate =
-        start != null ? _dateFormatter.format(start.toDate()) : 'N/A';
-    final String endDate =
-        end != null ? _dateFormatter.format(end.toDate()) : 'N/A';
+    final String startDate = start != null
+        ? _dateFormatter.format(start.toDate())
+        : 'N/A';
+    final String endDate = end != null
+        ? _dateFormatter.format(end.toDate())
+        : 'N/A';
     return '$startDate - $endDate';
   }
 
@@ -3923,7 +4700,12 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120), // Add bottom padding
+        padding: const EdgeInsets.fromLTRB(
+          20,
+          20,
+          20,
+          120,
+        ), // Add bottom padding
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -3945,7 +4727,7 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            
+
             // --- Key Details Section ---
             const Divider(height: 32),
             _buildDetailSection(
@@ -3955,13 +4737,22 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
                   _buildIconRow(Icons.work_outline, 'Type', opp.type),
                   if (opp.location != null)
                     _buildIconRow(
-                        Icons.location_on_outlined, 'Location', opp.location!),
+                      Icons.location_on_outlined,
+                      'Location',
+                      opp.location!,
+                    ),
                   if (opp.workMode != null)
                     _buildIconRow(
-                        Icons.apartment_outlined, 'Work Mode', opp.workMode!),
+                      Icons.apartment_outlined,
+                      'Work Mode',
+                      opp.workMode!,
+                    ),
                   if (opp.preferredMajor != null)
-                    _buildIconRow(Icons.school_outlined, 'Preferred Major',
-                        opp.preferredMajor!),
+                    _buildIconRow(
+                      Icons.school_outlined,
+                      'Preferred Major',
+                      opp.preferredMajor!,
+                    ),
                   _buildIconRow(
                     Icons.payments_outlined,
                     'Payment',
@@ -3970,7 +4761,7 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
                 ],
               ),
             ),
-            
+
             // --- Dates Section ---
             _buildDetailSection(
               'Dates',
@@ -3985,7 +4776,9 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
                     Icons.event_available_outlined,
                     'Apply Between',
                     _formatDateRange(
-                        opp.applicationOpenDate, opp.applicationDeadline),
+                      opp.applicationOpenDate,
+                      opp.applicationDeadline,
+                    ),
                   ),
                   if (opp.responseDeadlineVisible == true &&
                       opp.responseDeadline != null)
@@ -3997,21 +4790,18 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
                 ],
               ),
             ),
-            
+
             // --- Skills Section ---
             if (opp.skills != null && opp.skills!.isNotEmpty)
-              _buildDetailSection(
-                'Key Skills',
-                _buildChipList(opp.skills!),
-              ),
-              
+              _buildDetailSection('Key Skills', _buildChipList(opp.skills!)),
+
             // --- Requirements Section ---
             if (opp.requirements != null && opp.requirements!.isNotEmpty)
               _buildDetailSection(
                 'Requirements',
                 _buildRequirementList(opp.requirements!),
               ),
-              
+
             // --- Description Section ---
             if (opp.description != null && opp.description!.isNotEmpty)
               _buildDetailSection(
@@ -4075,7 +4865,7 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
         children: [
           Text(
             title,
-                       style: GoogleFonts.lato(
+            style: GoogleFonts.lato(
               fontSize: 14,
               color: Colors.grey.shade600,
               fontWeight: FontWeight.w500,
@@ -4202,7 +4992,10 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
     if (_studentId == null) {
       return Container(
         padding: EdgeInsets.fromLTRB(
-          16, 12, 16, 12 + MediaQuery.of(context).padding.bottom,
+          16,
+          12,
+          16,
+          12 + MediaQuery.of(context).padding.bottom,
         ),
         child: ElevatedButton(
           onPressed: null,
@@ -4210,7 +5003,7 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
         ),
       );
     }
-    
+
     // 3. Show Apply or Withdraw button
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -4238,8 +5031,10 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
   Widget _buildApplyNowView() {
     // Check if application period has started
     final now = DateTime.now();
-    final applicationOpenDate = widget.opportunity.applicationOpenDate?.toDate();
-    final isUpcoming = applicationOpenDate != null && now.isBefore(applicationOpenDate);
+    final applicationOpenDate = widget.opportunity.applicationOpenDate
+        ?.toDate();
+    final isUpcoming =
+        applicationOpenDate != null && now.isBefore(applicationOpenDate);
 
     if (isUpcoming) {
       // Calculate time until open
@@ -4250,10 +5045,10 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
       if (daysUntil > 0) {
         timeMessage = 'Opens in $daysUntil ${daysUntil == 1 ? 'day' : 'days'}';
       } else if (hoursUntil > 0) {
-
-        timeMessage = 'Opens in $hoursUntil ${hoursUntil == 1 ? 'hour' : 'hours'}';
+        timeMessage =
+            'Opens in $hoursUntil ${hoursUntil == 1 ? 'hour' : 'hours'}';
       } else {
-               timeMessage = 'Opens soon';
+        timeMessage = 'Opens soon';
       }
 
       return SizedBox(
@@ -4265,12 +5060,9 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
               icon: const Icon(Icons.schedule),
               label: const Text(
                 "Application Not Yet Open",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-                           style: ElevatedButton.styleFrom(
+              style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.grey.shade300,
                 foregroundColor: Colors.grey.shade700,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -4299,7 +5091,9 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _isApplying ? null : _applyNow, // Disable button while applying
+        onPressed: _isApplying
+            ? null
+            : _applyNow, // Disable button while applying
         style: ElevatedButton.styleFrom(
           backgroundColor: _purple,
           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -4353,7 +5147,9 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
         const SizedBox(width: 16),
         Expanded(
           child: ElevatedButton(
-            onPressed: canWithdraw ? _withdrawApplication : null, // Enable/disable
+            onPressed: canWithdraw
+                ? _withdrawApplication
+                : null, // Enable/disable
             style: ElevatedButton.styleFrom(
               backgroundColor: canWithdraw ? Colors.red.shade700 : Colors.grey,
               foregroundColor: Colors.white,

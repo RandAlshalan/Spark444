@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/opportunity.dart';
 import 'authService.dart';
 import 'notification_helper.dart';
-import 'notification_service.dart';
 import '../models/company.dart';
 
 class OpportunityService {
@@ -92,13 +91,6 @@ class OpportunityService {
         companyName: companyName,
         opportunityId: docRef.id,
         opportunityRole: opportunity.role,
-      );
-
-      // Also send local notification banner for immediate visibility
-      await NotificationService().showLocalNotification(
-        title: '🎉 New Opportunity from $companyName',
-        body: 'Check out the ${opportunity.role} position!',
-        route: '/opportunities',
       );
     } catch (e) {
       print('Error adding opportunity: $e');

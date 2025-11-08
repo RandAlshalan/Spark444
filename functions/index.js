@@ -70,10 +70,10 @@ exports.notifyFollowersOnNewOpportunity = onDocumentCreated(
       logger.info(`Company name: ${companyName}`);
 
       // Step 2: Find all students who follow this company
-      // Query the 'student' collection for users with this company in their following array
+      // Query the 'student' collection for users with this company in their followedCompanies array
       const followersSnapshot = await db
         .collection("student")
-        .where("following", "array-contains", opportunity.companyId)
+        .where("followedCompanies", "array-contains", opportunity.companyId)
         .get();
 
       if (followersSnapshot.empty) {

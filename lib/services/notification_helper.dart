@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/notification.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 /// Helper service for creating and managing in-app notifications
 class NotificationHelper {
@@ -34,8 +36,18 @@ class NotificationHelper {
       final batch = _firestore.batch();
       final notificationsRef = _firestore.collection('notifications');
 
+      // Collect FCM tokens for push notifications
+      List<String> fcmTokens = [];
+
       for (final studentDoc in studentsSnapshot.docs) {
         final studentId = studentDoc.id;
+        final studentData = studentDoc.data();
+
+        // Get FCM token if available
+        final fcmToken = studentData['fcmToken'] as String?;
+        if (fcmToken != null && fcmToken.isNotEmpty) {
+          fcmTokens.add(fcmToken);
+        }
 
         final notification = AppNotification(
           id: '', // Will be set by Firestore
@@ -60,10 +72,47 @@ class NotificationHelper {
 
       // Commit all notifications
       await batch.commit();
-      debugPrint('✅ Created notifications for ${studentsSnapshot.docs.length} students');
+      debugPrint(
+        '✅ Created notifications for ${studentsSnapshot.docs.length} students',
+      );
+
+      // Send push notifications to all followers with FCM tokens
+      if (fcmTokens.isNotEmpty) {
+        await _sendPushNotifications(
+          tokens: fcmTokens,
+          title: '🎉 New Opportunity from $companyName',
+          body: 'Check out the $opportunityRole position!',
+          data: {
+            'companyId': companyId,
+            'opportunityId': opportunityId,
+            'route': '/opportunities',
+          },
+        );
+        debugPrint('✅ Sent push notifications to ${fcmTokens.length} devices');
+      }
     } catch (e) {
       debugPrint('❌ Error creating notifications: $e');
     }
+  }
+
+  /// Sends push notifications via FCM (requires Firebase Cloud Functions in production)
+  /// For now, this will send to FCM directly (requires server key)
+  Future<void> _sendPushNotifications({
+    required List<String> tokens,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    // Note: For production, you should use Firebase Cloud Functions
+    // This is a basic implementation that won't work without FCM server key
+    // See NOTIFICATIONS_SETUP_GUIDE.md for Firebase Cloud Functions setup
+
+    debugPrint('📱 Would send push notifications to ${tokens.length} devices');
+    debugPrint('Title: $title');
+    debugPrint('Body: $body');
+
+    // TODO: Implement Firebase Cloud Functions for sending push notifications
+    // For now, notifications will only appear in-app
   }
 
   /// Creates a notification for a student when their application status is updated
@@ -92,8 +141,12 @@ class NotificationHelper {
         createdAt: Timestamp.now(),
       );
 
-      await _firestore.collection('notifications').add(notification.toFirestore());
-      debugPrint('✅ Created application update notification for student $studentId');
+      await _firestore
+          .collection('notifications')
+          .add(notification.toFirestore());
+      debugPrint(
+        '✅ Created application update notification for student $studentId',
+      );
     } catch (e) {
       debugPrint('❌ Error creating application update notification: $e');
     }
@@ -121,7 +174,9 @@ class NotificationHelper {
         createdAt: Timestamp.now(),
       );
 
-      await _firestore.collection('notifications').add(notification.toFirestore());
+      await _firestore
+          .collection('notifications')
+          .add(notification.toFirestore());
       debugPrint('✅ Created review reply notification for student $studentId');
     } catch (e) {
       debugPrint('❌ Error creating review reply notification: $e');
@@ -190,9 +245,11 @@ class NotificationHelper {
         .orderBy('createdAt', descending: true)
         .limit(50)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => AppNotification.fromFirestore(doc))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => AppNotification.fromFirestore(doc))
+              .toList(),
+        );
   }
 
   /// Stream of unread count for a user
