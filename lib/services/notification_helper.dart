@@ -242,14 +242,19 @@ class NotificationHelper {
     return _firestore
         .collection('notifications')
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
-        .limit(50)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => AppNotification.fromFirestore(doc))
-              .toList(),
-        );
+        .map((snapshot) {
+      final notifications = snapshot.docs
+          .map((doc) => AppNotification.fromFirestore(doc))
+          .toList();
+      notifications.sort(
+        (a, b) => b.createdAt.compareTo(a.createdAt),
+      );
+      if (notifications.length > 50) {
+        return notifications.sublist(0, 50);
+      }
+      return notifications;
+    });
   }
 
   /// Stream of unread count for a user
