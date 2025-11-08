@@ -14,14 +14,6 @@ class StudentSingleProfilePage extends StatelessWidget {
     return FirebaseFirestore.instance.collection('student').doc(studentId).get();
   }
 
-  Widget _infoTile(IconData icon, String title, String value) {
-    return ListTile(
-      leading: Icon(icon, color: _purple),
-      title: Text(title, style: GoogleFonts.lato(fontWeight: FontWeight.w700, fontSize: 14)),
-      subtitle: Text(value.isNotEmpty ? value : 'Not specified', style: GoogleFonts.lato()),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
@@ -42,10 +34,9 @@ class StudentSingleProfilePage extends StatelessWidget {
         final lastName = (data['lastName'] ?? '').toString().trim();
         final fullName = ('$firstName $lastName').trim().isEmpty ? 'Student' : ('$firstName $lastName').trim();
         final major = (data['major'] ?? '').toString();
-        final degree = (data['degree'] ?? '').toString();
+        final level = (data['level'] ?? '').toString();
         final university = (data['university'] ?? '').toString();
-        final year = (data['year'] ?? '').toString();
-        final bio = (data['bio'] ?? data['about'] ?? '').toString();
+        final bio = (data['shortSummary'] ?? '').toString();
         final photo = (data['photoUrl'] ?? data['avatarUrl'] ?? '').toString();
         final email = (data['email'] ?? '').toString();
         final phone = (data['phone'] ?? '').toString();
@@ -55,7 +46,7 @@ class StudentSingleProfilePage extends StatelessWidget {
             backgroundColor: Colors.white,
             foregroundColor: _purple,
             elevation: 0,
-            title: Text(fullName, style: GoogleFonts.lato(color: _purple)),
+            title: Text('Student Profile', style: GoogleFonts.lato(color: _purple)),
           ),
           body: SingleChildScrollView(
             child: Column(
@@ -69,8 +60,12 @@ class StudentSingleProfilePage extends StatelessWidget {
                     child: CircleAvatar(
                       radius: 56,
                       backgroundColor: Colors.white,
-                      child: (photo.isNotEmpty)
-                          ? CircleAvatar(radius: 52, backgroundImage: CachedNetworkImageProvider(photo))
+                      child: photo.isNotEmpty
+                          ? CircleAvatar(
+                              radius: 52,
+                              backgroundColor: Colors.grey.shade200,
+                              backgroundImage: CachedNetworkImageProvider(photo),
+                            )
                           : CircleAvatar(
                               radius: 52,
                               backgroundColor: Colors.white,
@@ -85,37 +80,47 @@ class StudentSingleProfilePage extends StatelessWidget {
                 const SizedBox(height: 12),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(fullName, style: GoogleFonts.lato(fontSize: 20, fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 6),
-                          if (major.isNotEmpty || degree.isNotEmpty)
-                            Text(
-                              [degree, major].where((s) => s.isNotEmpty).join(' • '),
-                              style: GoogleFonts.lato(color: Colors.grey.shade700),
-                            ),
-                          if (university.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(university, style: GoogleFonts.lato(color: Colors.grey.shade700)),
-                          ],
-                          const SizedBox(height: 12),
-                          if (bio.isNotEmpty)
-                            Text(bio, style: GoogleFonts.lato(height: 1.4)),
-                          const SizedBox(height: 12),
-                          const Divider(),
-                          _infoTile(Icons.school_outlined, 'Degree', degree),
-                          _infoTile(Icons.work_outline, 'Major', major),
-                          _infoTile(Icons.location_on_outlined, 'University / Year', [university, year].where((s)=>s.isNotEmpty).join(' • ')),
-                          if (email.isNotEmpty) _infoTile(Icons.email_outlined, 'Email', email),
-                          if (phone.isNotEmpty) _infoTile(Icons.phone_outlined, 'Phone', phone),
-                        ],
-                      ),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(fullName, style: GoogleFonts.lato(fontSize: 20, fontWeight: FontWeight.w800)),
+                      if (bio.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Text(bio, style: GoogleFonts.lato(height: 1.4, color: Colors.grey.shade700)),
+                      ],
+                      const SizedBox(height: 12),
+                      const Divider(),
+                      if (level.isNotEmpty)
+                        ListTile(
+                          leading: Icon(Icons.school_outlined, color: _purple),
+                          title: Text('Level', style: GoogleFonts.lato(fontWeight: FontWeight.w700, fontSize: 14)),
+                          subtitle: Text(level, style: GoogleFonts.lato()),
+                        ),
+                      if (major.isNotEmpty)
+                        ListTile(
+                          leading: Icon(Icons.work_outline, color: _purple),
+                          title: Text('Major', style: GoogleFonts.lato(fontWeight: FontWeight.w700, fontSize: 14)),
+                          subtitle: Text(major, style: GoogleFonts.lato()),
+                        ),
+                      if (university.isNotEmpty)
+                        ListTile(
+                          leading: Icon(Icons.location_on_outlined, color: _purple),
+                          title: Text('University', style: GoogleFonts.lato(fontWeight: FontWeight.w700, fontSize: 14)),
+                          subtitle: Text(university, style: GoogleFonts.lato()),
+                        ),
+                      if (email.isNotEmpty)
+                        ListTile(
+                          leading: Icon(Icons.email_outlined, color: _purple),
+                          title: Text('Email', style: GoogleFonts.lato(fontWeight: FontWeight.w700, fontSize: 14)),
+                          subtitle: Text(email, style: GoogleFonts.lato()),
+                        ),
+                      if (phone.isNotEmpty)
+                        ListTile(
+                          leading: Icon(Icons.phone_outlined, color: _purple),
+                          title: Text('Phone', style: GoogleFonts.lato(fontWeight: FontWeight.w700, fontSize: 14)),
+                          subtitle: Text(phone, style: GoogleFonts.lato()),
+                        ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 20),

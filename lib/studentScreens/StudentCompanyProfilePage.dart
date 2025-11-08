@@ -17,6 +17,7 @@ import '../models/Application.dart';
 import '../models/resume.dart';
 import '../services/applicationService.dart';
 import '../companyScreens/companyStudentProfilePage.dart'; // NEW: company-facing student profile view
+import 'StudentSingleProfilePage.dart'; // Student profile page
 import 'resumeSelectionDialog.dart';
 import 'applicationConfirmationDialog.dart';
 import '../widgets/application_success_dialog.dart';
@@ -3591,11 +3592,23 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
           }
 
           final threads = snapshot.data ?? [];
+          final canSubmit = widget.studentId != null;
 
-          return Column(
+          return Stack(
             children: [
-              Expanded(child: _buildReviewListView(threads)),
-              _buildRateInterviewFooter(context, threads.isEmpty),
+              _buildReviewListView(threads),
+              if (canSubmit)
+                Positioned(
+                  right: 16,
+                  bottom: 16,
+                  child: FloatingActionButton(
+                    onPressed: () => _showWriteReviewDialog(context),
+                    backgroundColor: _purple,
+                    foregroundColor: Colors.white,
+                    elevation: 8,
+                    child: const Icon(Icons.add, size: 28),
+                  ),
+                ),
             ],
           );
         },
@@ -3604,9 +3617,7 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
   }
 
   Widget _buildReviewListView(List<_InterviewReviewThread> threads) {
-    final children = <Widget>[
-      if (threads.isNotEmpty) _buildInterviewInsights(threads),
-    ];
+    final children = <Widget>[];
 
     if (threads.isEmpty) {
       children.add(_buildEmptyState());
@@ -3624,217 +3635,6 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
       ),
       padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
       children: children,
-    );
-  }
-
-  Widget _buildInterviewInsights(List<_InterviewReviewThread> threads) {
-    if (threads.isEmpty) return const SizedBox.shrink();
-
-    final total = threads.length;
-    final accepted = threads.where((t) => t.review.wasAccepted == 'Yes').length;
-    final difficultyCounts = <String, int>{};
-    for (final thread in threads) {
-      final diff = thread.review.interviewDifficulty;
-      if (diff == null || diff.trim().isEmpty) continue;
-      final key = diff.trim();
-      difficultyCounts[key] = (difficultyCounts[key] ?? 0) + 1;
-    }
-
-    String? mostCommonDifficulty;
-    if (difficultyCounts.isNotEmpty) {
-      mostCommonDifficulty = difficultyCounts.entries
-          .reduce((a, b) => a.value >= b.value ? a : b)
-          .key;
-    }
-
-    final acceptancePercent = total == 0
-        ? 0
-        : ((accepted / total) * 100).round();
-
-    Widget buildStat(String value, String label) {
-      return Expanded(
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: GoogleFonts.lato(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: GoogleFonts.lato(
-                  fontSize: 12,
-                  color: Colors.white.withOpacity(0.8),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [_purple, _pink],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: _purple.withOpacity(0.15),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Interview insights',
-            style: GoogleFonts.lato(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              buildStat(total.toString(), 'reviews collected'),
-              const SizedBox(width: 12),
-              buildStat('$acceptancePercent%', 'accepted offers'),
-            ],
-          ),
-          if (mostCommonDifficulty != null) ...[
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: _getDifficultyColor(mostCommonDifficulty!),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Most reported: $mostCommonDifficulty',
-                    style: GoogleFonts.lato(
-                      fontWeight: FontWeight.w700,
-                      color: _purple,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRateInterviewFooter(BuildContext context, bool noReviews) {
-    final canSubmit = widget.studentId != null;
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [_purple, _pink],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: _purple.withOpacity(0.18),
-                blurRadius: 30,
-                offset: const Offset(0, 18),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                noReviews
-                    ? 'Be the first to rate this interview'
-                    : 'Share your interview experience',
-                style: GoogleFonts.lato(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                canSubmit
-                    ? 'Tell other students about the process, the questions asked, and how hard it felt.'
-                    : 'Sign in to tell other students about the interview process.',
-                style: GoogleFonts.lato(
-                  fontSize: 13,
-                  height: 1.4,
-                  color: Colors.white.withOpacity(0.85),
-                ),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: canSubmit
-                      ? () => _showWriteReviewDialog(context)
-                      : null,
-                  icon: Icon(
-                    canSubmit ? Icons.rate_review_outlined : Icons.lock_outline,
-                    size: 20,
-                  ),
-                  label: Text(canSubmit ? 'Rate Interview' : 'Sign in to rate'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: _purple,
-                    disabledBackgroundColor: Colors.white.withOpacity(0.35),
-                    disabledForegroundColor: _purple.withOpacity(0.5),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -4042,44 +3842,83 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
           // Header with avatar and name
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _purple.withAlpha(80), width: 2),
-                ),
-                child: CircleAvatar(
-                  radius: 22,
-                  backgroundColor: _purple.withAlpha(25),
-                  child: Text(
-                    _getInitials(
-                      (review.authorVisible) ? review.studentName : 'A',
-                    ),
-                    style: GoogleFonts.lato(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: _purple,
-                    ),
-                  ),
+              GestureDetector(
+                onTap: review.authorVisible && review.studentId.isNotEmpty
+                    ? () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => StudentSingleProfilePage(studentId: review.studentId),
+                          ),
+                        );
+                      }
+                    : null,
+                child: FutureBuilder<DocumentSnapshot>(
+                  future: review.authorVisible && review.studentId.isNotEmpty
+                      ? FirebaseFirestore.instance.collection('student').doc(review.studentId).get()
+                      : null,
+                  builder: (context, snapshot) {
+                    String? photoUrl;
+                    if (snapshot.hasData && snapshot.data != null) {
+                      final data = snapshot.data!.data() as Map<String, dynamic>?;
+                      photoUrl = data?['photoUrl'] as String? ?? data?['avatarUrl'] as String?;
+                    }
+
+                    return Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: _purple.withAlpha(80), width: 2),
+                      ),
+                      child: CircleAvatar(
+                        radius: 22,
+                        backgroundColor: _purple.withAlpha(25),
+                        backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                            ? CachedNetworkImageProvider(photoUrl)
+                            : null,
+                        child: (photoUrl == null || photoUrl.isEmpty)
+                            ? Text(
+                                _getInitials((review.authorVisible) ? review.studentName : 'A'),
+                                style: GoogleFonts.lato(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: _purple,
+                                ),
+                              )
+                            : null,
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      (review.authorVisible)
-                          ? (review.studentName.isNotEmpty
-                                ? review.studentName
-                                : 'Student')
-                          : 'Anonymous',
-                      style: GoogleFonts.lato(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black87,
+                child: GestureDetector(
+                  onTap: review.authorVisible && review.studentId.isNotEmpty
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => StudentSingleProfilePage(studentId: review.studentId),
+                            ),
+                          );
+                        }
+                      : null,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        (review.authorVisible)
+                            ? (review.studentName.isNotEmpty
+                                  ? review.studentName
+                                  : 'Student')
+                            : 'Anonymous',
+                        style: GoogleFonts.lato(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                        ),
                       ),
-                    ),
                     Row(
                       children: [
                         Icon(
@@ -4100,6 +3939,7 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                       ],
                     ),
                   ],
+                ),
                 ),
               ),
               if (review.studentId == widget.studentId)
@@ -4349,12 +4189,42 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: Colors.grey.shade200,
-            child: Text(
-              _getInitials(reply.studentName),
-              style: GoogleFonts.lato(fontSize: 12, color: _purple),
+          GestureDetector(
+            onTap: reply.authorVisible && reply.studentId.isNotEmpty
+                ? () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => StudentSingleProfilePage(studentId: reply.studentId),
+                      ),
+                    );
+                  }
+                : null,
+            child: FutureBuilder<DocumentSnapshot>(
+              future: reply.authorVisible && reply.studentId.isNotEmpty
+                  ? FirebaseFirestore.instance.collection('student').doc(reply.studentId).get()
+                  : null,
+              builder: (context, snapshot) {
+                String? photoUrl;
+                if (snapshot.hasData && snapshot.data != null) {
+                  final data = snapshot.data!.data() as Map<String, dynamic>?;
+                  photoUrl = data?['photoUrl'] as String? ?? data?['avatarUrl'] as String?;
+                }
+
+                return CircleAvatar(
+                  radius: 16,
+                  backgroundColor: Colors.grey.shade200,
+                  backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                      ? CachedNetworkImageProvider(photoUrl)
+                      : null,
+                  child: (photoUrl == null || photoUrl.isEmpty)
+                      ? Text(
+                          _getInitials(reply.studentName),
+                          style: GoogleFonts.lato(fontSize: 12, color: _purple)
+                        )
+                      : null,
+                );
+              },
             ),
           ),
           const SizedBox(width: 8),
@@ -4362,15 +4232,27 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  (reply.authorVisible)
-                      ? (reply.studentName.isNotEmpty
-                            ? reply.studentName
-                            : 'Student')
-                      : 'Anonymous',
-                  style: GoogleFonts.lato(
-                    fontWeight: FontWeight.w700,
-                    color: _purple,
+                GestureDetector(
+                  onTap: reply.authorVisible && reply.studentId.isNotEmpty
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => StudentSingleProfilePage(studentId: reply.studentId),
+                            ),
+                          );
+                        }
+                      : null,
+                  child: Text(
+                    (reply.authorVisible)
+                        ? (reply.studentName.isNotEmpty
+                              ? reply.studentName
+                              : 'Student')
+                        : 'Anonymous',
+                    style: GoogleFonts.lato(
+                      fontWeight: FontWeight.w700,
+                      color: _purple,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
