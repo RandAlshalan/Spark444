@@ -1731,17 +1731,21 @@ Widget _buildReviewCard(Review review) {
           Text(reply.reviewText, style: GoogleFonts.lato(fontSize: 13, color: Colors.black87, height: 1.4)),
           const SizedBox(height: 6),
           Row(
-            children: [
-              Text(DateFormat('MMM d, yyyy').format(reply.createdAt.toDate()), style: GoogleFonts.lato(fontSize: 11, color: Colors.grey.shade600)),
-              const SizedBox(width: 8),
-              if ((reply.studentId ?? '') == (widget.studentId ?? ''))
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red, size: 18),
-                  tooltip: 'Delete your reply',
-                  onPressed: () => _confirmAndDelete(reply.id, isParent: false),
-                ),
-            ],
+      children: [
+        Text(DateFormat('MMM d, yyyy').format(reply.createdAt.toDate()), style: GoogleFonts.lato(fontSize: 11, color: Colors.grey.shade600)),
+        const SizedBox(width: 8),
+        if ((reply.studentId ?? '') == (widget.studentId ?? ''))
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+            tooltip: 'Delete your reply',
+            onPressed: () => _confirmAndDelete(reply.id, isParent: false),
           ),
+        // Add spacer then votes so votes appear on the right like other places
+        const Spacer(),
+        if (reply.id.trim().isNotEmpty)
+          VoteButtons(docRef: FirebaseFirestore.instance.collection('reviews').doc(reply.id)),
+      ],
+    ),
         ]),
       ),
     ]),
