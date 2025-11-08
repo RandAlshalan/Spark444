@@ -70,6 +70,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> _initializeNotifications() async {
     try {
       await NotificationService().initialize(navKey: _navigatorKey);
+      await NotificationService().syncFCMTokenWithLoggedInUser();
       print('NotificationService initialized in MyApp');
     } catch (e) {
       print('Error initializing NotificationService: $e');

@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 /// ============================================================================
@@ -37,6 +38,8 @@ class NotificationService {
 
   // Track if service is initialized
   bool _isInitialized = false;
+  String? _currentUserId;
+  String? _currentUserCollection;
 
   // Stream controller for notification taps
   final StreamController<String?> _notificationTapController =
@@ -362,15 +365,11 @@ class NotificationService {
       final String? token = await _firebaseMessaging.getToken();
 
       if (token != null && userId.isNotEmpty) {
-        // Save to the appropriate collection based on user type
-        await FirebaseFirestore.instance
-            .collection(userType)
-            .doc(userId)
-            .set({
-          'fcmToken': token,
-          'lastTokenUpdate': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-
+        await _persistFCMToken(
+          userId: userId,
+          collectionPath: userType,
+          token: token,
+        );
         debugPrint('✅ FCM token saved to Firestore for $userType: $userId');
       } else {
         debugPrint('⚠️ Cannot save FCM token: token or userId is null');
@@ -380,17 +379,65 @@ class NotificationService {
     }
   }
 
+  Future<void> _persistFCMToken({
+    required String userId,
+    required String collectionPath,
+    required String token,
+  }) async {
+    await FirebaseFirestore.instance.collection(collectionPath).doc(userId).set({
+      'fcmToken': token,
+      'lastTokenUpdate': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    _currentUserId = userId;
+    _currentUserCollection = collectionPath;
+  }
+
+  Future<String?> _resolveUserCollection(String userId) async {
+    final studentDoc =
+        await FirebaseFirestore.instance.collection('student').doc(userId).get();
+    if (studentDoc.exists) return 'student';
+
+    final companyDoc =
+        await FirebaseFirestore.instance.collection('companies').doc(userId).get();
+    if (companyDoc.exists) return 'companies';
+
+    return null;
+  }
+
+  Future<void> syncFCMTokenWithLoggedInUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      debugPrint('ℹ️ No logged in user to sync token for');
+      return;
+    }
+
+    final collection = await _resolveUserCollection(user.uid);
+    if (collection == null) {
+      debugPrint('⚠️ Unable to determine collection for user ${user.uid}');
+      return;
+    }
+
+    await saveFCMToken(user.uid, userType: collection);
+  }
+
   /// ========================================================================
   /// Step 7: Listen for Token Refresh
   /// ========================================================================
   /// FCM tokens can be refreshed by Firebase, so we need to update Firestore
   /// ========================================================================
   void _listenForTokenRefresh() {
-    _firebaseMessaging.onTokenRefresh.listen((newToken) {
+    _firebaseMessaging.onTokenRefresh.listen((newToken) async {
       debugPrint('🔄 FCM Token refreshed: $newToken');
-      // You should update Firestore with the new token
-      // This requires knowing the current user ID
-      // You can implement this by saving the userId in a static variable
+      if (_currentUserId != null && _currentUserCollection != null) {
+        await _persistFCMToken(
+          userId: _currentUserId!,
+          collectionPath: _currentUserCollection!,
+          token: newToken,
+        );
+      } else {
+        await syncFCMTokenWithLoggedInUser();
+      }
     });
   }
 
@@ -451,6 +498,11 @@ class NotificationService {
             .update({
           'fcmToken': FieldValue.delete(),
         });
+      }
+
+      if (_currentUserId == userId) {
+        _currentUserId = null;
+        _currentUserCollection = null;
       }
 
       debugPrint('✅ FCM token deleted');
