@@ -165,7 +165,7 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
                     'Unable to load notifications',
                     style: GoogleFonts.lato(
                       fontSize: 16,
-                      color: _textColor.withOpacity(0.6),
+                      color: _textColor.withValues(alpha: 0.6),
                     ),
                   ),
                 )
@@ -180,24 +180,37 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
                     }
 
                     if (snapshot.hasError) {
+                      debugPrint('Notification stream error: ${snapshot.error}');
                       return Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              size: 48,
-                              color: _textColor.withOpacity(0.3),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Error loading notifications',
-                              style: GoogleFonts.lato(
-                                fontSize: 16,
-                                color: _textColor.withOpacity(0.6),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                size: 48,
+                                color: _textColor.withValues(alpha: 0.3),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 16),
+                              Text(
+                                'Error loading notifications',
+                                style: GoogleFonts.lato(
+                                  fontSize: 16,
+                                  color: _textColor.withValues(alpha: 0.6),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '${snapshot.error}',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.lato(
+                                  fontSize: 12,
+                                  color: Colors.red.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     }
@@ -212,7 +225,7 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
                             Icon(
                               Icons.notifications_none,
                               size: 64,
-                              color: _textColor.withOpacity(0.3),
+                              color: _textColor.withValues(alpha: 0.3),
                             ),
                             const SizedBox(height: 16),
                             Text(
@@ -220,7 +233,7 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
                               style: GoogleFonts.lato(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
-                                color: _textColor.withOpacity(0.7),
+                                color: _textColor.withValues(alpha: 0.7),
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -229,7 +242,7 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
                               textAlign: TextAlign.center,
                               style: GoogleFonts.lato(
                                 fontSize: 14,
-                                color: _textColor.withOpacity(0.5),
+                                color: _textColor.withValues(alpha: 0.5),
                               ),
                             ),
                           ],
@@ -293,17 +306,17 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
         decoration: BoxDecoration(
           color: notification.read
               ? _cardColor
-              : color.withOpacity(0.05),
+              : color.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: notification.read
                 ? Colors.grey.shade200
-                : color.withOpacity(0.3),
+                : color.withValues(alpha: 0.3),
             width: notification.read ? 1 : 2,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -322,7 +335,7 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
+                      color: color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -366,7 +379,7 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
                           notification.body,
                           style: GoogleFonts.lato(
                             fontSize: 14,
-                            color: _textColor.withOpacity(0.7),
+                            color: _textColor.withValues(alpha: 0.7),
                             height: 1.4,
                           ),
                         ),
@@ -376,14 +389,14 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
                             Icon(
                               Icons.access_time,
                               size: 14,
-                              color: _textColor.withOpacity(0.5),
+                              color: _textColor.withValues(alpha: 0.5),
                             ),
                             const SizedBox(width: 4),
                             Text(
                               timeAgo,
                               style: GoogleFonts.lato(
                                 fontSize: 12,
-                                color: _textColor.withOpacity(0.5),
+                                color: _textColor.withValues(alpha: 0.5),
                               ),
                             ),
                           ],

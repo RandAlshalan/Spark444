@@ -10,6 +10,7 @@ import 'studentScreens/StudentProfilePage.dart';
 import 'studentScreens/welcomeScreen.dart';
 import 'studentScreens/testNotifications.dart';
 import 'services/notification_service.dart';
+import 'services/application_deadline_service.dart';
 
 /// ============================================================================
 /// Background Message Handler
@@ -58,23 +59,35 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    // Step 3: Initialize NotificationService after app starts
-    _initializeNotifications();
+    // Step 3: Initialize services after app starts
+    _initializeServices();
   }
 
   /// ========================================================================
-  /// Initialize NotificationService
+  /// Initialize Services
   /// ========================================================================
-  /// This sets up push notifications and local notifications
+  /// This sets up notifications and application deadline monitoring
   /// ========================================================================
-  Future<void> _initializeNotifications() async {
+  Future<void> _initializeServices() async {
     try {
+      // Initialize notification service
       await NotificationService().initialize(navKey: _navigatorKey);
       await NotificationService().syncFCMTokenWithLoggedInUser();
       print('NotificationService initialized in MyApp');
+
+      // Start application deadline monitoring service
+      ApplicationDeadlineService().startMonitoring();
+      print('ApplicationDeadlineService started');
     } catch (e) {
-      print('Error initializing NotificationService: $e');
+      print('Error initializing services: $e');
     }
+  }
+
+  @override
+  void dispose() {
+    // Stop the deadline monitoring service when app is disposed
+    ApplicationDeadlineService().stopMonitoring();
+    super.dispose();
   }
 
   @override

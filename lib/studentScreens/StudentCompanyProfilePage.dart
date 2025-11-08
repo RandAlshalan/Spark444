@@ -275,11 +275,14 @@ class StudentCompanyProfilePage extends StatelessWidget {
               elevation: 0,
               foregroundColor: Colors.white,
             ),
-            body: SingleChildScrollView(
-              child: Column(
-                children: [
-                  // -------- Header (from File 2)
-                  Stack(
+            body: NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) {
+                return [
+                  SliverToBoxAdapter(
+                    child: Column(
+                      children: [
+                        // -------- Header (from File 2)
+                        Stack(
                     children: [
                       Container(
                         height: 260,
@@ -523,25 +526,24 @@ class StudentCompanyProfilePage extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                  // -------- Tab Content (from File 2)
-                  Container(
-                    height: 700,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: TabBarView(
-                      children: [
-                        _DetailsTab(company: company, data: data),
-                        _OpportunitiesTab(companyId: companyId),
-                        _ReviewsTab(companyId: companyId, studentId: studentId),
-                        _InterviewReviewsTab(
-                          companyId: companyId,
-                          studentId: studentId,
-                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                ],
+                ];
+              },
+              body: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TabBarView(
+                  children: [
+                    _DetailsTab(company: company, data: data),
+                    _OpportunitiesTab(companyId: companyId),
+                    _ReviewsTab(companyId: companyId, studentId: studentId),
+                    _InterviewReviewsTab(
+                      companyId: companyId,
+                      studentId: studentId,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
