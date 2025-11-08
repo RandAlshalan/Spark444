@@ -135,19 +135,20 @@ class NotificationHelper {
           debugPrint('⚠️ No FCM token for follower $studentId');
         }
 
-        batch.set(
-          notificationsRef.doc(),
-          {
-            'receiverId': studentId,
-            'senderId': companyId,
-            'title': 'New Opportunity Posted',
-            'body': '$companyName just posted "$opportunityTitle"!',
-            'type': 'opportunity_post',
-            'relatedCompanyId': companyId,
-            'isRead': false,
-            'timestamp': FieldValue.serverTimestamp(),
+        batch.set(notificationsRef.doc(), {
+          'userId': studentId,
+          'receiverId': studentId,
+          'senderId': companyId,
+          'type': 'new_opportunity',
+          'title': 'New Opportunity Posted',
+          'body': '$companyName just posted "$opportunityTitle"!',
+          'data': {
+            'companyId': companyId,
+            'route': '/opportunities',
           },
-        );
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
       }
 
       await batch.commit();
@@ -344,5 +345,47 @@ class NotificationHelper {
         .where('read', isEqualTo: false)
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
+  }
+
+  /// Backfills legacy notifications that may have been stored without `userId`
+  /// or `createdAt` fields so they appear correctly in in-app feeds.
+  Future<void> syncLegacyNotifications(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('notifications')
+          .where('receiverId', isEqualTo: userId)
+          .get();
+
+      if (snapshot.docs.isEmpty) return;
+
+      int updates = 0;
+      final batch = _firestore.batch();
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final currentUserId = data['userId'] as String?;
+        final createdAt = data['createdAt'];
+        final legacyTimestamp = data['timestamp'];
+
+        final updateData = <String, dynamic>{};
+        if (currentUserId == null || currentUserId.isEmpty) {
+          updateData['userId'] = userId;
+        }
+        if (createdAt == null && legacyTimestamp != null) {
+          updateData['createdAt'] = legacyTimestamp;
+        }
+
+        if (updateData.isNotEmpty) {
+          batch.update(doc.reference, updateData);
+          updates++;
+        }
+      }
+
+      if (updates > 0) {
+        await batch.commit();
+        debugPrint('🔁 Synced $updates legacy notifications for $userId');
+      }
+    } catch (e) {
+      debugPrint('❌ Error syncing legacy notifications: $e');
+    }
   }
 }

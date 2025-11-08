@@ -36,9 +36,10 @@ class FcmTokenManager {
         return;
       }
 
-      final token = await FirebaseMessaging.instance.getToken();
+      final token = await _obtainFcmToken();
       if (token == null) {
-        debugPrint('⚠️ Could not obtain FCM token.');
+        debugPrint('⌛ FCM token not yet available. Waiting for refresh event.');
+        _ensureTokenRefreshListener();
         return;
       }
 
@@ -48,25 +49,59 @@ class FcmTokenManager {
       // Also keep legacy student/companies collections in sync
       await NotificationService().syncFCMTokenWithLoggedInUser();
 
-      // Only attach listener once
-      _refreshSubscription ??=
-          FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-        final current = FirebaseAuth.instance.currentUser;
-        if (current == null) {
-          debugPrint('ℹ️ Token refreshed but no user is logged in.');
-          return;
-        }
-        try {
-          await _writeToken(current.uid, newToken);
-          debugPrint('♻️ Updated refreshed FCM token for ${current.uid}');
-          await NotificationService().syncFCMTokenWithLoggedInUser();
-        } catch (e) {
-          debugPrint('❌ Failed to update refreshed token: $e');
-        }
-      });
+      _ensureTokenRefreshListener();
     } catch (e) {
       debugPrint('❌ Error while saving FCM token: $e');
+      _ensureTokenRefreshListener();
     }
+  }
+
+  static Future<String?> _obtainFcmToken() async {
+    try {
+      if (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS) {
+        final apnsReady = await _waitForApnsToken();
+        if (!apnsReady) {
+          return null;
+        }
+      }
+
+      return await FirebaseMessaging.instance.getToken();
+    } catch (e) {
+      debugPrint('⚠️ Could not obtain FCM token: $e');
+      return null;
+    }
+  }
+
+  static Future<bool> _waitForApnsToken({Duration timeout = const Duration(seconds: 10)}) async {
+    final start = DateTime.now();
+    while (DateTime.now().difference(start) < timeout) {
+      final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+      if (apnsToken != null) {
+        return true;
+      }
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+    debugPrint('⚠️ APNS token not ready after waiting. Will rely on refresh callback.');
+    return false;
+  }
+
+  static void _ensureTokenRefreshListener() {
+    _refreshSubscription ??=
+        FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+      final current = FirebaseAuth.instance.currentUser;
+      if (current == null) {
+        debugPrint('ℹ️ Token refreshed but no user is logged in.');
+        return;
+      }
+      try {
+        await _writeToken(current.uid, newToken);
+        debugPrint('♻️ Updated refreshed FCM token for ${current.uid}');
+        await NotificationService().syncFCMTokenWithLoggedInUser();
+      } catch (e) {
+        debugPrint('❌ Failed to update refreshed token: $e');
+      }
+    });
   }
 
   static Future<void> _writeToken(String uid, String token) async {

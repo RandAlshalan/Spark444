@@ -41,6 +41,9 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
     setState(() => _loading = true);
     try {
       final student = await _authService.getCurrentStudent();
+      if (student != null) {
+        await _notificationHelper.syncLegacyNotifications(student.id);
+      }
       if (!mounted) return;
       setState(() {
         _student = student;

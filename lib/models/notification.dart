@@ -25,13 +25,15 @@ class AppNotification {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return AppNotification(
       id: doc.id,
-      userId: data['userId'] ?? '',
+      userId: data['userId'] ?? data['receiverId'] ?? '',
       type: data['type'] ?? 'general',
       title: data['title'] ?? '',
       body: data['body'] ?? '',
       data: data['data'] as Map<String, dynamic>?,
       read: data['read'] ?? false,
-      createdAt: data['createdAt'] as Timestamp? ?? Timestamp.now(),
+      createdAt: data['createdAt'] as Timestamp? ??
+          data['timestamp'] as Timestamp? ??
+          Timestamp.now(),
     );
   }
 
