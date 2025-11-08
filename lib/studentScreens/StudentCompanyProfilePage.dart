@@ -20,6 +20,7 @@ import '../companyScreens/companyStudentProfilePage.dart'; // NEW: company-facin
 import 'resumeSelectionDialog.dart';
 import 'applicationConfirmationDialog.dart';
 import '../widgets/application_success_dialog.dart';
+import '../services/notification_helper.dart';
 // ---------------------------------------------------------
 
 // --- Constants ---
@@ -1162,6 +1163,29 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     }
 
     setState(() => _isReplySubmitting[parentReviewId] = true);
+    DocumentSnapshot? parentDoc;
+    Map<String, dynamic>? parentData;
+    String parentStudentId = '';
+    String companyName = '';
+    try {
+      parentDoc = await FirebaseFirestore.instance.collection('reviews').doc(parentReviewId).get();
+      if (!parentDoc.exists) {
+        throw Exception('Original review not found. Please refresh.');
+      }
+      parentData = parentDoc.data() as Map<String, dynamic>?;
+      parentStudentId = (parentData?['studentId'] ?? '') as String;
+      final companyDoc = await FirebaseFirestore.instance.collection('companies').doc(widget.companyId).get();
+      companyName = (companyDoc.data()?['companyName'] ?? 'A company') as String;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unable to send reply: $e'), backgroundColor: Colors.red),
+        );
+      }
+      setState(() => _isReplySubmitting[parentReviewId] = false);
+      return;
+    }
+
     try {
       // Backend (server-side) validation simulated here
       if (text.length < _reviewMinLength || text.length > _reviewMaxLength) {
@@ -1185,6 +1209,14 @@ class _ReviewsTabState extends State<_ReviewsTab> {
       };
 
       await FirebaseFirestore.instance.collection('reviews').add(replyData);
+
+      if (parentStudentId.isNotEmpty && parentStudentId != widget.studentId) {
+        await NotificationHelper().notifyReviewReply(
+          studentId: parentStudentId,
+          companyName: companyName.isEmpty ? 'A company' : companyName,
+          reviewId: parentReviewId,
+        );
+      }
 
       // clear and collapse reply box
       controller.clear();
@@ -2017,6 +2049,36 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
       return;
     }
 
+    DocumentSnapshot? parentReviewDoc;
+    Map<String, dynamic>? parentReviewData;
+    String parentStudentId = '';
+    String parentCompanyId = widget.companyId;
+
+    try {
+      parentReviewDoc = await FirebaseFirestore.instance.collection('interview_reviews').doc(parentReviewId).get();
+      if (!parentReviewDoc.exists) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Original review not found. Please refresh and try again.'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+      parentReviewData = parentReviewDoc.data() as Map<String, dynamic>?;
+      parentStudentId = (parentReviewData?['studentId'] ?? '') as String;
+      final parentCompanyFromDoc = (parentReviewData?['companyId'] ?? '') as String;
+      if (parentCompanyFromDoc.isNotEmpty) {
+        parentCompanyId = parentCompanyFromDoc;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unable to send reply (missing parent review): $e'), backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
+
     if (!mounted) return;
     setState(() => _isReplySubmitting[parentReviewId] = true);
     try {
@@ -2037,6 +2099,24 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
       };
 
       await FirebaseFirestore.instance.collection('interview_reviews').add(replyData);
+
+      if (parentStudentId.isNotEmpty && parentStudentId != widget.studentId) {
+        await NotificationHelper().notifyInterviewReviewReply(
+          recipientId: parentStudentId,
+          companyId: parentCompanyId,
+          reviewId: parentReviewId,
+          replyPreview: text,
+        );
+      }
+
+      if (parentStudentId.isNotEmpty && parentStudentId != widget.studentId) {
+        await NotificationHelper().notifyInterviewReviewReply(
+          recipientId: parentStudentId,
+          companyId: parentCompanyId,
+          reviewId: parentReviewId,
+          replyPreview: text,
+        );
+      }
 
       if (!mounted) return;
       controller.clear();
