@@ -59,24 +59,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   int _totalApplicants = 0;
   int _pendingApplicants = 0;
   int _activeOpportunities = 0;
-  final List<_NotificationPreview> _demoNotifications = [
-    _NotificationPreview(
-      title: 'New applicant',
-      message: 'Amelia Johnson just applied to the UX Research Internship.',
-      timestamp: DateTime.now().subtract(const Duration(hours: 2, minutes: 15)),
-    ),
-    _NotificationPreview(
-      title: 'Application status',
-      message:
-          'You moved Daniel Lee to the Interview stage for Data Analyst Intern.',
-      timestamp: DateTime.now().subtract(const Duration(hours: 7, minutes: 40)),
-    ),
-    _NotificationPreview(
-      title: 'Profile follow',
-      message: 'Bright Future Academy started following your company profile.',
-      timestamp: DateTime.now().subtract(const Duration(days: 1, hours: 3)),
-    ),
-  ];
+  final List<_NotificationPreview> _latestNotifications = [];
 
   Future<void> _fetchCompanyData() async {
     setState(() => _isLoading = true);
@@ -1556,7 +1539,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   Widget _buildRecentActivity() {
-    final notifications = _demoNotifications;
+    final notifications = _latestNotifications;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

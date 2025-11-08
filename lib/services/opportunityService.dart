@@ -85,12 +85,12 @@ class OpportunityService {
           ? (companyDoc.data()?['companyName'] as String?) ?? opportunity.name
           : opportunity.name;
 
-      // Notify all students following this company
-      await NotificationHelper().notifyFollowersOfNewOpportunity(
-        companyId: opportunity.companyId,
-        companyName: companyName,
-        opportunityId: docRef.id,
-        opportunityRole: opportunity.role,
+      // Notify all students following this company (push + in-app)
+      final opportunityTitle =
+          opportunity.name.isNotEmpty ? opportunity.name : opportunity.role;
+      await NotificationHelper().notifyFollowersOnNewOpportunity(
+        opportunity.companyId,
+        opportunityTitle,
       );
     } catch (e) {
       print('Error adding opportunity: $e');

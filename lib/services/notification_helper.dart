@@ -95,6 +95,85 @@ class NotificationHelper {
     }
   }
 
+  /// Alternate lightweight notifier that mirrors the logic shared by the user.
+  /// Sends both push notifications and an in-app notification document
+  /// for every student that follows the provided [companyId].
+  Future<void> notifyFollowersOnNewOpportunity(
+    String companyId,
+    String opportunityTitle,
+  ) async {
+    try {
+      final followersSnapshot = await _firestore
+          .collection('student')
+          .where('followedCompanies', arrayContains: companyId)
+          .get();
+
+      if (followersSnapshot.docs.isEmpty) {
+        debugPrint('⚠️ No followers found for company $companyId');
+        return;
+      }
+
+      final companyDoc =
+          await _firestore.collection('companies').doc(companyId).get();
+      final companyData = companyDoc.data() ?? {};
+      final companyName = (companyData['companyName'] as String?) ??
+          (companyData['name'] as String?) ??
+          'A company';
+
+      final notificationsRef = _firestore.collection('notifications');
+      final batch = _firestore.batch();
+      final tokens = <String>[];
+
+      for (final follower in followersSnapshot.docs) {
+        final data = follower.data();
+        final studentId = follower.id;
+        final token = (data['fcmToken'] as String?)?.trim();
+
+        if (token != null && token.isNotEmpty) {
+          tokens.add(token);
+        } else {
+          debugPrint('⚠️ No FCM token for follower $studentId');
+        }
+
+        batch.set(
+          notificationsRef.doc(),
+          {
+            'receiverId': studentId,
+            'senderId': companyId,
+            'title': 'New Opportunity Posted',
+            'body': '$companyName just posted "$opportunityTitle"!',
+            'type': 'opportunity_post',
+            'relatedCompanyId': companyId,
+            'isRead': false,
+            'timestamp': FieldValue.serverTimestamp(),
+          },
+        );
+      }
+
+      await batch.commit();
+
+      if (tokens.isNotEmpty) {
+        await _sendPushNotifications(
+          tokens: tokens,
+          title: 'New Opportunity from $companyName',
+          body: '$companyName just posted "$opportunityTitle"!',
+          data: {
+            'companyId': companyId,
+            'route': '/opportunities',
+          },
+        );
+        debugPrint('✅ Notification sent to ${tokens.length} followers');
+      }
+
+      debugPrint(
+        '🎯 Notifications successfully prepared for all followers of $companyName.',
+      );
+    } catch (e, stack) {
+      debugPrint('❌ Error notifying followers: $e');
+      debugPrint('$stack');
+    }
+  }
+
   /// Sends push notifications via FCM (requires Firebase Cloud Functions in production)
   /// For now, this will send to FCM directly (requires server key)
   Future<void> _sendPushNotifications({
