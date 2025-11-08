@@ -15,9 +15,9 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // ✅ تأكد من تفعيل desugaring
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-        // enable core library desugaring
         isCoreLibraryDesugaringEnabled = true
     }
 
@@ -28,8 +28,8 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.spark.appp"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+
+        // ⚙️ إعدادات Flutter التلقائية
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -50,6 +50,7 @@ flutter {
 }
 
 dependencies {
-    // Required for core library desugaring support (>= 1.2.2)
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:1.2.2")
+    // ✅ مكتبة desugar المطلوبة لحل الخطأ
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+
 }
