@@ -134,7 +134,7 @@ class NotificationService {
     try {
       // Android initialization settings
       const AndroidInitializationSettings androidSettings =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
+          AndroidInitializationSettings('@drawable/ic_notification');
 
       // iOS initialization settings
       const DarwinInitializationSettings iosSettings =
@@ -302,7 +302,8 @@ class NotificationService {
         showWhen: true,
         enableVibration: true,
         playSound: true,
-        icon: '@mipmap/ic_launcher',
+        icon: '@drawable/ic_notification',
+        color: Color(0xFF422F5D), // Purple color for notification
       );
 
       // iOS notification details
