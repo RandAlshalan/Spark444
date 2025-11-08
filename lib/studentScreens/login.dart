@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/authService.dart';
 import '../services/notification_service.dart';
+import '../services/fcm_token_manager.dart';
 import '../studentScreens/studentViewProfile.dart';
 import '../companyScreens/companyHomePage.dart';
 import 'forgotPasswordScreen.dart';
@@ -190,22 +191,7 @@ class _LoginScreenState extends State<LoginScreen>
 
       final String userType = loginResult['userType'];
 
-      // Save FCM token for push notifications
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser != null) {
-        try {
-          // Use correct collection based on user type
-          final collection = userType == 'student' ? 'student' : 'companies';
-          await NotificationService().saveFCMToken(
-            currentUser.uid,
-            userType: collection,
-          );
-          debugPrint('✅ FCM token saved for $userType: ${currentUser.uid}');
-        } catch (tokenError) {
-          debugPrint('⚠️ Failed to save FCM token: $tokenError');
-          // Don't block login if token save fails
-        }
-      }
+      await FcmTokenManager.saveUserFcmToken();
 
       _showTopToast("Welcome back!", icon: Icons.check_circle_outline);
 

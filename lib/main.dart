@@ -10,6 +10,7 @@ import 'studentScreens/StudentProfilePage.dart';
 import 'studentScreens/welcomeScreen.dart';
 import 'studentScreens/testNotifications.dart';
 import 'services/notification_service.dart';
+import 'services/fcm_token_manager.dart';
 import 'services/application_deadline_service.dart';
 
 /// ============================================================================
@@ -73,6 +74,7 @@ class _MyAppState extends State<MyApp> {
       // Initialize notification service
       await NotificationService().initialize(navKey: _navigatorKey);
       await NotificationService().syncFCMTokenWithLoggedInUser();
+      await FcmTokenManager.saveUserFcmToken();
       print('NotificationService initialized in MyApp');
 
       // Start application deadline monitoring service
