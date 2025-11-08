@@ -9,6 +9,12 @@ import 'companyStudentProfilePage.dart';
 
 const _purple = Color(0xFF422F5D);
 
+// helper: format DateTime as yyyy-mm-dd
+String _formatDate(DateTime? dt) {
+  if (dt == null) return '';
+  return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+}
+
 // ----------------------- VoteButtons widget -----------------------
 // Anonymous like/dislike system. Uses per-user vote docs under 'votes' subcollection
 // and keeps atomic counts on the parent doc via transactions.
@@ -332,7 +338,7 @@ class _CompanyReviewThreadCard extends StatelessWidget {
             Text(review.reviewText, style: const TextStyle(fontSize: 14)),
             const SizedBox(height: 6),
             Text(
-              review.createdAt.toDate().toString(),
+              _formatDate(review.createdAt.toDate()),
               style: const TextStyle(fontSize: 11, color: Colors.grey),
             ),
 
@@ -466,7 +472,7 @@ class _CompanyReviewThreadCard extends StatelessWidget {
                                         ),
                                       ),
                                       Text(
-                                        createdAt.toString(),
+                                        _formatDate(createdAt),
                                         style: const TextStyle(fontSize: 10, color: Colors.grey),
                                       ),
                                       const SizedBox(height: 6),
@@ -676,7 +682,7 @@ class _CompanyStudentReplyTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(reply.reviewText, style: const TextStyle(fontSize: 14)),
                 const SizedBox(height: 4),
-                Text(reply.createdAt.toDate().toString(), style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                Text(_formatDate(reply.createdAt.toDate()), style: const TextStyle(fontSize: 11, color: Colors.grey)),
                 const SizedBox(height: 6),
                 // Votes for student reply (stored as a top-level review doc with parentId)
                 if (reply.id.trim().isNotEmpty)
@@ -764,7 +770,7 @@ class _CompanyRepliesSubcollection extends StatelessWidget {
                           ),
                           if (createdAt != null)
                             Text(
-                              createdAt.toString(),
+                              _formatDate(createdAt),
                               style: const TextStyle(
                                 fontSize: 10,
                                 color: Colors.grey,
