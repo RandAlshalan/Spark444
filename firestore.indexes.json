@@ -29,20 +29,6 @@
       ]
     },
     {
-      "collectionGroup": "interview_reviews",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "studentId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "opportunities",
       "queryScope": "COLLECTION",
       "fields": [

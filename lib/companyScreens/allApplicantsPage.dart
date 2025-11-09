@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/Application.dart' as app_model;
@@ -1060,6 +1061,91 @@ class _ApplicantCardState extends State<_ApplicantCard> {
     }
   }
 
+  Future<void> _downloadResume() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final application = widget.record.application;
+    final student = widget.record.student;
+    final resumeId = application.resumeId;
+    final fallbackUrl = application.resumeUrl;
+
+    if ((resumeId == null || resumeId.isEmpty) &&
+        (fallbackUrl == null || fallbackUrl.isEmpty)) {
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('This application does not have a resume attached.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoadingResume = true);
+
+    try {
+      // If there's a URL, we can't download it directly, just open it
+      if (fallbackUrl != null && fallbackUrl.isNotEmpty) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            content: Text('External resume links cannot be downloaded. Opening in browser instead.'),
+          ),
+        );
+        await _launchExternalResume(fallbackUrl);
+        return;
+      }
+
+      // Fetch the resume from Firestore
+      final doc = await FirebaseFirestore.instance
+          .collection('resumes')
+          .doc(resumeId)
+          .get();
+
+      if (!doc.exists) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            content: Text('The selected resume is no longer available.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final resume = Resume.fromFirestore(doc);
+
+      // Generate PDF
+      final pdfData = await ResumePdfService.generate(resume);
+
+      // Create a sanitized filename
+      final studentName = _displayName(student).replaceAll(RegExp(r'[^\w\s-]'), '');
+      final fileName = '${studentName}_Resume.pdf';
+
+      // Share the PDF (this will show system share dialog with save option)
+      await Printing.sharePdf(
+        bytes: pdfData,
+        filename: fileName,
+      );
+
+      if (!mounted) return;
+
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('Resume ready to download/share'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Could not download resume: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingResume = false);
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -1183,23 +1269,48 @@ class _ApplicantCardState extends State<_ApplicantCard> {
                 (application.resumeUrl != null && application.resumeUrl!.isNotEmpty))
               Padding(
                 padding: const EdgeInsets.only(top: 20),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _isLoadingResume ? null : _viewResume,
-                    icon: _isLoadingResume
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.description_outlined),
-                    label: const Text('View Resume'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: BorderSide(color: CompanyColors.primary.withOpacity(0.6)),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _isLoadingResume ? null : _viewResume,
+                        icon: _isLoadingResume
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.visibility_outlined),
+                        label: const Text('View'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: BorderSide(color: CompanyColors.primary.withOpacity(0.6)),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _isLoadingResume ? null : _downloadResume,
+                        icon: _isLoadingResume
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.download_outlined),
+                        label: const Text('Download'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: CompanyColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             if (isPending) ...[

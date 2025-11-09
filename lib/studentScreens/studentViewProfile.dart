@@ -20,6 +20,7 @@ import '../studentScreens/StudentHomePage.dart';
 import '../studentScreens/studentApplications.dart';
 import 'StudentMyReviewsPage.dart';
 import '../studentScreens/StudentChatPage.dart';
+import '../utils/page_transitions.dart';
 
 // --- Color Constants inspired by Spark Logo ---
 const Color _sparkPrimaryPurple = Color(
@@ -216,9 +217,9 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
     }
     switch (index) {
       case 0: // Home
-        Navigator.push(
+        Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const StudentHomePage()),
+          NoTransitionRoute(page: const StudentHomePage()),
         );
         break;
       case 1: // Companies

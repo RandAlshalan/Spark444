@@ -21,6 +21,7 @@ import '../studentScreens/StudentChatPage.dart';
 import '../studentScreens/studentSavedOpp.dart';
 import '../studentScreens/studentOppPage.dart';
 import '../studentScreens/StudentHomePage.dart';
+import '../utils/page_transitions.dart';
 // --- NAV BAR IMPORTS END ---
 
 const String kStudentsCollection = 'student';
@@ -125,7 +126,7 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
       case 0:
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const StudentHomePage()),
+          NoTransitionRoute(page: const StudentHomePage()),
         );
         break;
        case 2: 

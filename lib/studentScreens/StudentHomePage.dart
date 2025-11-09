@@ -138,6 +138,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: _purple,
         elevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.light,

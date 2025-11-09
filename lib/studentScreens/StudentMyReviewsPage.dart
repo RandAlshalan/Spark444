@@ -107,20 +107,6 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
     return coll.where('studentId', whereIn: ids.toList()).orderBy('createdAt', descending: true).snapshots();
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> _myInterviewReviewsStream() {
-    final authUid = FirebaseAuth.instance.currentUser?.uid;
-    if (authUid == null || _resolving) return const Stream.empty();
-
-    final ids = <String>{};
-    if (uid != null && uid!.isNotEmpty) ids.add(uid!);
-    ids.add(authUid);
-
-    final coll = FirebaseFirestore.instance.collection('interview_reviews');
-    if (ids.length == 1) {
-      return coll.where('studentId', isEqualTo: ids.first).orderBy('createdAt', descending: true).snapshots();
-    }
-    return coll.where('studentId', whereIn: ids.toList()).orderBy('createdAt', descending: true).snapshots();
-  }
 
   Future<void> _fetchCompanyMeta(String companyId) async {
     if (companyId.isEmpty || _companyNameCache.containsKey(companyId)) return;
@@ -240,7 +226,7 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
     }
 
     return DefaultTabController(
-      length: 2,
+      length: 1,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('My Reviews'),
@@ -260,14 +246,12 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
             indicatorColor: _purple,
             tabs: const [
               Tab(text: 'Reviews'),
-              Tab(text: 'Interview Reviews'),
             ],
           ),
         ),
         body: TabBarView(
           children: [
             _buildReviewsTab(),
-            _buildInterviewReviewsTab(),
           ],
         ),
       ),
@@ -314,45 +298,6 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
     );
   }
 
-  Widget _buildInterviewReviewsTab() {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: _myInterviewReviewsStream(),
-      builder: (context, snap) {
-        if (snap.hasError) {
-          return _buildMessageState('Error: ${snap.error}');
-        }
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final docs = snap.data?.docs ?? [];
-
-        if (docs.isEmpty) {
-          return RefreshIndicator(
-            onRefresh: _onRefresh,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                const SizedBox(height: 120),
-                _buildMessageState('No interview reviews yet.', compact: true),
-              ],
-            ),
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: _onRefresh,
-          child: ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-            itemCount: docs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (_, index) => _buildInterviewReviewCard(docs[index]),
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildReviewCard(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
@@ -465,180 +410,6 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
     );
   }
 
-  Widget _buildInterviewReviewCard(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data() ?? {};
-    final text = (data['reviewText'] ?? '').toString();
-    final snippet = text.length > 400 ? '${text.substring(0, 400)}…' : text;
-    final companyId = (data['companyId'] ?? '').toString();
-    final created = (data['createdAt'] as Timestamp?)?.toDate();
-    final parentId = (data['parentId'] ?? '').toString();
-    final wasAcceptedRaw = (data['wasAccepted'] ?? '').toString();
-    final difficulty = (data['interviewDifficulty'] ?? '').toString();
-    final questions = (data['interviewQuestions'] ?? '').toString();
-    final answers = (data['interviewAnswers'] ?? '').toString();
-    final rating = ((data['rating'] ?? 0) as num).toDouble();
-    final isReply = parentId.isNotEmpty;
-
-    if (companyId.isNotEmpty && !_companyNameCache.containsKey(companyId)) {
-      _fetchCompanyMeta(companyId);
-    }
-    final companyName = _companyNameCache[companyId]?.trim().isNotEmpty == true ? _companyNameCache[companyId]! : 'Interview Review';
-
-    final acceptanceLabel = _formatAcceptanceLabel(wasAcceptedRaw);
-    final acceptanceColor = _acceptanceColor(wasAcceptedRaw);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 6),
-          child: Text(
-            isReply ? 'Reply' : 'Interview Review',
-            style: GoogleFonts.lato(fontSize: 13, fontWeight: FontWeight.w600, color: isReply ? _purple : Colors.grey.shade600),
-          ),
-        ),
-        Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: companyId.isNotEmpty
-                ? () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => StudentCompanyProfilePage(companyId: companyId)),
-                    );
-                  }
-                : null,
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      _buildLeading(companyId, companyName),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(companyName, style: GoogleFonts.lato(fontWeight: FontWeight.w700, fontSize: 15)),
-                            const SizedBox(height: 4),
-                            Text(isReply ? 'Reply' : 'Interview Review', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Delete',
-                        onPressed: () => _confirmAndDeleteInterviewReview(doc),
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                      ),
-                    ],
-                  ),
-                  if (!isReply) ...[
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        if (acceptanceLabel != null)
-                          _buildInfoChip(
-                            acceptanceLabel,
-                            Icons.flag,
-                            background: acceptanceColor.withValues(alpha: 0.15),
-                            foreground: acceptanceColor.darken(),
-                          ),
-                        if (difficulty.isNotEmpty)
-                          _buildInfoChip(
-                            'Difficulty: $difficulty',
-                            Icons.speed,
-                            background: Colors.blueGrey.shade50,
-                            foreground: Colors.blueGrey.shade700,
-                          ),
-                        if (rating > 0)
-                          _buildInfoChip(
-                            'Rating: ${rating.toStringAsFixed(1)}',
-                            Icons.star_rounded,
-                            background: Colors.orange.shade50,
-                            foreground: Colors.orange.shade700,
-                          ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Text(snippet.isNotEmpty ? snippet : 'No interview notes yet.', style: GoogleFonts.lato(height: 1.4)),
-                  if (!isReply && questions.trim().isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text('Questions', style: GoogleFonts.lato(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Text(questions, style: GoogleFonts.lato(height: 1.4, color: Colors.grey.shade800)),
-                  ],
-                  if (!isReply && answers.trim().isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text('Answers / Tips', style: GoogleFonts.lato(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Text(answers, style: GoogleFonts.lato(height: 1.4, color: Colors.grey.shade800)),
-                  ],
-                  const SizedBox(height: 12),
-                  if (created != null)
-                    Text(
-                      _dateFmt.format(created),
-                      style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  String? _formatAcceptanceLabel(String value) {
-    final normalized = value.toLowerCase().trim();
-    if (normalized.isEmpty) return null;
-    if (normalized == 'yes' || normalized == 'accepted' || normalized == 'offer') return 'Offer received';
-    if (normalized == 'no' || normalized == 'rejected') return 'No offer';
-    if (normalized == 'not sure' || normalized == 'pending') return 'Outcome pending';
-    return value;
-  }
-
-  Color _acceptanceColor(String value) {
-    final normalized = value.toLowerCase().trim();
-    if (normalized == 'yes' || normalized == 'accepted' || normalized == 'offer') {
-      return Colors.green.shade600;
-    }
-    if (normalized == 'no' || normalized == 'rejected') {
-      return Colors.red.shade500;
-    }
-    if (normalized == 'not sure' || normalized == 'pending') {
-      return Colors.orange.shade600;
-    }
-    return Colors.blueGrey.shade600;
-  }
-
-  Widget _buildInfoChip(
-    String text,
-    IconData icon, {
-    required Color background,
-    required Color foreground,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: foreground),
-          const SizedBox(width: 6),
-          Text(text, style: GoogleFonts.lato(fontSize: 13, fontWeight: FontWeight.w600, color: foreground)),
-        ],
-      ),
-    );
-  }
 
   Widget _buildMessageState(String message, {bool compact = false}) {
     return Center(
@@ -651,70 +422,6 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
         ),
       ),
     );
-  }
-
-  Future<void> _confirmAndDeleteInterviewReview(DocumentSnapshot<Map<String, dynamic>> doc) async {
-    final data = doc.data() ?? {};
-    final studentIdOnDoc = (data['studentId'] ?? '').toString();
-    final parentId = (data['parentId'] ?? '').toString();
-    final authUid = FirebaseAuth.instance.currentUser?.uid;
-    final canDelete = authUid != null && studentIdOnDoc.isNotEmpty && (studentIdOnDoc == authUid || studentIdOnDoc == uid);
-
-    if (!canDelete) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You are not authorized to delete this interview review.')));
-      return;
-    }
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete interview review'),
-        content: Text(parentId.isEmpty ? 'This will delete the review and its replies. Continue?' : 'Delete this reply?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    try {
-      if (parentId.isEmpty) {
-        await _deleteInterviewReviewThread(doc.id);
-      } else {
-        await doc.reference.delete();
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deleted.')));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
-      }
-    }
-  }
-
-  Future<void> _deleteInterviewReviewThread(String rootId) async {
-    final fs = FirebaseFirestore.instance;
-    final rootRef = fs.collection('interview_reviews').doc(rootId);
-    final repliesSnap = await fs.collection('interview_reviews').where('parentId', isEqualTo: rootId).get();
-    final companyRepliesSnap = await rootRef.collection('replies').get();
-    final refs = <DocumentReference>[
-      rootRef,
-      ...repliesSnap.docs.map((e) => e.reference),
-      ...companyRepliesSnap.docs.map((e) => e.reference),
-    ];
-
-    const batchLimit = 400;
-    for (var i = 0; i < refs.length; i += batchLimit) {
-      final end = (i + batchLimit) > refs.length ? refs.length : (i + batchLimit);
-      final batch = fs.batch();
-      for (var j = i; j < end; j++) {
-        batch.delete(refs[j]);
-      }
-      await batch.commit();
-    }
   }
 }
 
