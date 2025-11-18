@@ -523,20 +523,71 @@ class _StudentHomePageState extends State<StudentHomePage> {
                       color: _textColor,
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _sparkOrange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _sparkOrange.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          color: _sparkOrange,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Remember to apply before the deadline closes!',
+                            style: GoogleFonts.lato(
+                              fontSize: 12,
+                              color: _textColor.withOpacity(0.8),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   ...(_deadlineEvents[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]!.map((opp) {
                     final deadline = opp.applicationDeadline!.toDate();
                     final timeLeft = deadline.difference(DateTime.now());
                     final isUrgent = timeLeft.inDays < 3;
+                    final isPast = timeLeft.isNegative;
+
+                    // Calculate time remaining text
+                    String timeRemainingText = '';
+                    if (!isPast) {
+                      if (timeLeft.inDays > 0) {
+                        timeRemainingText = '${timeLeft.inDays} day${timeLeft.inDays == 1 ? '' : 's'} left';
+                      } else if (timeLeft.inHours > 0) {
+                        timeRemainingText = '${timeLeft.inHours} hour${timeLeft.inHours == 1 ? '' : 's'} left';
+                      } else if (timeLeft.inMinutes > 0) {
+                        timeRemainingText = '${timeLeft.inMinutes} minute${timeLeft.inMinutes == 1 ? '' : 's'} left';
+                      } else {
+                        timeRemainingText = 'Closing soon!';
+                      }
+                    }
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: isUrgent ? _sparkPink.withOpacity(0.1) : _purple.withOpacity(0.05),
+                        color: isUrgent
+                            ? _sparkPink.withOpacity(0.1)
+                            : _purple.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: isUrgent ? _sparkPink.withOpacity(0.3) : _purple.withOpacity(0.2),
+                          color: isUrgent
+                              ? _sparkPink.withOpacity(0.3)
+                              : _purple.withOpacity(0.2),
                           width: 1,
                         ),
                       ),
@@ -560,17 +611,43 @@ class _StudentHomePageState extends State<StudentHomePage> {
                                     color: _textColor,
                                   ),
                                 ),
+                                const SizedBox(height: 2),
                                 Text(
-                                  '${DateFormat.jm().format(deadline)} ${isUrgent ? "• Urgent!" : ""}',
+                                  'Closes at ${DateFormat.jm().format(deadline)}',
                                   style: GoogleFonts.lato(
-                                    fontSize: 12,
-                                    color: isUrgent ? _sparkPink : _textColor.withOpacity(0.6),
-                                    fontWeight: isUrgent ? FontWeight.w600 : FontWeight.normal,
+                                    fontSize: 11,
+                                    color: _textColor.withOpacity(0.5),
                                   ),
                                 ),
+                                if (!isPast) ...[
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: isUrgent
+                                          ? _sparkPink.withOpacity(0.2)
+                                          : _purple.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      timeRemainingText,
+                                      style: GoogleFonts.lato(
+                                        fontSize: 11,
+                                        color: isUrgent ? _sparkPink : _purple,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
+                          if (!isPast)
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 14,
+                              color: _textColor.withOpacity(0.3),
+                            ),
                         ],
                       ),
                     );
