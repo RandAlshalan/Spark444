@@ -3,8 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:spark/services/fcm_token_manager.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
 import '../models/student.dart';
 import '../models/opportunity.dart';
+import '../models/bookmark.dart';
 import '../services/authService.dart';
 import '../services/opportunityService.dart';
 import '../services/notification_helper.dart';
@@ -40,6 +43,11 @@ class _StudentHomePageState extends State<StudentHomePage> {
   int _applicationCount = 0;
   int _bookmarkCount = 0;
 
+  // Calendar state
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+  Map<DateTime, List<Opportunity>> _deadlineEvents = {};
+
   @override
   void initState() {
     super.initState();
@@ -68,14 +76,45 @@ class _StudentHomePageState extends State<StudentHomePage> {
         appCount = appsSnapshot.docs.length;
       }
 
-      // Count bookmarks
+      // Count bookmarks and load deadline events
       int bookmarkCount = 0;
+      Map<DateTime, List<Opportunity>> deadlineEvents = {};
+
       if (student != null) {
         final bookmarksSnapshot = await FirebaseFirestore.instance
             .collection('bookmarks')
             .where('studentId', isEqualTo: student.id)
             .get();
         bookmarkCount = bookmarksSnapshot.docs.length;
+
+        // Load bookmarked opportunities with deadlines
+        for (var bookmarkDoc in bookmarksSnapshot.docs) {
+          final bookmark = Bookmark.fromFirestore(bookmarkDoc);
+          try {
+            final oppDoc = await FirebaseFirestore.instance
+                .collection('opportunities')
+                .doc(bookmark.opportunityId)
+                .get();
+
+            if (oppDoc.exists) {
+              final opp = Opportunity.fromFirestore(oppDoc);
+              if (opp.applicationDeadline != null) {
+                final deadlineDate = DateTime(
+                  opp.applicationDeadline!.toDate().year,
+                  opp.applicationDeadline!.toDate().month,
+                  opp.applicationDeadline!.toDate().day,
+                );
+
+                if (deadlineEvents[deadlineDate] == null) {
+                  deadlineEvents[deadlineDate] = [];
+                }
+                deadlineEvents[deadlineDate]!.add(opp);
+              }
+            }
+          } catch (e) {
+            debugPrint('Error loading opportunity ${bookmark.opportunityId}: $e');
+          }
+        }
       }
 
       if (!mounted) return;
@@ -85,6 +124,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
         _recentOpportunities = recent;
         _applicationCount = appCount;
         _bookmarkCount = bookmarkCount;
+        _deadlineEvents = deadlineEvents;
         _loading = false;
       });
     } catch (e) {
@@ -222,6 +262,10 @@ class _StudentHomePageState extends State<StudentHomePage> {
                     const SizedBox(height: 24),
                     _buildStatsSection(),
                     const SizedBox(height: 24),
+                    if (_deadlineEvents.isNotEmpty) ...[
+                      _buildDeadlineCalendarSection(),
+                      const SizedBox(height: 24),
+                    ],
                     _buildQuickActionsSection(),
                     const SizedBox(height: 24),
                     _buildRecentOpportunitiesSection(),
@@ -375,6 +419,164 @@ class _StudentHomePageState extends State<StudentHomePage> {
               fontSize: 14,
               color: _textColor.withOpacity(0.6),
               fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeadlineCalendarSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Application Deadlines',
+            style: GoogleFonts.lato(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: _textColor,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _cardColor,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                TableCalendar(
+                  firstDay: DateTime.now().subtract(const Duration(days: 365)),
+                  lastDay: DateTime.now().add(const Duration(days: 365)),
+                  focusedDay: _focusedDay,
+                  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                  calendarFormat: CalendarFormat.month,
+                  startingDayOfWeek: StartingDayOfWeek.sunday,
+                  eventLoader: (day) {
+                    final normalizedDay = DateTime(day.year, day.month, day.day);
+                    return _deadlineEvents[normalizedDay] ?? [];
+                  },
+                  onDaySelected: (selectedDay, focusedDay) {
+                    setState(() {
+                      _selectedDay = selectedDay;
+                      _focusedDay = focusedDay;
+                    });
+                  },
+                  calendarStyle: CalendarStyle(
+                    todayDecoration: BoxDecoration(
+                      color: _sparkOrange.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    selectedDecoration: const BoxDecoration(
+                      color: _purple,
+                      shape: BoxShape.circle,
+                    ),
+                    markerDecoration: const BoxDecoration(
+                      color: _sparkPink,
+                      shape: BoxShape.circle,
+                    ),
+                    markersMaxCount: 3,
+                    outsideDaysVisible: false,
+                  ),
+                  headerStyle: HeaderStyle(
+                    titleCentered: true,
+                    formatButtonVisible: false,
+                    titleTextStyle: GoogleFonts.lato(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _textColor,
+                    ),
+                    leftChevronIcon: const Icon(Icons.chevron_left, color: _purple),
+                    rightChevronIcon: const Icon(Icons.chevron_right, color: _purple),
+                  ),
+                  daysOfWeekStyle: DaysOfWeekStyle(
+                    weekdayStyle: GoogleFonts.lato(
+                      fontWeight: FontWeight.w600,
+                      color: _textColor.withOpacity(0.7),
+                    ),
+                    weekendStyle: GoogleFonts.lato(
+                      fontWeight: FontWeight.w600,
+                      color: _sparkPink.withOpacity(0.7),
+                    ),
+                  ),
+                ),
+                if (_selectedDay != null && _deadlineEvents[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)] != null) ...[
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Deadlines on ${DateFormat('MMM d, y').format(_selectedDay!)}',
+                    style: GoogleFonts.lato(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: _textColor,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...(_deadlineEvents[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]!.map((opp) {
+                    final deadline = opp.applicationDeadline!.toDate();
+                    final timeLeft = deadline.difference(DateTime.now());
+                    final isUrgent = timeLeft.inDays < 3;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isUrgent ? _sparkPink.withOpacity(0.1) : _purple.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isUrgent ? _sparkPink.withOpacity(0.3) : _purple.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.work_outline,
+                            color: isUrgent ? _sparkPink : _purple,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  opp.role,
+                                  style: GoogleFonts.lato(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: _textColor,
+                                  ),
+                                ),
+                                Text(
+                                  '${DateFormat.jm().format(deadline)} ${isUrgent ? "• Urgent!" : ""}',
+                                  style: GoogleFonts.lato(
+                                    fontSize: 12,
+                                    color: isUrgent ? _sparkPink : _textColor.withOpacity(0.6),
+                                    fontWeight: isUrgent ? FontWeight.w600 : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList()),
+                ],
+              ],
             ),
           ),
         ],
