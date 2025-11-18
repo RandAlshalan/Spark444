@@ -29,7 +29,7 @@ const _pink = Color(0xFFD64483);
 
 // New: review length limits
 const int _reviewMinLength = 1;
-const int _reviewMaxLength = 300;
+const int _reviewMaxLength = 1000;
 // ---------------------------------------------------------
 
 // ----------------------- VoteButtons widget -----------------------

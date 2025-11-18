@@ -302,7 +302,7 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
   Widget _buildReviewCard(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
     final text = (data['reviewText'] ?? '').toString();
-    final snippet = text.length > 320 ? '${text.substring(0, 320)}…' : text;
+    final snippet = text; // Show full text without truncation
     final companyId = (data['companyId'] ?? '').toString();
     final parentId = (data['parentId'] ?? '').toString();
     final created = (data['createdAt'] as Timestamp?)?.toDate();

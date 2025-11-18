@@ -2,13 +2,16 @@
 
 ## ✅ Notification System Implementation Complete
 
-Your Spark app now automatically notifies students when companies they follow post new opportunities!
+Your Spark app now automatically notifies students when:
+- Companies they follow post new opportunities
+- Someone replies to their reviews
+- Their application status is updated by a company
 
 ---
 
 ## 📋 What Has Been Implemented
 
-### **Cloud Function: `notifyFollowersOnNewOpportunity`**
+### **Cloud Function 1: `notifyFollowersOnNewOpportunity`**
 Located in: [functions/index.js](functions/index.js)
 
 **Trigger**: Automatically runs when a new document is created in the `opportunities` collection
@@ -27,6 +30,59 @@ Located in: [functions/index.js](functions/index.js)
 - **Body**: "[Company Name] just posted: [Role Name]"
 - **Navigation**: Opens app to `/opportunities` page
 - **Additional Data**: `opportunityId`, `companyId`, `type: "new_opportunity"`
+
+### **Cloud Function 2: `notifyStudentOnReviewReply`**
+Located in: [functions/index.js](functions/index.js)
+
+**Trigger**: Automatically runs when a new document with a `parentId` is created in the `reviews` collection
+
+**What it does**:
+1. ✅ Detects when a reply is posted to a review (has `parentId`)
+2. ✅ Fetches the original review to find the student who wrote it
+3. ✅ Retrieves the student's FCM token
+4. ✅ Sends push notification to the original review author
+5. ✅ Creates notification record in Firestore under `student/{studentId}/notifications`
+6. ✅ Handles failed tokens and removes invalid ones
+7. ✅ Prevents self-notification (if student replies to their own review)
+8. ✅ Logs everything for debugging
+
+**Notification Content**:
+- **Title**: "New Reply to Your Review"
+- **Body**: "Someone replied to your review about [Company Name]"
+- **Navigation**: Opens app to `/my-reviews` page
+- **Additional Data**: `reviewId`, `replyId`, `companyId`, `type: "review_reply"`
+
+### **Cloud Function 3: `notifyStudentOnApplicationUpdate`**
+Located in: [functions/index.js](functions/index.js)
+
+**Trigger**: Automatically runs when an existing document is updated in the `applications` collection
+
+**What it does**:
+1. ✅ Detects when an application status changes (compares before and after status)
+2. ✅ Fetches the student and their FCM token
+3. ✅ Fetches the opportunity and company details
+4. ✅ Sends contextual push notification based on new status
+5. ✅ Creates notification record in Firestore under `student/{studentId}/notifications`
+6. ✅ Handles failed tokens and removes invalid ones
+7. ✅ Logs everything for debugging
+
+**Notification Content (varies by status)**:
+- **Status: Reviewed**
+  - Title: "Application Reviewed"
+  - Body: "Your application for [Role] at [Company] has been reviewed"
+- **Status: Rejected**
+  - Title: "Application Update"
+  - Body: "Thank you for your interest in [Role] at [Company]"
+- **Status: Hired**
+  - Title: "Congratulations!"
+  - Body: "You've been selected for [Role] at [Company]!"
+- **Status: Interviewing**
+  - Title: "Interview Invitation"
+  - Body: "[Company] has invited you for an interview for [Role]"
+- **Other statuses**: Generic "Application Status Updated" message
+
+**Navigation**: Opens app to `/opportunities` page
+**Additional Data**: `applicationId`, `opportunityId`, `status`, `type: "application_status_update"`
 
 ### **Test Function: `testNotification`**
 HTTP endpoint to test notifications manually
@@ -67,8 +123,10 @@ npm install
 # Deploy all functions
 firebase deploy --only functions
 
-# Or deploy specific function
+# Or deploy specific functions
 firebase deploy --only functions:notifyFollowersOnNewOpportunity
+firebase deploy --only functions:notifyStudentOnReviewReply
+firebase deploy --only functions:notifyStudentOnApplicationUpdate
 ```
 
 Expected output:
@@ -405,20 +463,10 @@ route: "/opportunity-details", // Navigate to specific page
 ### **Add More Notification Types**
 
 You can create additional Cloud Functions for:
-- Application status updates
+- ✅ Application status updates (Already implemented!)
 - New messages from companies
 - Deadline reminders
-- Interview invitations
-
-Example structure:
-```javascript
-exports.notifyOnApplicationUpdate = onDocumentUpdated(
-  "applications/{applicationId}",
-  async (event) => {
-    // Send notification when application status changes
-  }
-);
-```
+- Application deadline approaching
 
 ---
 
@@ -478,6 +526,8 @@ The function automatically removes invalid tokens from Firestore. This is normal
 
 Your Spark app now has a complete notification system:
 - ✅ Automatic notifications when followed companies post opportunities
+- ✅ Automatic notifications when someone replies to student reviews
+- ✅ Automatic notifications when application status changes
 - ✅ Notification history stored in Firestore
 - ✅ Invalid token cleanup
 - ✅ Comprehensive logging for debugging

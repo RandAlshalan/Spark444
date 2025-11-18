@@ -177,6 +177,340 @@ exports.notifyFollowersOnNewOpportunity = functions.firestore
   });
 
 // ============================================================================
+// 💬 إشعار الطالب عند الرد على مراجعته
+// ============================================================================
+exports.notifyStudentOnReviewReply = functions.firestore
+  .document("reviews/{reviewId}")
+  .onCreate(async (snapshot, context) => {
+    try {
+      const reply = snapshot.data();
+      const reviewId = context.params.reviewId;
+
+      // تحقق إذا كان هذا رد (يحتوي على parentId)
+      if (!reply.parentId || !reply.parentId.trim()) {
+        console.log("ℹ️ Not a reply, skipping notification");
+        return null;
+      }
+
+      console.log("💬 New reply created:", {
+        reviewId,
+        parentId: reply.parentId,
+      });
+
+      // 1️⃣ جلب المراجعة الأصلية
+      const parentReviewDoc = await db
+        .collection("reviews")
+        .doc(reply.parentId)
+        .get();
+
+      if (!parentReviewDoc.exists) {
+        console.error(`❌ Parent review not found: ${reply.parentId}`);
+        return null;
+      }
+
+      const parentReview = parentReviewDoc.data();
+      const originalStudentId = parentReview.studentId;
+
+      if (!originalStudentId) {
+        console.error("❌ Parent review missing studentId");
+        return null;
+      }
+
+      // تحقق أن الرد ليس من نفس الطالب
+      if (reply.studentId === originalStudentId) {
+        console.log("ℹ️ Student replied to their own review, skipping notification");
+        return null;
+      }
+
+      // 2️⃣ جلب بيانات الطالب الأصلي
+      const studentDoc = await db
+        .collection("student")
+        .doc(originalStudentId)
+        .get();
+
+      if (!studentDoc.exists) {
+        console.error(`❌ Student not found: ${originalStudentId}`);
+        return null;
+      }
+
+      const student = studentDoc.data();
+      const fcmToken = student.fcmToken;
+
+      if (!fcmToken) {
+        console.log(`⚠️ Student ${originalStudentId} has no FCM token`);
+        return null;
+      }
+
+      // 3️⃣ جلب بيانات الشركة للحصول على الاسم
+      let companyName = "a company";
+      if (reply.companyId) {
+        const companyDoc = await db
+          .collection("companies")
+          .doc(reply.companyId)
+          .get();
+        if (companyDoc.exists) {
+          companyName = companyDoc.data().companyName || "a company";
+        }
+      }
+
+      // 4️⃣ إعداد محتوى الإشعار
+      const replyText = reply.reviewText || "";
+      const replySnippet = replyText.length > 100
+        ? `${replyText.substring(0, 100)}...`
+        : replyText;
+
+      const notificationTitle = "New Reply to Your Review";
+      const notificationBody = `Someone replied to your review about ${companyName}`;
+
+      // 5️⃣ إرسال الإشعار
+      const messaging = admin.messaging();
+
+      try {
+        await messaging.send({
+          token: fcmToken,
+          notification: {
+            title: notificationTitle,
+            body: notificationBody,
+          },
+          data: {
+            route: "/my-reviews",
+            reviewId: reply.parentId,
+            replyId: reviewId,
+            companyId: reply.companyId || "",
+            type: "review_reply",
+          },
+          android: {
+            priority: "high",
+            notification: {
+              channelId: "spark_channel",
+              sound: "default",
+              clickAction: "FLUTTER_NOTIFICATION_CLICK",
+            },
+          },
+          apns: {
+            payload: {
+              aps: {
+                sound: "default",
+                badge: 1,
+              },
+            },
+          },
+        });
+
+        console.log(`✅ Reply notification sent to student ${originalStudentId}`);
+
+        // 6️⃣ حفظ الإشعار في قاعدة بيانات الطالب
+        await db
+          .collection("student")
+          .doc(originalStudentId)
+          .collection("notifications")
+          .add({
+            title: notificationTitle,
+            body: notificationBody,
+            companyName,
+            companyId: reply.companyId || "",
+            reviewId: reply.parentId,
+            replyId: reviewId,
+            replySnippet,
+            type: "review_reply",
+            read: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+        console.log("📨 Reply notification saved in Firestore ✅");
+      } catch (sendError) {
+        const errorCode = sendError.code;
+        if (
+          errorCode === "messaging/invalid-registration-token" ||
+          errorCode === "messaging/registration-token-not-registered"
+        ) {
+          console.log(`🧹 Removing invalid token for student ${originalStudentId}`);
+          await db.collection("student").doc(originalStudentId).update({
+            fcmToken: admin.firestore.FieldValue.delete(),
+          });
+        } else {
+          throw sendError;
+        }
+      }
+
+      return null;
+    } catch (err) {
+      console.error("🔥 Error in notifyStudentOnReviewReply:", err);
+      return null;
+    }
+  });
+
+// ============================================================================
+// 📋 إشعار الطالب عند تحديث حالة طلبه
+// ============================================================================
+exports.notifyStudentOnApplicationUpdate = functions.firestore
+  .document("applications/{applicationId}")
+  .onUpdate(async (change, context) => {
+    try {
+      const before = change.before.data();
+      const after = change.after.data();
+      const applicationId = context.params.applicationId;
+
+      // تحقق إذا تم تغيير الحالة
+      if (before.status === after.status) {
+        console.log("ℹ️ No status change, skipping notification");
+        return null;
+      }
+
+      console.log("📋 Application status changed:", {
+        applicationId,
+        oldStatus: before.status,
+        newStatus: after.status,
+      });
+
+      const studentId = after.studentId;
+      if (!studentId) {
+        console.error("❌ Application missing studentId");
+        return null;
+      }
+
+      // 1️⃣ جلب بيانات الطالب
+      const studentDoc = await db.collection("student").doc(studentId).get();
+      if (!studentDoc.exists) {
+        console.error(`❌ Student not found: ${studentId}`);
+        return null;
+      }
+
+      const student = studentDoc.data();
+      const fcmToken = student.fcmToken;
+
+      if (!fcmToken) {
+        console.log(`⚠️ Student ${studentId} has no FCM token`);
+        return null;
+      }
+
+      // 2️⃣ جلب بيانات الفرصة
+      const opportunityId = after.opportunityId;
+      let opportunityTitle = "an opportunity";
+      let companyName = "a company";
+
+      if (opportunityId) {
+        const opportunityDoc = await db
+          .collection("opportunities")
+          .doc(opportunityId)
+          .get();
+
+        if (opportunityDoc.exists) {
+          const opportunity = opportunityDoc.data();
+          opportunityTitle = opportunity.role || opportunityTitle;
+
+          // جلب اسم الشركة
+          if (opportunity.companyId) {
+            const companyDoc = await db
+              .collection("companies")
+              .doc(opportunity.companyId)
+              .get();
+            if (companyDoc.exists) {
+              companyName = companyDoc.data().companyName || companyName;
+            }
+          }
+        }
+      }
+
+      // 3️⃣ إعداد محتوى الإشعار بناءً على الحالة الجديدة
+      const newStatus = after.status;
+      let notificationTitle = "Application Status Updated";
+      let notificationBody = `Your application status has been updated to: ${newStatus}`;
+
+      if (newStatus === "Reviewed") {
+        notificationTitle = "Application Reviewed";
+        notificationBody = `Your application for ${opportunityTitle} at ${companyName} has been reviewed`;
+      } else if (newStatus === "Rejected") {
+        notificationTitle = "Application Update";
+        notificationBody = `Thank you for your interest in ${opportunityTitle} at ${companyName}`;
+      } else if (newStatus === "Hired") {
+        notificationTitle = "Congratulations!";
+        notificationBody = `You've been selected for ${opportunityTitle} at ${companyName}!`;
+      } else if (newStatus === "Interviewing") {
+        notificationTitle = "Interview Invitation";
+        notificationBody = `${companyName} has invited you for an interview for ${opportunityTitle}`;
+      }
+
+      // 4️⃣ إرسال الإشعار
+      const messaging = admin.messaging();
+
+      try {
+        await messaging.send({
+          token: fcmToken,
+          notification: {
+            title: notificationTitle,
+            body: notificationBody,
+          },
+          data: {
+            route: "/opportunities",
+            applicationId: applicationId,
+            opportunityId: opportunityId || "",
+            status: newStatus,
+            type: "application_status_update",
+          },
+          android: {
+            priority: "high",
+            notification: {
+              channelId: "spark_channel",
+              sound: "default",
+              clickAction: "FLUTTER_NOTIFICATION_CLICK",
+            },
+          },
+          apns: {
+            payload: {
+              aps: {
+                sound: "default",
+                badge: 1,
+              },
+            },
+          },
+        });
+
+        console.log(`✅ Application status notification sent to student ${studentId}`);
+
+        // 5️⃣ حفظ الإشعار في قاعدة بيانات الطالب
+        await db
+          .collection("student")
+          .doc(studentId)
+          .collection("notifications")
+          .add({
+            title: notificationTitle,
+            body: notificationBody,
+            companyName,
+            opportunityTitle,
+            opportunityId: opportunityId || "",
+            applicationId,
+            status: newStatus,
+            oldStatus: before.status,
+            type: "application_status_update",
+            read: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+        console.log("📨 Application status notification saved in Firestore ✅");
+      } catch (sendError) {
+        const errorCode = sendError.code;
+        if (
+          errorCode === "messaging/invalid-registration-token" ||
+          errorCode === "messaging/registration-token-not-registered"
+        ) {
+          console.log(`🧹 Removing invalid token for student ${studentId}`);
+          await db.collection("student").doc(studentId).update({
+            fcmToken: admin.firestore.FieldValue.delete(),
+          });
+        } else {
+          throw sendError;
+        }
+      }
+
+      return null;
+    } catch (err) {
+      console.error("🔥 Error in notifyStudentOnApplicationUpdate:", err);
+      return null;
+    }
+  });
+
+// ============================================================================
 // 🧪 دالة اختبار لإرسال إشعار يدوي
 // ============================================================================
 exports.testNotification = functions.https.onRequest(async (req, res) => {
