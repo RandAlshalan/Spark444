@@ -8,14 +8,15 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Check for the essential API key on startup
+// تأكد من وجود مفتاح OpenAI
 if (!process.env.OPENAI_API_KEY) {
   console.error("FATAL ERROR: Missing OPENAI_API_KEY");
   process.exit(1);
 }
 
-// OpenAI API endpoint
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+// روابط OpenAI
+const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech";
 
 app.post("/chat", async (req, res) => {
   try {
@@ -26,7 +27,7 @@ app.post("/chat", async (req, res) => {
     }
 
     // ---- SYSTEM PROMPT (interview-only bot) ----
-let systemPrompt = `
+    let systemPrompt = `
 You are an expert AI interview coach focused ONLY on job interview training.
 
 Your mission:
@@ -151,9 +152,6 @@ When the user says “stop” or “end”:
   "Shall we go over how to handle difficult questions?"
 `.trim();
 
-
-
-
     if (resumeId) {
       systemPrompt += `\n\n**User Context:** You MUST tailor your answers based on the user's resume (ID: ${resumeId}). Refer to their skills and experience when providing examples.`;
     }
@@ -161,7 +159,6 @@ When the user says “stop” or “end”:
       systemPrompt += `\n\n**Training Context:** The user is in a specific training program: '${trainingType}'. Focus your advice on this area (e.g., job roles, skills) related to this training.`;
     }
 
-    // ---- ✅ FIXED PART: Inject system prompt as first message ----
     const apiMessages = [
       {
         role: "system",
@@ -173,8 +170,8 @@ When the user says “stop” or “end”:
       })),
     ];
 
-    // ---- Send to OpenAI ----
-    const response = await fetch(OPENAI_API_URL, {
+    // 1) نجيب نص الرد من Chat
+    const chatResponse = await fetch(OPENAI_CHAT_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -188,24 +185,59 @@ When the user says “stop” or “end”:
       }),
     });
 
-    const data = await response.json();
+    const chatData = await chatResponse.json();
 
-    // Handle API errors
-    if (response.status === 429) {
+    if (chatResponse.status === 429) {
       return res.status(429).json({
         error: "AI service is currently overloaded. Please try again shortly.",
       });
     }
-    if (!response.ok) {
-      console.error("OpenAI error:", data);
+    if (!chatResponse.ok) {
+      console.error("OpenAI Chat error:", chatData);
       return res
-        .status(response.status)
-        .json({ error: data.error?.message || "OpenAI API error" });
+        .status(chatResponse.status)
+        .json({ error: chatData.error?.message || "OpenAI Chat API error" });
     }
 
     const reply =
-      data.choices?.[0]?.message?.content?.trim() ?? "No response from AI.";
-    res.json({ reply });
+      chatData.choices?.[0]?.message?.content?.trim() ?? "No response from AI.";
+
+    // 2) نحول النص لصوت عن طريق Audio API (Text-to-Speech)
+    // models المدعومة: gpt-4o-mini-tts, tts-1, tts-1-hd 
+    const ttsResponse = await fetch(OPENAI_TTS_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini-tts", // غيّرها لو تستخدم tts-1 أو غيره
+        voice: "verse",           // صوت المدرب
+        input: reply,
+        format: "mp3",
+      }),
+    });
+
+    if (!ttsResponse.ok) {
+      const errText = await ttsResponse.text();
+      console.error("OpenAI TTS error:", errText);
+      // في حال فشل الصوت نرجع النص فقط
+      return res.json({
+        reply,
+        audio: null,
+        mimeType: null,
+      });
+    }
+
+    const audioArrayBuffer = await ttsResponse.arrayBuffer();
+    const audioBase64 = Buffer.from(audioArrayBuffer).toString("base64");
+
+    // نرجع النص + الصوت Base64
+    return res.json({
+      reply,
+      audio: audioBase64,
+      mimeType: "audio/mpeg",
+    });
   } catch (err) {
     console.error("Server error:", err);
     res.status(500).json({ error: "Internal server error" });

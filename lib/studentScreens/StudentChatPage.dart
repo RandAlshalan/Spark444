@@ -1,14 +1,15 @@
+import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import '../services/chat_service.dart'; // Make sure this path is correct
-import 'dart:async'; // For using Future.delayed
+import 'package:audioplayers/audioplayers.dart';
+import '../services/chat_service.dart';
 
-// --- 1. Define key colors ---
+// --- إعدادات عامة ---
 const Color _primaryColor = Color(0xFF422F5D);
 const Color _aiBubbleColor = Color(0xFFF1F1F1);
 const Color _scaffoldBgColor = Color(0xFFF8F9FA);
 
-// Renamed to StudentChatPage
 class StudentChatPage extends StatefulWidget {
   const StudentChatPage({super.key});
 
@@ -16,41 +17,77 @@ class StudentChatPage extends StatefulWidget {
   State<StudentChatPage> createState() => _StudentChatPageState();
 }
 
-// Renamed to _StudentChatPageState
 class _StudentChatPageState extends State<StudentChatPage> {
-  // Controllers for text input and scrolling
+  // Controllers
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  
-  // Services and state variables
+
+  // Service
   final ChatService _chatService = ChatService();
-  // This list holds the chat messages in memory.
-  // When the page is closed, this list is destroyed.
-  final List<Map<String, String>> _messages = []; 
+
+  // Messages
+  final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
+
+  // Lip Sync
+  bool _mouthOpen = false;
+  Timer? _lipSyncTimer;
+
+  // Audio Player
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
     super.initState();
-    // Add a friendly welcome message when the page loads
+
+    // رسالة ترحيب نصية فقط (بدون صوت من السيرفر)
+    const welcomeText =
+        "Hi! I'm your AI Interview Coach. 👋\n\nAsk me any question to prepare for your interview.";
+
     _messages.add({
       'role': 'ai',
-      'text':
-          "Hi! I'm your AI Interview Coach. 👋\n\nAsk me any question to prepare for your interview."
+      'text': welcomeText,
+    });
+
+    // لما ينتهي الصوت، نوقف تحريك الفم
+    _audioPlayer.onPlayerComplete.listen((event) {
+      _stopLipSync();
     });
   }
 
   @override
   void dispose() {
-    // Clean up controllers to prevent memory leaks
     _controller.dispose();
     _scrollController.dispose();
+    _stopLipSync();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
-  /// Scrolls to the bottom of the message list
+  // ---------------- LIP SYNC -----------------
+  void _startLipSync() {
+    _lipSyncTimer?.cancel();
+    _lipSyncTimer = Timer.periodic(
+      const Duration(milliseconds: 180),
+      (_) {
+        if (!mounted) return;
+        setState(() {
+          _mouthOpen = !_mouthOpen;
+        });
+      },
+    );
+  }
+
+  void _stopLipSync() {
+    _lipSyncTimer?.cancel();
+    if (!mounted) return;
+    setState(() {
+      _mouthOpen = false;
+    });
+  }
+
+  // ---------------- SCROLL -------------------
   void _scrollToBottom() {
-    // Delay slightly to allow the UI to build before scrolling
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -62,86 +99,89 @@ class _StudentChatPageState extends State<StudentChatPage> {
     });
   }
 
-  /// Handles sending the user's message to the ChatService
+  // ---------------- PLAY AUDIO --------------
+  Future<void> _playAudio(Uint8List audioBytes) async {
+    _startLipSync();
+    await _audioPlayer.stop();
+    await _audioPlayer.play(BytesSource(audioBytes));
+  }
+
+  // ---------------- SEND MESSAGE ------------
   void _sendMessage() async {
     final text = _controller.text.trim();
-    // Don't send if the message is empty or if AI is already replying
     if (text.isEmpty || _isLoading) return;
 
-    // --- (Example) Assume you get these IDs from your app's state ---
-    // You must replace these with your real variables
-    final String? currentResumeId = 'resume_12345'; // (Example: Get this from your state)
-    final String? currentTrainingType = 'Software Development'; // (Example)
+    final String? currentResumeId = 'resume_12345'; // عدّلها من حالتك
+    final String? currentTrainingType = 'Software Development';
 
     final userMessage = {'role': 'user', 'text': text};
-    
-    // Add user's message to UI immediately
+
     setState(() {
       _messages.add(userMessage);
       _controller.clear();
-      _isLoading = true; // Show typing indicator
+      _isLoading = true;
     });
 
-    _scrollToBottom(); // Scroll down
+    _scrollToBottom();
 
-    // --- Filter out the welcome message from the history ---
-    // The AI doesn't need to see its own welcome message
+    // history بدون رسالة الترحيب
     final history = _messages.where((msg) {
-        return !(msg['role'] == 'ai' && msg['text']!.startsWith("Hi! I'm your AI Interview Coach"));
+      return !(msg['role'] == 'ai' &&
+          msg['text']!.startsWith("Hi! I'm your AI Interview Coach"));
     }).toList();
 
-
     try {
-      // --- FIXED: The call now matches the ChatService ---
-      // Call the AI service with history and extra parameters
       final reply = await _chatService.sendMessage(
-        history, // Send the history List
-        resumeId: currentResumeId,       // Send the extra parameters
+        history,
+        resumeId: currentResumeId,
         trainingType: currentTrainingType,
       );
-      
-      // Add AI's reply to the UI
+
+      // أضف رد الـAI للنص
       setState(() {
-        _messages.add({'role': 'ai', 'text': reply});
+        _messages.add({'role': 'ai', 'text': reply.text});
       });
+
+      _scrollToBottom();
+
+      // إذا فيه صوت من السيرفر، شغّله
+      if (reply.audioBytes != null) {
+        await _playAudio(reply.audioBytes!);
+      }
     } catch (e) {
-      // Show an error message if the API call fails
       setState(() {
-        _messages.add({'role': 'ai', 'text': 'Oops! '});
+        _messages.add({
+          'role': 'ai',
+          'text': 'Oops! Something went wrong. 😅',
+        });
       });
+      _scrollToBottom();
     } finally {
-      // Whether it succeeded or failed, stop loading
       setState(() {
         _isLoading = false;
       });
-      _scrollToBottom(); // Scroll down to show the new message
     }
   }
 
-  // --- NEW FUNCTION: Handles the back button press ---
-  /// Shows a confirmation dialog before allowing the user to leave the page.
+  // --------- BACK BUTTON HANDLER -----------
   Future<bool> _onWillPop() async {
-    // If the user hasn't typed anything (only the welcome message exists),
-    // let them leave without a warning.
     if (_messages.length <= 1) {
-      return true; // (true = allow pop/exit)
+      return true;
     }
 
-    // If they have chatted, show a confirmation dialog
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Are you sure?'),
-        content: const Text('Your chat history will be deleted if you leave.'),
+        content:
+            const Text('Your chat history will be deleted if you leave.'),
         actions: <Widget>[
-          // "Stay" button
           TextButton(
-            onPressed: () => Navigator.pop(context, false), // (false = do not pop/exit)
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          // "Leave" button
           TextButton(
-            onPressed: () => Navigator.pop(context, true), // (true = allow pop/exit)
+            onPressed: () => Navigator.pop(context, true),
             child: const Text(
               'Leave',
               style: TextStyle(color: Colors.red),
@@ -151,17 +191,14 @@ class _StudentChatPageState extends State<StudentChatPage> {
       ),
     );
 
-    // Handle cases where the user taps outside the dialog (result is null)
-    // (result ?? false) means: if result is null, treat it as false (don't exit)
     return result ?? false;
   }
 
+  // ---------------- BUILD -------------------
   @override
   Widget build(BuildContext context) {
-    // --- MODIFIED: Wrap Scaffold with WillPopScope ---
-    // This intercepts the back button press (both app bar and Android navigation)
     return WillPopScope(
-      onWillPop: _onWillPop, // Call our new function to show the dialog
+      onWillPop: _onWillPop,
       child: Scaffold(
         backgroundColor: _scaffoldBgColor,
         appBar: AppBar(
@@ -178,60 +215,60 @@ class _StudentChatPageState extends State<StudentChatPage> {
         ),
         body: Column(
           children: [
-            // --- Message List Area ---
+            const SizedBox(height: 8),
+
+            // Sparkie
+            Center(
+              child: Image.asset(
+                _mouthOpen
+                    ? 'assets/sparkie_open.png'
+                    : 'assets/sparkie_closed.png',
+                height: 170,
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Messages
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.all(12),
-                // Add 1 to item count if _isLoading is true (for the typing indicator)
                 itemCount: _messages.length + (_isLoading ? 1 : 0),
                 itemBuilder: (context, index) {
-                  
-                  // If this is the last item AND we are loading, show the indicator
                   if (_isLoading && index == _messages.length) {
                     return _buildTypingIndicator();
                   }
 
-                  // Get the message and check if it's from the user
                   final msg = _messages[index];
                   final isUser = msg['role'] == 'user';
 
-                  // Align messages left (AI) or right (User)
                   return Align(
                     alignment:
                         isUser ? Alignment.centerRight : Alignment.centerLeft,
                     child: ConstrainedBox(
-                      // Limit message width to 75% of the screen
                       constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width * 0.75,
+                        maxWidth:
+                            MediaQuery.of(context).size.width * 0.75,
                       ),
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isUser ? _primaryColor : _aiBubbleColor,
-                          // Create the "chat bubble" shape
                           borderRadius: BorderRadius.only(
                             topLeft: const Radius.circular(16),
                             topRight: const Radius.circular(16),
-                            bottomLeft: Radius.circular(isUser ? 16 : 0),
-                            bottomRight: Radius.circular(isUser ? 0 : 16),
+                            bottomLeft:
+                                Radius.circular(isUser ? 16 : 0),
+                            bottomRight:
+                                Radius.circular(isUser ? 0 : 16),
                           ),
                         ),
-                        // Use Markdown for AI replies (for formatting)
-                        // Use standard Text for user replies
                         child: msg['role'] == 'ai'
                             ? MarkdownBody(
                                 data: msg['text'] ?? '',
-                                selectable: true, // Allows student to copy text
-                                styleSheet: MarkdownStyleSheet(
-                                  p: const TextStyle(
-                                      fontSize: 15, color: Colors.black87),
-                                  strong: const TextStyle(
-                                      fontWeight: FontWeight.bold),
-                                  listBullet: const TextStyle(
-                                      fontSize: 15, color: Colors.black87),
-                                ),
+                                selectable: true,
                               )
                             : Text(
                                 msg['text'] ?? '',
@@ -246,8 +283,7 @@ class _StudentChatPageState extends State<StudentChatPage> {
                 },
               ),
             ),
-            
-            // --- Text Input Area ---
+
             _buildInputArea(),
           ],
         ),
@@ -255,7 +291,6 @@ class _StudentChatPageState extends State<StudentChatPage> {
     );
   }
 
-  /// Widget for the AI's "typing..." indicator
   Widget _buildTypingIndicator() {
     return Align(
       alignment: Alignment.centerLeft,
@@ -281,9 +316,7 @@ class _StudentChatPageState extends State<StudentChatPage> {
     );
   }
 
-  /// Widget for the text input area at the bottom
   Widget _buildInputArea() {
-    // SafeArea ensures the input field isn't hidden by system UI (like the home bar)
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.all(12.0),
@@ -295,11 +328,10 @@ class _StudentChatPageState extends State<StudentChatPage> {
         ),
         child: Row(
           children: [
-            // Text field
             Expanded(
               child: TextField(
                 controller: _controller,
-                enabled: !_isLoading, // Disable field while loading
+                enabled: !_isLoading,
                 decoration: InputDecoration(
                   hintText: _isLoading
                       ? 'Coach is typing...'
@@ -315,17 +347,15 @@ class _StudentChatPageState extends State<StudentChatPage> {
                     vertical: 12,
                   ),
                 ),
-                // Allow sending by pressing "enter" on keyboard
                 onSubmitted: _isLoading ? null : (_) => _sendMessage(),
               ),
             ),
             const SizedBox(width: 8),
-            // Send button
             CircleAvatar(
-              backgroundColor: _isLoading ? Colors.grey : _primaryColor,
+              backgroundColor:
+                  _isLoading ? Colors.grey : _primaryColor,
               child: IconButton(
                 icon: const Icon(Icons.send, color: Colors.white),
-                // Disable button while loading
                 onPressed: _isLoading ? null : _sendMessage,
               ),
             ),

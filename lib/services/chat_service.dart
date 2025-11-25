@@ -1,21 +1,26 @@
-import 'dart:convert'; // For jsonEncode, utf8, and jsonDecode
-import 'dart:async'; // For TimeoutException and Duration
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
-class ChatService {
-  final String baseUrl = 'https://spark444-ai.onrender.com'; // Your URL
+class ChatReply {
+  final String text;
+  final Uint8List? audioBytes;
 
-  // --- The most important change: Accept a List of messages instead of a String ---
-  Future<String> sendMessage(
-    List<Map<String, String>> messages, { // Now accepts a List
+  ChatReply({required this.text, this.audioBytes});
+}
+
+class ChatService {
+  final String baseUrl = 'https://spark444-ai.onrender.com'; // عدّل لو عندك دومين آخر
+
+  Future<ChatReply> sendMessage(
+    List<Map<String, String>> messages, {
     String? resumeId,
     String? trainingType,
   }) async {
     try {
-      // Build the request body
       final requestBody = {
-        'messages': messages, // Send the full history
-        // These keys will only be added if the value is not null
+        'messages': messages,
         if (resumeId != null) 'resumeId': resumeId,
         if (trainingType != null) 'trainingType': trainingType,
       };
@@ -24,26 +29,28 @@ class ChatService {
           .post(
             Uri.parse('$baseUrl/chat'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(requestBody), // Send the new body
+            body: jsonEncode(requestBody),
           )
-          .timeout(const Duration(seconds: 20)); // Add a timeout
+          .timeout(const Duration(seconds: 30));
+
+      final body = utf8.decode(response.bodyBytes);
+      final data = jsonDecode(body);
 
       if (response.statusCode == 200) {
-        // Handle non-English characters in the response
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return data['reply'] ?? 'No response';
+        final text = data['reply'] ?? 'No response';
+        Uint8List? audioBytes;
+        if (data['audio'] != null) {
+          audioBytes = base64Decode(data['audio']);
+        }
+        return ChatReply(text: text, audioBytes: audioBytes);
       } else {
-        // Try to read the error message from the server
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
         final errorMessage = data['error'] ?? 'Unknown error';
         throw Exception(
             'Failed to get AI reply: ${response.statusCode} ($errorMessage)');
       }
     } on TimeoutException {
-      // Handle network timeout
       throw Exception('The connection timed out. Please try again.');
     } catch (e) {
-      // Handle other errors (like no internet, or parsing errors)
       throw Exception('An unknown error occurred: ${e.toString()}');
     }
   }
