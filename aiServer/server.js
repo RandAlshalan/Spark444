@@ -204,6 +204,9 @@ When the user says “stop” or “end”:
 
     // 2) نحول النص لصوت عن طريق Audio API (Text-to-Speech)
     // models المدعومة: gpt-4o-mini-tts, tts-1, tts-1-hd 
+// 2) نحول النص لصوت عن طريق Audio API (Text-to-Speech)
+    // models المدعومة: tts-1 (سريع), tts-1-hd (جودة عالية)
+    // voices المدعومة: alloy, echo, fable, onyx, nova, shimmer
     const ttsResponse = await fetch(OPENAI_TTS_URL, {
       method: "POST",
       headers: {
@@ -211,13 +214,12 @@ When the user says “stop” or “end”:
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini-tts", // غيّرها لو تستخدم tts-1 أو غيره
-        voice: "verse",           // صوت المدرب
+        model: "tts-1",      // تم التعديل: استخدم tts-1 بدلاً من gpt-4o-mini-tts
+        voice: "alloy",      // تم التعديل: استخدم صوتاً معروفاً مثل alloy أو onyx
         input: reply,
         format: "mp3",
       }),
     });
-
     if (!ttsResponse.ok) {
       const errText = await ttsResponse.text();
       console.error("OpenAI TTS error:", errText);

@@ -1,57 +1,45 @@
-import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
-class ChatReply {
-  final String text;
-  final Uint8List? audioBytes;
-
-  ChatReply({required this.text, this.audioBytes});
-}
-
 class ChatService {
-  final String baseUrl = 'https://spark444-ai.onrender.com'; // عدّل لو عندك دومين آخر
+  // تأكد أن الرابط هو رابط سيرفرك الصحيح
+  final String baseUrl = 'https://spark444-ai.onrender.com';
 
-  Future<ChatReply> sendMessage(
+  Future<Map<String, dynamic>> sendMessage(
     List<Map<String, String>> messages, {
     String? resumeId,
     String? trainingType,
   }) async {
     try {
-      final requestBody = {
+      final body = {
         'messages': messages,
         if (resumeId != null) 'resumeId': resumeId,
         if (trainingType != null) 'trainingType': trainingType,
       };
 
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl/chat'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(requestBody),
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await http.post(
+        Uri.parse('$baseUrl/chat'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
 
-      final body = utf8.decode(response.bodyBytes);
-      final data = jsonDecode(body);
+      // 1. فك تشفير الرد لدعم اللغة العربية
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
 
+      // 2. التحقق من حالة السيرفر
       if (response.statusCode == 200) {
-        final text = data['reply'] ?? 'No response';
-        Uint8List? audioBytes;
-        if (data['audio'] != null) {
-          audioBytes = base64Decode(data['audio']);
-        }
-        return ChatReply(text: text, audioBytes: audioBytes);
+        return {
+          "reply": data['reply'] ?? "No response", // حماية من القيم الفارغة
+          "audio": data['audio'] ?? "",            // حماية من القيم الفارغة
+          "mimeType": data['mimeType'] ?? "",
+        };
       } else {
-        final errorMessage = data['error'] ?? 'Unknown error';
-        throw Exception(
-            'Failed to get AI reply: ${response.statusCode} ($errorMessage)');
+        // إذا كان هناك خطأ من السيرفر (مثلاً مفتاح OpenAI غير صحيح أو انتهى الرصيد)
+        throw Exception(data['error'] ?? "Server Error: ${response.statusCode}");
       }
-    } on TimeoutException {
-      throw Exception('The connection timed out. Please try again.');
     } catch (e) {
-      throw Exception('An unknown error occurred: ${e.toString()}');
+      // إعادة رمي الخطأ ليظهر في واجهة المستخدم (UI)
+      throw Exception("Failed to connect: $e");
     }
   }
 }
