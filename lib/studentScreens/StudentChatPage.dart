@@ -4,6 +4,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../services/chat_service.dart';
+import 'dart:io'; // للتعامل مع الملفات
+import 'package:path_provider/path_provider.dart'; // للوصول للملفات المؤقتة
 
 const Color _primaryColor = Color(0xFF422F5D);
 const Color _aiBubbleColor = Color(0xFFF1F1F1);
@@ -75,64 +77,85 @@ class _StudentChatPageState extends State<StudentChatPage> {
   // --------------------
   // تشغيل صوت من Base64
   // --------------------
-
+// --------------------
+  // تشغيل الصوت (الحل النهائي للأيفون والأندرويد)
+  // --------------------
   Future<void> _autoSpeak(String base64Audio) async {
-    // تنظيف النص من أي مسافات أو أسطر جديدة قد تسبب مشاكل
-    String cleanBase64 = base64Audio.replaceAll('\n', '').trim();
+    // 1. تنظيف النص من أي شوائب
+    String cleanBase64 = base64Audio.replaceAll('\n', '').replaceAll('\r', '').trim();
     
-    if (cleanBase64.isEmpty) return;
+    if (cleanBase64.isEmpty) {
+      debugPrint("⚠️ Audio string is empty");
+      return;
+    }
 
     try {
-      // 3. ✅ إضافة حماية (Try-Catch)
+      // 2. تحويل النص إلى بايتات
       final bytes = base64Decode(cleanBase64);
 
-      // إيقاف أي صوت سابق قبل البدء
-      await _player.stop();
+      // 3. الحصول على المجلد المؤقت في الهاتف
+      final dir = await getTemporaryDirectory();
       
+      // 4. إنشاء ملف بامتداد mp3 (ضروري جداً للأيفون)
+      final file = File('${dir.path}/ai_voice.mp3');
+
+      // 5. كتابة الصوت داخل الملف
+      await file.writeAsBytes(bytes);
+
+      // 6. إعداد حركة الشفاه
       _startLip();
-      await _player.play(BytesSource(bytes));
-      
+      await _player.stop(); // إيقاف أي صوت سابق
+
+      // 7. التشغيل من الملف (هذا يحل مشكلة DarwinAudioError)
+      await _player.play(DeviceFileSource(file.path));
+
     } catch (e) {
       debugPrint("❌ Error playing audio: $e");
-      _stopLip(); // تأكد من إيقاف الفم إذا فشل الصوت
+      _stopLip();
     }
   }
 
   // --------------------
   // إرسال الرسالة
   // --------------------
-
-  Future<void> _sendMessage() async {
+Future<void> _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _isLoading) return;
-
+    FocusScope.of(context).unfocus();
     setState(() {
       _messages.add({"role": "user", "text": text});
       _controller.clear();
       _isLoading = true;
     });
 
-    final history = _messages.toList();
-
     try {
-      final res = await _chatService.sendMessage(history);
+      print("🚀 Sending message to server..."); // طباعة للتأكد من الإرسال
+      final res = await _chatService.sendMessage(_messages);
 
       final reply = res["reply"] ?? "";
-      final audio = res["audio"] ?? "";
+      final audio = res["audio"] ?? ""; // الصوت المشفر
+
+      print("✅ Reply received: $reply");
+      print("🔊 Audio length received: ${audio.length}"); // كم حجم الصوت الواصل؟
 
       setState(() {
         _messages.add({"role": "ai", "text": reply});
       });
 
       if (audio.isNotEmpty) {
-        _autoSpeak(audio);
+        print("▶️ Attempting to play audio...");
+        await _autoSpeak(audio);
+      } else {
+        print("⚠️ Warning: Audio string is empty!");
       }
+
     } catch (e) {
-       // إضافة معالجة خطأ للشبكة
-       debugPrint("Network Error: $e");
-       ScaffoldMessenger.of(context).showSnackBar(
-         SnackBar(content: Text("Error: $e")),
-       );
+      print("❌ ERROR: $e"); // هنا سيظهر لك سبب الخطأ الحقيقي
+      
+      // إظهار رسالة خطأ في الشاشة
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -157,64 +180,77 @@ class _StudentChatPageState extends State<StudentChatPage> {
   // --------------------
   // UI
   // --------------------
-
-  @override
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _scaffoldBgColor,
       appBar: AppBar(
-        title: const Text("AI Interview Coach"),
+        title: const Text(
+          "AI Interview Coach",
+          style: TextStyle(color: Colors.white), // 👈 هنا جعلنا الخط أبيض
+        ),
         backgroundColor: _primaryColor,
+        // 👇 هذا السطر إضافي ومهم: يجعل زر "الرجوع" (السهم) أبيض أيضاً إذا كان موجوداً
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Column(
-        children: [
-          const SizedBox(height: 10),
+      // 👇 هنا بداية GestureDetector لإخفاء الكيبورد عند اللمس
+      body: GestureDetector(
+        onTap: () {
+          FocusScope.of(context).unfocus();
+        },
+        // 👇 هنا يبدأ العامود (Column) كما كان سابقاً
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
 
-          Center(
-            child: Image.asset(
-              _mouthOpen
-                  ? "assets/sparkie_open.png"
-                  : "assets/sparkie_closed.png",
-              height: 160,
+            // صورة الروبوت
+            Center(
+              child: Image.asset(
+                _mouthOpen
+                    ? "assets/sparkie_open.png"
+                    : "assets/sparkie_closed.png",
+                height: 160,
+              ),
             ),
-          ),
 
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              itemCount: _messages.length,
-              itemBuilder: (context, i) {
-                final msg = _messages[i];
-                final isUser = msg["role"] == "user";
+            // قائمة الرسائل
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                itemCount: _messages.length,
+                itemBuilder: (context, i) {
+                  final msg = _messages[i];
+                  final isUser = msg["role"] == "user";
 
-                return Align(
-                  alignment:
-                      isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.all(8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isUser ? _primaryColor : _aiBubbleColor,
-                      borderRadius: BorderRadius.circular(16),
+                  return Align(
+                    alignment:
+                        isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Container(
+                      margin: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isUser ? _primaryColor : _aiBubbleColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: msg["role"] == "ai"
+                          ? MarkdownBody(data: msg["text"]!)
+                          : Text(
+                              msg["text"]!,
+                              style: const TextStyle(color: Colors.white),
+                            ),
                     ),
-                    child: msg["role"] == "ai"
-                        ? MarkdownBody(data: msg["text"]!)
-                        : Text(
-                            msg["text"]!,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
 
-          _inputBox(),
-        ],
+            // مربع الإدخال
+            _inputBox(),
+          ],
+        ),
       ),
     );
   }
-
   Widget _inputBox() {
     return Container(
       padding: const EdgeInsets.all(12),
