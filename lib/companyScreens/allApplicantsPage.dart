@@ -320,7 +320,7 @@ class _AllApplicantsPageState extends State<AllApplicantsPage> {
   }
 
   List<String> _buildStatusOptions() {
-    return const <String>[_kAll, 'Pending', 'Accepted', 'Rejected'];
+    return const <String>[_kAll, 'Pending', 'Interviewing', 'Accepted', 'Rejected', 'No Response'];
   }
 
   bool _hasGpaRange(_ApplicantsSnapshot data) {
@@ -1319,6 +1319,25 @@ class _ApplicantCardState extends State<_ApplicantCard> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
+                      onPressed: _isUpdating ? null : () => _updateStatus('Interviewing'),
+                      icon: _isUpdating
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.videocam_outlined),
+                      label: const Text('Interview'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
                       onPressed: _isUpdating ? null : () => _updateStatus('Accepted'),
                       icon: _isUpdating
                           ? const SizedBox(
@@ -1335,7 +1354,7 @@ class _ApplicantCardState extends State<_ApplicantCard> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: _isUpdating ? null : () => _updateStatus('Rejected'),

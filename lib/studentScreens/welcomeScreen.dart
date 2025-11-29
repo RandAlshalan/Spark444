@@ -16,9 +16,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late final Animation<Offset> _slide;
 
   static const _grad = LinearGradient(
-    colors: [Color(0xFFF99D46), Color(0xFFD64483)],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
+    colors: [Color(0xFF8D52CC), Color(0xFFD54DB9)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
   );
 
   @override
@@ -54,6 +54,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final isSmall = size.height < 740;
+    final taglineHeight = (size.width * 0.45).clamp(130.0, 200.0);
+    final studentsHeight = (size.height * 0.22).clamp(140.0, 210.0);
     final topInset = MediaQuery.of(context).padding.top;
 
     return Scaffold(
@@ -87,51 +89,52 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   mainAxisSize: MainAxisSize.max,
                   children: [
                     // Logo + Tagline
-                    Column(
-                      children: const [
-                        _Logo(), // 120px
-                        SizedBox(height: 12),
-                        Text(
-                          'SPARK',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF422F5D),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Column(
+                        children: [
+                          Transform.translate(
+                            offset: const Offset(-10, 48),
+                            child: ClipRect(
+                              child: Align(
+                                heightFactor: 0.7,
+                                child: Image.asset(
+                                  'assets/TT.png',
+                                  height: taglineHeight,
+                                  fit: BoxFit.contain,
+                                  alignment: Alignment.center,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.image_not_supported,
+                                    size: 50,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 3),
-                        Text(
-                          'Ignite your future',
-                          style: TextStyle(
-                            color: Color(0xFFE65100), // برتقالي غامق
-                            fontStyle: FontStyle.italic,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
 
-                    const SizedBox(height: 50), // ننزّل النص والأزرار شوي
+                    const SizedBox(height: 120),
 
                     const Text(
-                      'Your Way to\n Unlock Your Future.\n',
+                      'Your Way to\nUnlock Your Future.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 28,
-                        height: 1.25,
+                        fontSize: 26,
+                        height: 1.3,
                         fontWeight: FontWeight.w900,
                         color: Color(0xFF422F5D),
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 24.0),
+                      padding: EdgeInsets.symmetric(horizontal: 32.0),
                       child: Text(
                         'Connect with careers that fit your skills, ambition, and personality',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           height: 1.5,
                           color: Color(0xFF6B4791),
                           fontWeight: FontWeight.w600,
@@ -139,7 +142,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       ),
                     ),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 48),
 
                     // زر Get Started
                     Padding(
@@ -250,13 +253,21 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     const SizedBox(height: 32),
 
                     // صورة الطلاب أسفل
-                    Image.asset(
-                      'assets/students.png',
-                      width: double.infinity,
-                      height: isSmall ? 150 : 180,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.image_not_supported, size: 64),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: studentsHeight,
+                          child: Image.asset(
+                            'assets/students.png',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.image_not_supported, size: 64),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -265,19 +276,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           ],
         ),
       ),
-    );
-  }
-}
-
-class _Logo extends StatelessWidget {
-  const _Logo();
-
-  @override
-  Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/spark_logo.png',
-      height: 120,
-      errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 48),
     );
   }
 }
@@ -303,7 +301,7 @@ class _Bubble extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFFF99D46), Color(0xFFD64483)],
+            colors: [Color(0xFF8D52CC), Color(0xFFD54DB9)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
