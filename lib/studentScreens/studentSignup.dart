@@ -763,9 +763,9 @@ class _StudentSignupState extends State<StudentSignup> {
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFFF99D46), Color(0xFFD64483)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
+            colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(30),
         ),
@@ -1277,25 +1277,9 @@ class _StudentSignupState extends State<StudentSignup> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset('assets/spark_logo.png', height: 120),
-                  const SizedBox(height: 5),
-                  const Text(
-                    'SPARK',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF422F5D),
-                    ),
-                  ),
-                  const Text(
-                    'Ignite your future',
-                    style: TextStyle(
-                      color: Color(0xFFF99D46),
-                      fontStyle: FontStyle.italic,
-                      fontSize: 14,
-                    ),
-                  ),
                   const SizedBox(height: 30),
+                  Image.asset('assets/TT.png', height: 150),
+                  const SizedBox(height: 15),
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -1313,9 +1297,11 @@ class _StudentSignupState extends State<StudentSignup> {
                                 gradient: _currentStep == 0
                                     ? const LinearGradient(
                                         colors: [
-                                          Color(0xFFF99D46),
-                                          Color(0xFFD64483),
+                                          Color(0xFFD54DB9),
+                                          Color(0xFF8D52CC),
                                         ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
                                       )
                                     : null,
                                 color: _currentStep == 0 ? null : Colors.white,
@@ -1357,9 +1343,11 @@ class _StudentSignupState extends State<StudentSignup> {
                                 gradient: _currentStep == 1
                                     ? const LinearGradient(
                                         colors: [
-                                          Color(0xFFF99D46),
-                                          Color(0xFFD64483),
+                                          Color(0xFFD54DB9),
+                                          Color(0xFF8D52CC),
                                         ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
                                       )
                                     : null,
                                 color: _currentStep == 1 ? null : Colors.white,
