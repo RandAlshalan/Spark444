@@ -16,7 +16,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late final Animation<Offset> _slide;
 
   static const _grad = LinearGradient(
-    colors: [Color(0xFF8D52CC), Color(0xFFD54DB9)],
+    colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -115,16 +115,16 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       ),
                     ),
 
-                    const SizedBox(height: 120),
+                    const SizedBox(height: 96),
 
                     const Text(
-                      'Your Way to\nUnlock Your Future.',
+                      'Your Way to\nUnlock Your Future',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 26,
                         height: 1.3,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF422F5D),
+                        color: Color(0xFF75309F),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -136,7 +136,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         style: TextStyle(
                           fontSize: 15,
                           height: 1.5,
-                          color: Color(0xFF6B4791),
+                          color: Color(0xFFD54DB9),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -301,14 +301,14 @@ class _Bubble extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF8D52CC), Color(0xFFD54DB9)],
+            colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(30),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(.06),
+              color: Colors.black.withOpacity(.04),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
