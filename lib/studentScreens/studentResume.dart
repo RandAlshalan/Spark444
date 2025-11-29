@@ -41,6 +41,18 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
           'My Resumes',
           style: GoogleFonts.lato(fontWeight: FontWeight.bold),
         ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.white,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
       ),
       // The main content of the screen
       body: StreamBuilder<QuerySnapshot>(

@@ -44,22 +44,31 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         title: Text(
           _selectedOpportunity == null
               ? 'Saved Opportunities'
               : 'Opportunity Details',
           style: GoogleFonts.lato(
             fontWeight: FontWeight.bold,
-            color: StudentTheme.textColor,
+            color: Colors.white,
           ),
         ),
-        backgroundColor: StudentTheme.cardColor,
         elevation: 0,
-        surfaceTintColor: StudentTheme.cardColor,
-        shadowColor: Colors.black.withValues(alpha: 0.05),
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.black.withOpacity(0.05),
         leading: _selectedOpportunity != null
             ? IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
                 onPressed: () {
                   // Go back to the list
                   setState(() {

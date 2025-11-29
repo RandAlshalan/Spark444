@@ -17,6 +17,8 @@ import 'studentOppPage.dart';
 import 'StudentChatPage.dart';
 import 'studentViewProfile.dart';
 import 'StudentNotificationsPage.dart';
+import 'studentCompanyProfilePage.dart';
+import 'studentOppDetails.dart';
 
 // Color Constants
 const Color _purple = Color(0xFF422F5D);
@@ -134,13 +136,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
     }
   }
 
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  }
-
   void _onNavigationTap(int index) {
     if (!mounted) return;
     if (index == 0) return; // Already on home
@@ -179,8 +174,17 @@ class _StudentHomePageState extends State<StudentHomePage> {
       backgroundColor: _backgroundColor,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: _purple,
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         systemOverlayStyle: SystemUiOverlayStyle.light,
         title: Text(
           'Home',
@@ -258,10 +262,9 @@ class _StudentHomePageState extends State<StudentHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeaderSection(),
-                    const SizedBox(height: 24),
-                    _buildStatsSection(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
+                    _buildTodayDeadlinesSection(),
+                    const SizedBox(height: 16),
                     if (_deadlineEvents.isNotEmpty) ...[
                       _buildDeadlineCalendarSection(),
                       const SizedBox(height: 24),
@@ -281,102 +284,38 @@ class _StudentHomePageState extends State<StudentHomePage> {
     );
   }
 
-  Widget _buildHeaderSection() {
-    final firstName = _student?.firstName ?? 'Student';
-    final greeting = _getGreeting();
+  Widget _buildTodayDeadlinesSection() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final todays = _deadlineEvents[today] ?? [];
+    if (todays.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_purple, _sparkPink],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$greeting,',
-            style: GoogleFonts.lato(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            firstName,
-            style: GoogleFonts.lato(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Ready to explore new opportunities?',
-            style: GoogleFonts.lato(
-              color: Colors.white.withOpacity(0.85),
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Your Activity',
+            "Today's Deadlines",
             style: GoogleFonts.lato(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: _textColor,
             ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  icon: Icons.work_outline,
-                  label: 'Applications',
-                  count: _applicationCount.toString(),
-                  color: _purple,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  icon: Icons.bookmark_border,
-                  label: 'Saved',
-                  count: _bookmarkCount.toString(),
-                  color: _sparkOrange,
-                ),
-              ),
-            ],
-          ),
+          const SizedBox(height: 12),
+          ...todays.map(_buildDeadlineCard),
         ],
       ),
     );
   }
 
-  Widget _buildStatCard({
-    required IconData icon,
-    required String label,
-    required String count,
-    required Color color,
-  }) {
+  Widget _buildDeadlineCard(Opportunity opp) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(16),
@@ -391,37 +330,92 @@ class _StudentHomePageState extends State<StudentHomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: 16),
           Text(
-            count,
+            opp.name,
             style: GoogleFonts.lato(
-              fontSize: 28,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: _textColor,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
-            label,
+            opp.location ?? 'Location not specified',
             style: GoogleFonts.lato(
               fontSize: 14,
-              color: _textColor.withOpacity(0.6),
-              fontWeight: FontWeight.w500,
+              color: _textColor.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ElevatedButton(
+                onPressed: () => _openOpportunityDetails(opp),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Apply',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _openOpportunityDetails(Opportunity opp) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            title: Text(
+              opp.name,
+              style: GoogleFonts.lato(fontWeight: FontWeight.bold),
+            ),
+          ),
+          body: OpportunityDetailsContent(
+            opportunity: opp,
+            onNavigateToCompany: (companyId) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => StudentCompanyProfilePage(
+                    companyId: companyId,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -433,7 +427,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Application Deadlines',
+            'Deadlines Tracker',
             style: GoogleFonts.lato(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -473,6 +467,40 @@ class _StudentHomePageState extends State<StudentHomePage> {
                       _focusedDay = focusedDay;
                     });
                   },
+                  calendarBuilders: CalendarBuilders(
+                    markerBuilder: (context, day, events) {
+                      if (events.isEmpty) return null;
+                      final now = DateTime.now();
+                      final hasUpcoming = events.any((e) {
+                        if (e is! Opportunity || e.applicationDeadline == null) {
+                          return false;
+                        }
+                        final deadline = e.applicationDeadline!.toDate();
+                        return !deadline.isBefore(now);
+                      });
+                      final hasPast = events.any((e) {
+                        if (e is! Opportunity || e.applicationDeadline == null) {
+                          return false;
+                        }
+                        final deadline = e.applicationDeadline!.toDate();
+                        return deadline.isBefore(now);
+                      });
+                      final Color color = hasUpcoming
+                          ? _sparkPink
+                          : (hasPast ? Colors.grey : _sparkPink);
+                      return Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                   calendarStyle: CalendarStyle(
                     todayDecoration: BoxDecoration(
                       color: _sparkOrange.withOpacity(0.5),
@@ -576,79 +604,108 @@ class _StudentHomePageState extends State<StudentHomePage> {
                       }
                     }
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isUrgent
-                            ? _sparkPink.withOpacity(0.1)
-                            : _purple.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isUrgent
-                              ? _sparkPink.withOpacity(0.3)
-                              : _purple.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.work_outline,
-                            color: isUrgent ? _sparkPink : _purple,
-                            size: 20,
+                    return InkWell(
+                      onTap: isPast ? null : () => _openOpportunityDetails(opp),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isPast
+                              ? Colors.grey.withOpacity(0.12)
+                              : (isUrgent
+                                  ? _sparkPink.withOpacity(0.1)
+                                  : _purple.withOpacity(0.05)),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isPast
+                                ? Colors.grey.withOpacity(0.4)
+                                : (isUrgent
+                                    ? _sparkPink.withOpacity(0.3)
+                                    : _purple.withOpacity(0.2)),
+                            width: 1,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  opp.role,
-                                  style: GoogleFonts.lato(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: _textColor,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.work_outline,
+                              color: isPast
+                                  ? Colors.grey
+                                  : (isUrgent ? _sparkPink : _purple),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    opp.role,
+                                    style: GoogleFonts.lato(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: _textColor,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Closes at ${DateFormat.jm().format(deadline)}',
-                                  style: GoogleFonts.lato(
-                                    fontSize: 11,
-                                    color: _textColor.withOpacity(0.5),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Closes at ${DateFormat.jm().format(deadline)}',
+                                    style: GoogleFonts.lato(
+                                      fontSize: 11,
+                                      color: _textColor.withOpacity(0.5),
+                                    ),
                                   ),
-                                ),
-                                if (!isPast) ...[
                                   const SizedBox(height: 4),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: isUrgent
-                                          ? _sparkPink.withOpacity(0.2)
-                                          : _purple.withOpacity(0.15),
+                                      color: isPast
+                                          ? Colors.grey.withOpacity(0.2)
+                                          : (isUrgent
+                                              ? _sparkPink.withOpacity(0.2)
+                                              : _purple.withOpacity(0.15)),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
-                                      timeRemainingText,
+                                      isPast ? 'Closed' : timeRemainingText,
                                       style: GoogleFonts.lato(
                                         fontSize: 11,
-                                        color: isUrgent ? _sparkPink : _purple,
+                                        color: isPast
+                                            ? Colors.grey.shade700
+                                            : (isUrgent ? _sparkPink : _purple),
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
                                 ],
-                              ],
+                              ),
                             ),
-                          ),
-                          if (!isPast)
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              size: 14,
-                              color: _textColor.withOpacity(0.3),
-                            ),
-                        ],
+                            const SizedBox(width: 8),
+                            if (!isPast)
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: TextButton(
+                                  onPressed: () => _openOpportunityDetails(opp),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text(
+                                    'Apply',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   }).toList()),
@@ -682,7 +739,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
                 child: _buildActionButton(
                   icon: Icons.business_outlined,
                   label: 'Browse Companies',
-                  color: _purple,
+                  color: const Color(0xFF8D52CC),
                   onTap: () {
                     Navigator.push(
                       context,
@@ -698,11 +755,27 @@ class _StudentHomePageState extends State<StudentHomePage> {
                 child: _buildActionButton(
                   icon: Icons.work_outline,
                   label: 'Find Opportunities',
-                  color: _sparkPink,
+                  color: const Color(0xFF8D52CC),
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => studentOppPgae()),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildActionButton(
+                  icon: Icons.psychology_alt_outlined,
+                  label: 'Practice Interview',
+                  color: const Color(0xFF8D52CC),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => StudentChatPage(),
+                      ),
                     );
                   },
                 ),

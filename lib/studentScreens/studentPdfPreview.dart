@@ -30,7 +30,21 @@ class PdfPreviewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       // The bar at the top of the screen
-      appBar: AppBar(title: Text('Preview: $resumeTitle')),
+      appBar: AppBar(
+        title: Text('Preview: $resumeTitle'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.white,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+      ),
 
       // This is the main content of the screen.
       // We use the 'PdfPreview' widget from the 'printing' package.

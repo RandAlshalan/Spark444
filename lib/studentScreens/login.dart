@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/authService.dart';
 import '../services/notification_service.dart';
 import '../services/fcm_token_manager.dart';
-import '../studentScreens/studentViewProfile.dart';
+import '../studentScreens/StudentHomePage.dart';
 import '../companyScreens/companyHomePage.dart';
 import 'forgotPasswordScreen.dart';
 import 'welcomeScreen.dart';
@@ -198,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (userType == 'student') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const StudentViewProfile()),
+          MaterialPageRoute(builder: (context) => const StudentHomePage()),
         );
       } else if (userType == 'company') {
         Navigator.pushReplacement(

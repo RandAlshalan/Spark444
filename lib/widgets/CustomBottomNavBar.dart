@@ -15,8 +15,20 @@ class CustomBottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     // These colors are taken from your profile screen for consistency
     const Color profileCardColor = Color(0xFFFFFFFF);
-    const Color sparkPrimaryPurple = Color(0xFF422F5D);
+    const Color sparkPrimaryPurple = Color(0xFFD54DB9); // match header gradient start
     const Color profileTextColor = Color(0xFF1E1E1E);
+    const gradient = LinearGradient(
+      colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+
+    Widget _activeIcon(IconData icon) {
+      return ShaderMask(
+        shaderCallback: (Rect bounds) => gradient.createShader(bounds),
+        child: Icon(icon, color: Colors.white),
+      );
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -54,34 +66,34 @@ class CustomBottomNavBar extends StatelessWidget {
           enableFeedback: true,
           showSelectedLabels: true,
           showUnselectedLabels: true,
-          items: const [
+          items: [
             BottomNavigationBarItem(
               icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
+              activeIcon: _activeIcon(Icons.home),
               label: 'Home',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.business_outlined),
-              activeIcon: Icon(Icons.business),
+              activeIcon: _activeIcon(Icons.business),
               label: 'Companies',
             ),
             
             // --- ✨ الأيقونة الجديدة المضافة هنا ---
             BottomNavigationBarItem(
               icon: Icon(Icons.chat_bubble_outline_rounded),
-              activeIcon: Icon(Icons.chat_bubble_rounded),
+              activeIcon: _activeIcon(Icons.chat_bubble_rounded),
               label: 'Chatbot',
             ),
             // --- نهاية الإضافة ---
 
             BottomNavigationBarItem(
               icon: Icon(Icons.work_outline),
-              activeIcon: Icon(Icons.work),
+              activeIcon: _activeIcon(Icons.work),
               label: 'Opportunities',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
+              activeIcon: _activeIcon(Icons.person),
               label: 'Profile',
             ),
           ],
