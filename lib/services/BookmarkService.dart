@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:spark/models/bookmark.dart';
 import 'package:spark/models/opportunity.dart';
+import 'deadline_notification_service.dart';
+import 'package:flutter/foundation.dart';
 
 class BookmarkService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -37,6 +39,18 @@ class BookmarkService {
     );
 
     await _bookmarksRef.add(newBookmark);
+
+    //  Send immediate deadline notification
+    try {
+      await DeadlineNotificationService().sendImmediateDeadlineNotification(
+        studentId: studentId,
+        opportunityId: opportunityId,
+        action: 'bookmarked',
+      );
+    } catch (e) {
+      debugPrint('Error sending deadline notification: $e');
+      // Don't fail the bookmark if notification fails
+    }
   }
 
   /// Removes a bookmark for a given student and opportunity.

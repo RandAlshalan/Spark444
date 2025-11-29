@@ -17,6 +17,7 @@ import 'studentOppPage.dart';
 import 'StudentChatPage.dart';
 import 'studentViewProfile.dart';
 import 'StudentNotificationsPage.dart';
+import '../widgets/profile_completion_banner.dart';
 
 // Color Constants
 const Color _purple = Color(0xFF422F5D);
@@ -259,7 +260,9 @@ class _StudentHomePageState extends State<StudentHomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildHeaderSection(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+                    const ProfileCompletionBanner(),
+                    const SizedBox(height: 20),
                     _buildStatsSection(),
                     const SizedBox(height: 24),
                     if (_deadlineEvents.isNotEmpty) ...[
