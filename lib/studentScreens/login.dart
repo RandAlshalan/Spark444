@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/authService.dart';
 import '../services/notification_service.dart';
 import '../services/fcm_token_manager.dart';
-import '../studentScreens/studentViewProfile.dart';
+import '../studentScreens/StudentHomePage.dart';
 import '../companyScreens/companyHomePage.dart';
 import 'forgotPasswordScreen.dart';
 import 'welcomeScreen.dart';
@@ -198,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (userType == 'student') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const StudentViewProfile()),
+          MaterialPageRoute(builder: (context) => const StudentHomePage()),
         );
       } else if (userType == 'company') {
         Navigator.pushReplacement(
@@ -249,24 +249,7 @@ class _LoginScreenState extends State<LoginScreen>
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              Image.asset('assets/spark_logo.png', height: 150),
-              const SizedBox(height: 5),
-              const Text(
-                "SPARK",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF422F5D),
-                ),
-              ),
-              const Text(
-                "Ignite your future",
-                style: TextStyle(
-                  color: Color(0xFFF99D46),
-                  fontStyle: FontStyle.italic,
-                  fontSize: 14,
-                ),
-              ),
+              Image.asset('assets/TT.png', height: 150),
               const SizedBox(height: 30),
               // Identifier
               TextField(
@@ -362,16 +345,16 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   ),
                 ),
-              const SizedBox(height: 22),
-              // Log In Button
+              const SizedBox(height: 40),
+              // Login Button
               SizedBox(
                 width: double.infinity,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFFF99D46), Color(0xFFD64483)],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
+                      colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(30),
                   ),
@@ -395,7 +378,7 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           )
                         : const Text(
-                            'Log In',
+                            'Login',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -420,7 +403,6 @@ class _LoginScreenState extends State<LoginScreen>
                     color: Color(0xFF6B4791),
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    decoration: TextDecoration.underline,
                   ),
                 ),
               ),
@@ -442,20 +424,6 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
-              // Debug: Test Notifications Button
-              if (const bool.fromEnvironment('dart.vm.product') == false)
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).pushNamed('/testNotifications');
-                  },
-                  icon: const Icon(Icons.bug_report, size: 16),
-                  label: const Text(
-                    "Test Notifications (Debug)",
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  style: TextButton.styleFrom(foregroundColor: Colors.grey),
-                ),
             ],
           ),
         ),

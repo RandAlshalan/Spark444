@@ -135,8 +135,17 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
-        backgroundColor: _purple,
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         systemOverlayStyle: SystemUiOverlayStyle.light,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),

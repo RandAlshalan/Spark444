@@ -360,7 +360,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       // Show custom back button only on detail view
       leading: _selectedApplication != null
           ? IconButton(
-              icon: const Icon(Icons.arrow_back),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: _showApplicationList)
           : null,
       // Use default back button only on list view
@@ -369,10 +369,22 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
           _selectedApplication == null
               ? 'My Applications'
               : 'Application Details',
-          style: GoogleFonts.lato(fontWeight: FontWeight.bold)),
-      backgroundColor: _profileBackgroundColor,
+          style: GoogleFonts.lato(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          )),
+      backgroundColor: Colors.transparent,
       elevation: 0,
-      foregroundColor: _profileTextColor,
+      foregroundColor: Colors.white,
+      flexibleSpace: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+      ),
       centerTitle: true,
     );
   }

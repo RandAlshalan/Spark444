@@ -353,18 +353,15 @@ class AuthService {
 
     final companyDoc = await _db.collection(kCompanyCol).doc(user.uid).get();
     if (companyDoc.exists) {
-      await user.reload();
-      final bool isVerified = user.emailVerified;
-
-      if (!isVerified)
-        await user.sendEmailVerification();
-      else if (companyDoc.data()?['isVerified'] != true) {
+      // Treat company accounts as verified regardless of email status.
+      // Also ensure Firestore flag is true for consistency.
+      if (companyDoc.data()?['isVerified'] != true) {
         await _db.collection(kCompanyCol).doc(user.uid).update({
           'isVerified': true,
         });
       }
 
-      return {'userType': 'company', 'isVerified': isVerified};
+      return {'userType': 'company', 'isVerified': true};
     }
 
     throw Exception("User type not found in the system.");

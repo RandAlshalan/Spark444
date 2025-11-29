@@ -102,7 +102,6 @@ class _CompanySignupState extends State<CompanySignup> {
 
   // Theme Colors
   static const Color primaryColor = Color(0xFF422F5D);
-  static const Color secondaryColor = Color(0xFFF99D46);
   static const Color backgroundColor = Color(0xFFF7F4F0);
 
   // ✅ ADDED: Hardcoded list of sectors as requested.
@@ -434,9 +433,9 @@ class _CompanySignupState extends State<CompanySignup> {
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [secondaryColor, Color(0xFFD64483)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
+            colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(30),
         ),
@@ -829,25 +828,9 @@ class _CompanySignupState extends State<CompanySignup> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset('assets/spark_logo.png', height: 120),
-              const SizedBox(height: 5),
-              const Text(
-                'SPARK for Companies',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: primaryColor,
-                ),
-              ),
-              const Text(
-                'Connect with Future Talent',
-                style: TextStyle(
-                  color: secondaryColor,
-                  fontStyle: FontStyle.italic,
-                  fontSize: 14,
-                ),
-              ),
               const SizedBox(height: 30),
+              Image.asset('assets/TT.png', height: 150),
+              const SizedBox(height: 15),
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -864,7 +847,9 @@ class _CompanySignupState extends State<CompanySignup> {
                           decoration: BoxDecoration(
                             gradient: _currentStep == 0
                                 ? const LinearGradient(
-                                    colors: [secondaryColor, Color(0xFFD64483)],
+                                    colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                   )
                                 : null,
                             color: _currentStep == 0 ? null : Colors.white,
@@ -894,7 +879,9 @@ class _CompanySignupState extends State<CompanySignup> {
                           decoration: BoxDecoration(
                             gradient: _currentStep == 1
                                 ? const LinearGradient(
-                                    colors: [secondaryColor, Color(0xFFD64483)],
+                                    colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                   )
                                 : null,
                             color: _currentStep == 1 ? null : Colors.white,

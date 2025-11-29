@@ -178,7 +178,17 @@ class _StudentChatPageState extends State<StudentChatPage> {
             "AI Interview Coach",
             style: TextStyle(color: Colors.white),
           ),
-          backgroundColor: _primaryColor,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
           iconTheme: const IconThemeData(color: Colors.white),
         ),
         body: GestureDetector(

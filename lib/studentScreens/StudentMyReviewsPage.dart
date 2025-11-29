@@ -213,14 +213,14 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
 
     if (currentUser == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('My Reviews'), backgroundColor: Colors.white, foregroundColor: _purple, elevation: 0),
+        appBar: _gradientAppBar(),
         body: Center(child: Text('Please sign in to view your reviews.', style: GoogleFonts.lato())),
       );
     }
 
     if (_resolving) {
       return Scaffold(
-        appBar: AppBar(title: const Text('My Reviews'), backgroundColor: Colors.white, foregroundColor: _purple, elevation: 0),
+        appBar: _gradientAppBar(),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -228,23 +228,19 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
     return DefaultTabController(
       length: 1,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('My Reviews'),
-          backgroundColor: Colors.white,
-          foregroundColor: _purple,
-          elevation: 0,
+        appBar: _gradientAppBar(
           actions: [
             IconButton(
               tooltip: 'Refresh',
               onPressed: _onRefresh,
-              icon: const Icon(Icons.refresh, color: _purple),
+              icon: const Icon(Icons.refresh, color: Colors.white),
             ),
           ],
-          bottom: TabBar(
-            labelColor: _purple,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: _purple,
-            tabs: const [
+          bottom: const TabBar(
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
+            tabs: [
               Tab(text: 'Reviews'),
             ],
           ),
@@ -255,6 +251,27 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
           ],
         ),
       ),
+    );
+  }
+
+  AppBar _gradientAppBar({List<Widget>? actions, PreferredSizeWidget? bottom}) {
+    return AppBar(
+      title: const Text('My Reviews'),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      foregroundColor: Colors.white,
+      flexibleSpace: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+      ),
+      actions: actions,
+      bottom: bottom,
+      centerTitle: true,
     );
   }
 

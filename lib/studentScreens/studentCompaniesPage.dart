@@ -221,22 +221,31 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
       },
       child: Scaffold(
         appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
           centerTitle: true,
           title: Text(
             'Companies',
             style: GoogleFonts.lato(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: StudentTheme.textColor,
+              color: Colors.white,
             ),
           ),
-          backgroundColor: StudentTheme.cardColor,
           elevation: 0,
-          surfaceTintColor: StudentTheme.cardColor,
+          surfaceTintColor: Colors.transparent,
           automaticallyImplyLeading: false,
           actions: [
             IconButton(
-              icon: const Icon(Icons.bookmarks_outlined, color: Colors.black),
+              icon: const Icon(Icons.bookmarks_outlined, color: Colors.white),
               onPressed: _navigateToSaved,
               tooltip: 'Saved',
             ),

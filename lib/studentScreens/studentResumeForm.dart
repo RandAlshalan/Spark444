@@ -418,6 +418,18 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
             widget.resume == null ? 'Create Resume' : 'Edit Resume',
             style: GoogleFonts.lato(fontWeight: FontWeight.bold),
           ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: Colors.white,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 8.0),

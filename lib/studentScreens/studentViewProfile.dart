@@ -317,14 +317,10 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
   PreferredSizeWidget _buildAppBar({bool onGradient = false}) {
     return AppBar(
       automaticallyImplyLeading: false,
-      backgroundColor: onGradient
-          ? Colors.transparent
-          : _profileBackgroundColor,
+      backgroundColor: Colors.transparent,
       elevation: 0,
-      foregroundColor: onGradient ? Colors.white : _profileTextColor,
-      systemOverlayStyle: onGradient
-          ? SystemUiOverlayStyle.light
-          : SystemUiOverlayStyle.dark,
+      foregroundColor: Colors.white,
+      systemOverlayStyle: SystemUiOverlayStyle.light,
       title: Text(
         'My Profile',
         style: GoogleFonts.lato(fontWeight: FontWeight.bold),
@@ -360,7 +356,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
             padding: EdgeInsets.fromLTRB(24, topPadding, 24, 96),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [_sparkPrimaryPurple, _sparkPink],
+                colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -928,22 +924,6 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
           ),
         ],
       ),
-      // Debug Section - Only visible in debug mode
-      if (const bool.fromEnvironment('dart.vm.product') == false)
-        _MenuSection(
-          title: '🐛 Debug Tools',
-          items: [
-            _MenuItemData(
-              icon: Icons.notifications_active_outlined,
-              title: 'Test Notifications',
-              subtitle: 'Debug notification functionality',
-              iconColor: Colors.orange,
-              onTap: () {
-                Navigator.of(context).pushNamed('/testNotifications');
-              },
-            ),
-          ],
-        ),
     ];
 
     List<Widget> buildSectionTiles(_MenuSection section) {
@@ -1324,10 +1304,19 @@ class StaticInfoViewerPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: _profileBackgroundColor,
       appBar: AppBar(
-        backgroundColor: _profileBackgroundColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: _profileTextColor,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         title: Text(
           title,
           style: GoogleFonts.lato(fontWeight: FontWeight.bold),
@@ -1339,8 +1328,7 @@ class StaticInfoViewerPage extends StatelessWidget {
             child: IconButton(
               tooltip: 'Edit',
               onPressed: () => _navigateToEdit(context),
-              icon: const Icon(Icons.edit_outlined),
-              color: _sparkPrimaryPurple,
+              icon: const Icon(Icons.edit_outlined, color: Colors.white),
             ),
           ),
         ],
@@ -1479,7 +1467,21 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text('Change Email')),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.white,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        title: const Text('Change Email'),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Form(

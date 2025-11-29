@@ -254,7 +254,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                     // صورة الطلاب أسفل
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: SizedBox(

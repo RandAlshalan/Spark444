@@ -587,17 +587,26 @@ class _studentOppPgaeState extends State<studentOppPgae> {
           'Opportunities',
           style: GoogleFonts.lato(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.white,
-        elevation: 1,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list),
+            icon: const Icon(Icons.filter_list, color: Colors.white),
             onPressed: _showFilterSheet, // Open filters
             tooltip: 'Filter',
           ),
           IconButton(
-            icon: const Icon(Icons.bookmarks_outlined),
+            icon: const Icon(Icons.bookmarks_outlined, color: Colors.white),
             onPressed: _navigateToSaved, // Open saved opportunities
             tooltip: 'Saved',
           ),
@@ -607,12 +616,21 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       // AppBar for the Detail View
       return AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: _showOpportunityList, // Go back to the list
         ),
-        title: Text('Opportunity Details', style: GoogleFonts.lato()),
-        backgroundColor: Colors.white,
-        elevation: 1,
+        title: Text('Opportunity Details', style: GoogleFonts.lato(color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
       );
     }
   }
