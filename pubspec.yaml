@@ -123,6 +123,6 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/spark_icon_white_final.png"
+  image_path: "assets/icon.png"
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/spark_icon_white_final.png"
+  adaptive_icon_foreground: "assets/icon.png"

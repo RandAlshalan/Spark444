@@ -59,11 +59,10 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
   final List<String> _statusFilters = [
     'All',
     'Pending',
-    'In Progress', // This maps to 'Reviewed' status
+    'Interviewing',
     'Accepted',
     'Rejected',
-    'Withdrawn',
-    'Draft'
+    'No Response',
   ];
 
   // --- 2. Lifecycle Methods ---
@@ -560,12 +559,16 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
         return _sparkPrimaryPurple;
       case 'Pending':
         return Colors.orange.shade700; // Hardcoded status color
+      case 'Interviewing':
+        return Colors.blue.shade600; // Hardcoded status color
       case 'In Progress':
         return Colors.blue.shade600; // Hardcoded status color
       case 'Accepted':
         return Colors.green.shade600; // Hardcoded status color
       case 'Rejected':
         return Colors.red.shade600; // Hardcoded status color
+      case 'No Response':
+        return Colors.amber.shade800; // Hardcoded status color
       case 'Withdrawn':
         return Colors.grey.shade600; // Hardcoded status color
       case 'Draft':
