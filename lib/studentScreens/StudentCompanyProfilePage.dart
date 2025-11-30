@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
+import '../services/notification_helper.dart';
 
 // --- Make sure these paths are correct for your project ---
 import '../models/company.dart';
@@ -1303,120 +1304,121 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     final text = controller.text.trim();
     final visible = _replyAuthorVisible.putIfAbsent(parentReviewId, () => true);
 
-    // Client-side validation (length)
-    final inlineErr = _validateTextLength(text, label: 'reply');
-    if (inlineErr != null) {
+    final err = _validateTextLength(text, label: 'reply');
+    if (err != null) {
       setState(() => _isReplySubmitting[parentReviewId] = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(inlineErr),
-          backgroundColor: Colors.red.shade700,
+        SnackBar(content: Text(err), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a reply'),
+          backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    if (widget.studentId == null) {
+    if (text.length < _reviewMinLength || text.length > _reviewMaxLength) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be logged in to reply.')),
+        SnackBar(
+          content: Text(
+            'Your reply must be between $_reviewMinLength and $_reviewMaxLength characters.',
+          ),
+          backgroundColor: Colors.red,
+        ),
       );
-      return;
-    }
-    if (text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Reply cannot be empty.')));
       return;
     }
 
     setState(() => _isReplySubmitting[parentReviewId] = true);
-    DocumentSnapshot? parentDoc;
-    Map<String, dynamic>? parentData;
-    String parentStudentId = '';
-    String companyName = '';
-    try {
-      parentDoc = await FirebaseFirestore.instance
-          .collection('reviews')
-          .doc(parentReviewId)
-          .get();
-      if (!parentDoc.exists) {
-        throw Exception('Original review not found. Please refresh.');
-      }
-      parentData = parentDoc.data() as Map<String, dynamic>?;
-      parentStudentId = (parentData?['studentId'] ?? '') as String;
-      final companyDoc = await FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyId)
-          .get();
-      companyName =
-          (companyDoc.data()?['companyName'] ?? 'A company') as String;
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Unable to send reply: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      setState(() => _isReplySubmitting[parentReviewId] = false);
-      return;
-    }
 
     try {
-      // Backend (server-side) validation simulated here
-      if (text.length < _reviewMinLength || text.length > _reviewMaxLength) {
-        throw Exception(
-          'Your reply must be between $_reviewMinLength and $_reviewMaxLength characters.',
-        );
+      final uid = widget.studentId;
+      if (uid == null) {
+        throw Exception('Not logged in');
       }
 
       final studentDoc = await FirebaseFirestore.instance
           .collection('student')
-          .doc(widget.studentId)
+          .doc(uid)
           .get();
-      final first = (studentDoc.data()?['firstName'] ?? '').toString();
-      final last = (studentDoc.data()?['lastName'] ?? '').toString();
-      final studentName = ('$first $last').trim();
 
-      final replyData = {
-        'studentId': widget.studentId!,
-        'studentName': studentName,
-        'companyId': widget.companyId,
-        'rating': 0, // replies don't carry rating
-        'reviewText': text,
-        'createdAt': Timestamp.now(),
-        'authorVisible': visible,
-        'parentId': parentReviewId,
-      };
-
-      await FirebaseFirestore.instance.collection('reviews').add(replyData);
-
-      if (parentStudentId.isNotEmpty && parentStudentId != widget.studentId) {
-        await NotificationHelper().notifyReviewReply(
-          studentId: parentStudentId,
-          companyName: companyName.isEmpty ? 'A company' : companyName,
-          reviewId: parentReviewId,
-        );
+      if (!studentDoc.exists) {
+        throw Exception('Student not found');
       }
 
-      // clear and collapse reply box
+      final student = studentDoc.data()!;
+      final firstName = (student['firstName'] ?? '').trim();
+      final lastName = (student['lastName'] ?? '').trim();
+      
+      // ✅ FIX: Create authorName variable
+      final authorName = visible 
+          ? '$firstName $lastName'.trim() 
+          : 'Anonymous Student';
+
+      await FirebaseFirestore.instance.collection('reviews').add({
+        'studentId': uid,
+        'studentName': authorName,
+        'companyId': widget.companyId,
+        'rating': 0.0,
+        'reviewText': text,
+        'createdAt': Timestamp.now(),
+        'parentId': parentReviewId,
+        'authorVisible': visible,
+      });
+
+      // ✅ CORRECTED: Notify original reviewer about the student reply
+      try {
+        final parentReviewDoc = await FirebaseFirestore.instance
+            .collection('reviews')
+            .doc(parentReviewId)
+            .get();
+        
+        if (parentReviewDoc.exists) {
+          final parentData = parentReviewDoc.data() as Map<String, dynamic>?;
+          final originalStudentId = parentData?['studentId'] as String?;
+          
+          // Only notify if replying to someone else's review
+          if (originalStudentId != null && originalStudentId != uid) {
+            await NotificationHelper().notifyReviewReplyToStudent(
+              reviewId: parentReviewId,
+              studentId: originalStudentId,
+              replierName: authorName,
+              isCompanyReply: false,
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('Error sending student reply notification: $e');
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reply submitted successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
       controller.clear();
       setState(() {
         _showReplyBox[parentReviewId] = false;
         _replyHasText[parentReviewId] = false;
       });
-    } catch (e) {
-      final msg = (e is Exception)
-          ? e.toString().replaceAll('Exception: ', '')
-          : 'Failed to submit reply: $e';
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg), backgroundColor: Colors.red.shade700),
-        );
-      }
+    } catch (err) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $err'), backgroundColor: Colors.red),
+      );
     } finally {
-      setState(() => _isReplySubmitting[parentReviewId] = false);
+      if (mounted) {
+        setState(() => _isReplySubmitting[parentReviewId] = false);
+      }
     }
   }
 

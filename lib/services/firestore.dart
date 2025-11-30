@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/review_reply.dart';
+import 'notification_helper.dart';
+import 'package:flutter/foundation.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -16,6 +18,27 @@ class FirestoreService {
       'replyText': replyText,
       'createdAt': FieldValue.serverTimestamp(),
     });
+
+    //  Notify student about company reply
+    try {
+      // Get the review to find the student ID
+      final reviewDoc = await _db.collection('reviews').doc(reviewId).get();
+      if (reviewDoc.exists) {
+        final reviewData = reviewDoc.data() as Map<String, dynamic>?;
+        final studentId = reviewData?['studentId'] as String?;
+        
+        if (studentId != null) {
+          await NotificationHelper().notifyReviewReplyToStudent(
+            reviewId: reviewId,
+            studentId: studentId,
+            replierName: companyName,
+            isCompanyReply: true,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error sending company reply notification: $e');
+    }
   }
 
   Stream<List<ReviewReply>> getRepliesForReview(String reviewId) {

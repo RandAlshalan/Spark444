@@ -232,23 +232,29 @@ class NotificationHelper {
     }
   }
 
-  /// Creates a notification when someone replies to a student's review
-  Future<void> notifyReviewReply({
-    required String studentId,
-    required String companyName,
+  /// Creates a notification when someone replies to a review (student or company)
+  Future<void> notifyReviewReplyToStudent({
     required String reviewId,
+    required String studentId,
+    required String replierName,
+    required bool isCompanyReply,
   }) async {
     try {
       final notification = AppNotification(
         id: '',
         userId: studentId,
         type: 'review_reply',
-        title: '$companyName replied to your review',
-        body: 'Check out their response',
+        title: isCompanyReply 
+            ? '$replierName replied to your review'
+            : 'New reply to your review',
+        body: isCompanyReply
+            ? 'Check out the company\'s response'
+            : '$replierName replied to your review',
         data: {
-          'companyName': companyName,
           'reviewId': reviewId,
-          'route': '/reviews',
+          'replierName': replierName,
+          'isCompanyReply': isCompanyReply,
+          'route': '/my-reviews',
         },
         read: false,
         createdAt: Timestamp.now(),
@@ -257,6 +263,22 @@ class NotificationHelper {
       await _firestore
           .collection('notifications')
           .add(notification.toFirestore());
+      
+      // Get student's FCM token and send push notification
+      final studentDoc = await _firestore.collection('student').doc(studentId).get();
+      if (studentDoc.exists) {
+        final studentData = studentDoc.data();
+        final fcmToken = studentData?['fcmToken'] as String?;
+        if (fcmToken != null && fcmToken.isNotEmpty) {
+          await _sendPushNotifications(
+            tokens: [fcmToken],
+            title: notification.title,
+            body: notification.body,
+            data: notification.data ?? {},
+          );
+        }
+      }
+      
       debugPrint('✅ Created review reply notification for student $studentId');
     } catch (e) {
       debugPrint('❌ Error creating review reply notification: $e');

@@ -15,6 +15,7 @@ import '../widgets/CustomBottomNavBar.dart';
 import '../studentScreens/studentOppPage.dart';
 import '../studentScreens/studentResume.dart';
 import '../studentScreens/StudentHomePage.dart';
+import '../widgets/profile_completion_banner.dart';
 // === ADD THIS IMPORT FOR THE NEW APPLICATIONS SCREEN ===
 // Make sure the path is correct for your project structure.
 import '../studentScreens/studentApplications.dart';
@@ -199,7 +200,7 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message, style: GoogleFonts.lato()),
-        backgroundColor: _sparkPrimaryPurple,
+        backgroundColor: const Color.from(alpha: 1, red: 0.259, green: 0.184, blue: 0.365),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -287,15 +288,17 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              
               _buildHeaderSection(profile, student, headerContentTopPadding),
               const SizedBox(
-                height: 213,
+                height: 170,
               ), // Increased by 113 pixels to accommodate moved card
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const ProfileCompletionBanner(),
                     ..._buildMenuContent(student, profile),
                     const SizedBox(height: 32),
                   ],

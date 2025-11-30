@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/Application.dart';
 import 'notification_helper.dart';
+import 'deadline_notification_service.dart';
+import 'package:flutter/foundation.dart'; 
 
 class ApplicationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -115,6 +117,18 @@ class ApplicationService {
     }
 
     await _applicationsCollection.add(applicationData);
+
+    // Send immediate deadline notification
+    try {
+      await DeadlineNotificationService().sendImmediateDeadlineNotification(
+        studentId: studentId,
+        opportunityId: opportunityId,
+        action: 'applied',
+      );
+    } catch (e) {
+      debugPrint('Error sending deadline notification: $e');
+      // Don't fail the application if notification fails
+    }
   }
 
   Future<void> deleteApplication({required String applicationId}) async {

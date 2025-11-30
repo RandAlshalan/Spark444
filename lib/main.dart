@@ -12,6 +12,10 @@ import 'studentScreens/testNotifications.dart';
 import 'services/notification_service.dart';
 import 'services/fcm_token_manager.dart';
 import 'services/application_deadline_service.dart';
+import 'services/deadline_notification_service.dart';
+
+// ✅ ADD: Global navigation key - MUST be declared here at top level
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 /// ============================================================================
 /// Background Message Handler
@@ -35,9 +39,16 @@ Future<void> main() async {
     print('Firebase initialized successfully');
 
     // Step 2: Set background message handler for Firebase Messaging
-    // This must be set before runApp() is called
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     print('Background message handler registered');
+
+    // Step 3: Initialize notification service with global navigator key
+    await NotificationService().initialize(navKey: navigatorKey);
+    print('NotificationService initialized');
+
+    // Step 4: Start deadline monitoring service
+    DeadlineNotificationService().startMonitoring();
+    print('DeadlineNotificationService started');
   } catch (e, s) {
     print('Firebase initialization error: $e');
     print('Stack trace: $s');
@@ -54,28 +65,21 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  // Global navigation key for routing from notifications
-  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
-
   @override
   void initState() {
     super.initState();
-    // Step 3: Initialize services after app starts
     _initializeServices();
   }
 
   /// ========================================================================
   /// Initialize Services
   /// ========================================================================
-  /// This sets up notifications and application deadline monitoring
-  /// ========================================================================
   Future<void> _initializeServices() async {
     try {
-      // Initialize notification service
-      await NotificationService().initialize(navKey: _navigatorKey);
+      // Sync FCM token for logged-in user
       await NotificationService().syncFCMTokenWithLoggedInUser();
       await FcmTokenManager.saveUserFcmToken();
-      print('NotificationService initialized in MyApp');
+      print('FCM token synced');
 
       // Start application deadline monitoring service
       ApplicationDeadlineService().startMonitoring();
@@ -87,16 +91,17 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
-    // Stop the deadline monitoring service when app is disposed
+    // Stop monitoring services when app is disposed
     ApplicationDeadlineService().stopMonitoring();
+    DeadlineNotificationService().stopMonitoring();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      // Set the navigation key so NotificationService can navigate
-      navigatorKey: _navigatorKey,
+      // ✅ Use the global navigation key
+      navigatorKey: navigatorKey,
       title: 'SPARK',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -111,8 +116,6 @@ class _MyAppState extends State<MyApp> {
         '/companySignup': (_) => const CompanySignup(),
         '/profile': (_) => const StudentProfilePage(),
         '/testNotifications': (_) => const TestNotificationsScreen(),
-        // Add route for notifications page (you'll need to create this)
-        // '/notifications': (_) => const NotificationsPage(),
       },
       onUnknownRoute: (_) =>
           MaterialPageRoute(builder: (_) => const WelcomeScreen()),
