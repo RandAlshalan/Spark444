@@ -7,9 +7,15 @@ import '../services/chat_service.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
-const Color _primaryColor = Color(0xFF422F5D);
-const Color _aiBubbleColor = Color(0xFFF1F1F1);
 const Color _scaffoldBgColor = Color(0xFFF8F9FA);
+const Color _userBubbleColor = Color(0xFFE0E0E0); // Light grey for user messages
+
+// Gradient colors matching the header
+const LinearGradient _aiGradient = LinearGradient(
+  colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+);
 
 class StudentChatPage extends StatefulWidget {
   const StudentChatPage({super.key});
@@ -25,6 +31,7 @@ class _StudentChatPageState extends State<StudentChatPage> {
 
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
+  bool _isMuted = false;
 
   final AudioPlayer _player = AudioPlayer();
   Timer? _lipTimer;
@@ -109,7 +116,7 @@ class _StudentChatPageState extends State<StudentChatPage> {
         _messages.add({"role": "ai", "text": reply});
       });
 
-      if (audio.isNotEmpty) {
+      if (audio.isNotEmpty && !_isMuted) {
         await _autoSpeak(audio);
       }
     } catch (e) {
@@ -176,7 +183,10 @@ class _StudentChatPageState extends State<StudentChatPage> {
         appBar: AppBar(
           title: const Text(
             "AI Interview Coach",
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -190,6 +200,24 @@ class _StudentChatPageState extends State<StudentChatPage> {
             ),
           ),
           iconTheme: const IconThemeData(color: Colors.white),
+          actions: [
+            IconButton(
+              icon: Icon(
+                _isMuted ? Icons.volume_off : Icons.volume_up,
+                color: Colors.white,
+              ),
+              tooltip: _isMuted ? 'Unmute AI' : 'Mute AI',
+              onPressed: () {
+                setState(() {
+                  _isMuted = !_isMuted;
+                  if (_isMuted) {
+                    _player.stop();
+                    _stopLip();
+                  }
+                });
+              },
+            ),
+          ],
         ),
         body: GestureDetector(
           onTap: () {
@@ -197,7 +225,7 @@ class _StudentChatPageState extends State<StudentChatPage> {
           },
           child: Column(
             children: [
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
 
               // Robot Image
               Center(
@@ -205,14 +233,17 @@ class _StudentChatPageState extends State<StudentChatPage> {
                   _mouthOpen
                       ? "assets/sparkie_open.png"
                       : "assets/sparkie_closed.png",
-                  height: 160,
+                  height: 140,
                 ),
               ),
+
+              const SizedBox(height: 4),
 
               // Chat List
               Expanded(
                 child: ListView.builder(
                   controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   itemCount: _messages.length,
                   itemBuilder: (context, i) {
                     final msg = _messages[i];
@@ -222,17 +253,51 @@ class _StudentChatPageState extends State<StudentChatPage> {
                       alignment:
                           isUser ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
-                        margin: const EdgeInsets.all(8),
-                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.75,
+                        ),
                         decoration: BoxDecoration(
-                          color: isUser ? _primaryColor : _aiBubbleColor,
-                          borderRadius: BorderRadius.circular(16),
+                          gradient: isUser ? null : _aiGradient,
+                          color: isUser ? _userBubbleColor : null,
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(20),
+                            topRight: const Radius.circular(20),
+                            bottomLeft: isUser ? const Radius.circular(20) : const Radius.circular(4),
+                            bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(20),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: msg["role"] == "ai"
-                            ? MarkdownBody(data: msg["text"]!)
+                            ? MarkdownBody(
+                                data: msg["text"]!,
+                                styleSheet: MarkdownStyleSheet(
+                                  p: const TextStyle(color: Colors.white, fontSize: 15),
+                                  strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  em: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic),
+                                  code: TextStyle(
+                                    backgroundColor: Colors.white.withOpacity(0.2),
+                                    color: Colors.white,
+                                  ),
+                                  codeblockDecoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              )
                             : Text(
                                 msg["text"]!,
-                                style: const TextStyle(color: Colors.white),
+                                style: const TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 15,
+                                ),
                               ),
                       ),
                     );
@@ -251,37 +316,80 @@ class _StudentChatPageState extends State<StudentChatPage> {
 
   Widget _inputBox() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: _controller,
-              onSubmitted: (_) => _sendMessage(),
-              decoration: InputDecoration(
-                hintText: "Type a message...",
-                filled: true,
-                fillColor: Colors.grey[200],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: TextField(
+                controller: _controller,
+                onSubmitted: (_) => _sendMessage(),
+                decoration: InputDecoration(
+                  hintText: "Type a message...",
+                  hintStyle: TextStyle(color: Colors.grey[500]),
+                  filled: true,
+                  fillColor: Colors.transparent,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(25),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(25),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(25),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 10),
-          CircleAvatar(
-            backgroundColor: _primaryColor,
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              gradient: _aiGradient,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFD54DB9).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
             child: IconButton(
               icon: _isLoading
                   ? const SizedBox(
-                      width: 20,
-                      height: 20,
+                      width: 22,
+                      height: 22,
                       child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2))
-                  : const Icon(Icons.send, color: Colors.white),
-              onPressed: _sendMessage,
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : const Icon(Icons.send_rounded, color: Colors.white, size: 22),
+              onPressed: _isLoading ? null : _sendMessage,
             ),
-          )
+          ),
         ],
       ),
     );

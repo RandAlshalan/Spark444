@@ -43,8 +43,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
   Student? _student;
   bool _loading = true;
   List<Opportunity> _recentOpportunities = [];
-  int _applicationCount = 0;
-  int _bookmarkCount = 0;
 
   // Calendar state
   DateTime _focusedDay = DateTime.now();
@@ -69,18 +67,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
       final opportunities = await _opportunityService.getOpportunities();
       final recent = opportunities.take(5).toList();
 
-      // Count applications
-      int appCount = 0;
-      if (student != null) {
-        final appsSnapshot = await FirebaseFirestore.instance
-            .collection('applications')
-            .where('studentId', isEqualTo: student.id)
-            .get();
-        appCount = appsSnapshot.docs.length;
-      }
-
-      // Count bookmarks and load deadline events
-      int bookmarkCount = 0;
+      // Load deadline events
       Map<DateTime, List<Opportunity>> deadlineEvents = {};
 
       if (student != null) {
@@ -88,7 +75,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
             .collection('bookmarks')
             .where('studentId', isEqualTo: student.id)
             .get();
-        bookmarkCount = bookmarksSnapshot.docs.length;
 
         // Load bookmarked opportunities with deadlines
         for (var bookmarkDoc in bookmarksSnapshot.docs) {
@@ -125,8 +111,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
       setState(() {
         _student = student;
         _recentOpportunities = recent;
-        _applicationCount = appCount;
-        _bookmarkCount = bookmarkCount;
         _deadlineEvents = deadlineEvents;
         _loading = false;
       });
@@ -263,9 +247,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeaderSection(),
-                    const SizedBox(height: 24),
-                    _buildStatsSection(),
                     const SizedBox(height: 24),
                     if (_deadlineEvents.isNotEmpty) ...[
                       _buildDeadlineCalendarSection(),
@@ -282,135 +263,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
       bottomNavigationBar: CustomBottomNavBar(
         currentIndex: 0,
         onTap: _onNavigationTap,
-      ),
-    );
-  }
-
-  Widget _buildHeaderSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Welcome back,',
-            style: GoogleFonts.lato(
-              fontSize: 16,
-              color: Colors.white.withOpacity(0.9),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _student != null ? '${_student!.firstName} ${_student!.lastName}' : 'Student',
-            style: GoogleFonts.lato(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildStatCard(
-              icon: Icons.description_outlined,
-              label: 'Applications',
-              value: _applicationCount.toString(),
-              color: const Color(0xFF8D52CC),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              icon: Icons.bookmark_outline,
-              label: 'Bookmarks',
-              value: _bookmarkCount.toString(),
-              color: const Color(0xFFD54DB9),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: GoogleFonts.lato(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: _textColor,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.lato(
-              fontSize: 13,
-              color: _textColor.withOpacity(0.6),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -683,38 +535,45 @@ class _StudentHomePageState extends State<StudentHomePage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _sparkOrange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: _sparkOrange.withOpacity(0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.access_time,
-                          color: _sparkOrange,
-                          size: 16,
+                  // Only show reminder if there are upcoming (not closed) deadlines
+                  if (_deadlineEvents[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]!.any((opp) {
+                    if (opp.applicationDeadline == null) return false;
+                    final deadline = opp.applicationDeadline!.toDate();
+                    return !deadline.isBefore(DateTime.now());
+                  })) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _sparkOrange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _sparkOrange.withOpacity(0.3),
+                          width: 1,
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Remember to apply before the deadline closes!',
-                            style: GoogleFonts.lato(
-                              fontSize: 12,
-                              color: _textColor.withOpacity(0.8),
-                              fontWeight: FontWeight.w500,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            color: _sparkOrange,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Remember to apply before the deadline closes!',
+                              style: GoogleFonts.lato(
+                                fontSize: 12,
+                                color: _textColor.withOpacity(0.8),
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
+                  ],
                   ...(_deadlineEvents[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]!.map((opp) {
                     final deadline = opp.applicationDeadline!.toDate();
                     final timeLeft = deadline.difference(DateTime.now());

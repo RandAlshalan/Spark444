@@ -340,17 +340,6 @@ class AuthService {
     final user = credential.user;
     if (user == null) throw Exception("User not found.");
 
-    final studentDoc = await _db.collection(kStudentCol).doc(user.uid).get();
-    if (studentDoc.exists) {
-      await user.reload();
-      if (!user.emailVerified)
-        throw FirebaseAuthException(code: 'email-not-verified');
-      if (studentDoc.data()?['isVerified'] != true) {
-        await updateVerificationStatus(user.uid, true);
-      }
-      return {'userType': 'student', 'isVerified': true};
-    }
-
     final companyDoc = await _db.collection(kCompanyCol).doc(user.uid).get();
     if (companyDoc.exists) {
       // Treat company accounts as verified regardless of email status.
@@ -362,6 +351,17 @@ class AuthService {
       }
 
       return {'userType': 'company', 'isVerified': true};
+    }
+
+    final studentDoc = await _db.collection(kStudentCol).doc(user.uid).get();
+    if (studentDoc.exists) {
+      await user.reload();
+      if (!user.emailVerified)
+        throw FirebaseAuthException(code: 'email-not-verified');
+      if (studentDoc.data()?['isVerified'] != true) {
+        await updateVerificationStatus(user.uid, true);
+      }
+      return {'userType': 'student', 'isVerified': true};
     }
 
     throw Exception("User type not found in the system.");

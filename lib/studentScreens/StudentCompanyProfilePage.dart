@@ -17,6 +17,7 @@ import '../models/Application.dart';
 import '../models/resume.dart';
 import '../services/applicationService.dart';
 import '../companyScreens/companyStudentProfilePage.dart'; // NEW: company-facing student profile view
+import 'StudentSingleProfilePage.dart'; // Student profile view
 import 'resumeSelectionDialog.dart';
 import 'applicationConfirmationDialog.dart';
 import '../widgets/application_success_dialog.dart';
@@ -3079,6 +3080,14 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
               final feedback = data['feedback'] ?? '';
               final wasAccepted = data['wasAccepted'] as bool?;
               final createdAt = data['createdAt'] as Timestamp?;
+              final authorVisible = data['authorVisible'] ?? false;
+              final reviewStudentId = data['studentId'] as String?;
+
+              debugPrint('Displaying Interview Review:');
+              debugPrint('  authorName: $authorName');
+              debugPrint('  authorVisible: $authorVisible');
+              debugPrint('  reviewStudentId: $reviewStudentId');
+              debugPrint('  Will be clickable: ${authorVisible && reviewStudentId != null}');
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -3103,12 +3112,63 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  authorName,
-                                  style: GoogleFonts.lato(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
+                                Builder(
+                                  builder: (ctx) {
+                                    final visible = authorVisible;
+
+                                    // If we have a non-empty studentId, stream the student doc for up-to-date name
+                                    if (reviewStudentId != null && reviewStudentId.isNotEmpty) {
+                                      return GestureDetector(
+                                        onTap: visible
+                                            ? () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => StudentSingleProfilePage(
+                                                      studentId: reviewStudentId,
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            : null,
+                                        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                                          stream: FirebaseFirestore.instance
+                                              .collection('student')
+                                              .doc(reviewStudentId)
+                                              .snapshots(),
+                                          builder: (context, studentSnap) {
+                                            String currentName = authorName;
+                                            if (studentSnap.hasData && studentSnap.data?.data() != null) {
+                                              final sd = studentSnap.data!.data()!;
+                                              final fn = (sd['firstName'] ?? '').toString().trim();
+                                              final ln = (sd['lastName'] ?? '').toString().trim();
+                                              final combined = '$fn $ln'.trim();
+                                              if (combined.isNotEmpty) currentName = combined;
+                                            }
+
+                                            return Text(
+                                              currentName,
+                                              style: GoogleFonts.lato(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                                color: visible ? _purple : null,
+                                                decoration: visible ? TextDecoration.underline : null,
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      );
+                                    }
+
+                                    // Fall back to just displaying authorName if no studentId
+                                    return Text(
+                                      authorName,
+                                      style: GoogleFonts.lato(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    );
+                                  },
                                 ),
                                 if (createdAt != null)
                                   Text(
@@ -3152,6 +3212,16 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
                       Row(
                         children: [
                           VoteButtons(docRef: doc.reference),
+                          const Spacer(),
+                          TextButton.icon(
+                            onPressed: () => _showInterviewReviewReplies(context, doc),
+                            icon: const Icon(Icons.comment_outlined, size: 16),
+                            label: const Text('Replies'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: _purple,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -3166,6 +3236,18 @@ class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
         onPressed: _showAddReviewDialog,
         backgroundColor: _purple,
         child: const Icon(Icons.add, color: Colors.white),
+      ),
+    );
+  }
+
+  void _showInterviewReviewReplies(BuildContext context, DocumentSnapshot reviewDoc) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _InterviewReviewRepliesSheet(
+        reviewDoc: reviewDoc,
+        studentId: widget.studentId,
       ),
     );
   }
@@ -3225,14 +3307,27 @@ class _AddInterviewReviewDialogState extends State<_AddInterviewReviewDialog> {
 
     try {
       final studentDoc = await FirebaseFirestore.instance
-          .collection('students')
+          .collection('student')
           .doc(widget.studentId)
           .get();
 
       final studentData = studentDoc.data();
-      final authorName = _showAccount
-          ? (studentData?['fullName'] ?? 'Anonymous')
+      String authorName = _showAccount
+          ? '${studentData?['firstName'] ?? ''} ${studentData?['lastName'] ?? ''}'.trim()
           : 'Anonymous';
+
+      // If authorName is empty after trimming, fall back to Anonymous
+      if (authorName.isEmpty) {
+        authorName = 'Anonymous';
+      }
+
+      debugPrint('Interview Review Debug:');
+      debugPrint('  _showAccount: $_showAccount');
+      debugPrint('  authorVisible will be: $_showAccount');
+      debugPrint('  studentId: ${widget.studentId}');
+      debugPrint('  authorName: $authorName');
+      debugPrint('  firstName: ${studentData?['firstName']}');
+      debugPrint('  lastName: ${studentData?['lastName']}');
 
       await FirebaseFirestore.instance.collection('interviewReviews').add({
         'companyId': widget.companyId,
@@ -3468,6 +3563,311 @@ class _AddInterviewReviewDialogState extends State<_AddInterviewReviewDialog> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ===================== Interview Review Replies Sheet =====================
+class _InterviewReviewRepliesSheet extends StatefulWidget {
+  final DocumentSnapshot reviewDoc;
+  final String? studentId;
+
+  const _InterviewReviewRepliesSheet({
+    required this.reviewDoc,
+    required this.studentId,
+  });
+
+  @override
+  State<_InterviewReviewRepliesSheet> createState() => _InterviewReviewRepliesSheetState();
+}
+
+class _InterviewReviewRepliesSheetState extends State<_InterviewReviewRepliesSheet> {
+  final TextEditingController _replyController = TextEditingController();
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _replyController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitReply() async {
+    final replyText = _replyController.text.trim();
+    if (replyText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a reply')),
+      );
+      return;
+    }
+
+    if (widget.studentId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to reply')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final studentDoc = await FirebaseFirestore.instance
+          .collection('students')
+          .doc(widget.studentId)
+          .get();
+
+      final studentData = studentDoc.data();
+      final firstName = studentData?['firstName'] ?? '';
+      final lastName = studentData?['lastName'] ?? '';
+      final authorName = '$firstName $lastName'.trim().isEmpty
+          ? 'Anonymous'
+          : '$firstName $lastName'.trim();
+
+      await widget.reviewDoc.reference.collection('replies').add({
+        'studentId': widget.studentId,
+        'authorName': authorName,
+        'replyText': replyText,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      _replyController.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reply submitted successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error submitting reply: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reviewData = widget.reviewDoc.data() as Map<String, dynamic>;
+    final feedback = reviewData['feedback'] ?? '';
+    final authorName = reviewData['authorName'] ?? 'Anonymous';
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Title
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Replies to $authorName\'s review',
+                        style: GoogleFonts.lato(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: _purple,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+
+              // Original review
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Text(
+                  feedback,
+                  style: GoogleFonts.lato(fontSize: 14, height: 1.5),
+                ),
+              ),
+
+              // Replies list
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: widget.reviewDoc.reference
+                      .collection('replies')
+                      .orderBy('createdAt', descending: false)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    }
+
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final replies = snapshot.data?.docs ?? [];
+
+                    if (replies.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Text(
+                            'No replies yet. Be the first to reply!',
+                            style: GoogleFonts.lato(color: Colors.grey),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: replies.length,
+                      itemBuilder: (context, index) {
+                        final replyDoc = replies[index];
+                        final replyData = replyDoc.data() as Map<String, dynamic>;
+                        final replyAuthor = replyData['authorName'] ?? 'Anonymous';
+                        final replyText = replyData['replyText'] ?? '';
+                        final createdAt = replyData['createdAt'] as Timestamp?;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: _purple.withOpacity(0.1),
+                                    child: Text(
+                                      replyAuthor[0].toUpperCase(),
+                                      style: TextStyle(
+                                        color: _purple,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          replyAuthor,
+                                          style: GoogleFonts.lato(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        if (createdAt != null)
+                                          Text(
+                                            DateFormat('MMM d, yyyy').format(createdAt.toDate()),
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                replyText,
+                                style: GoogleFonts.lato(fontSize: 14, height: 1.5),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              // Reply input field
+              Container(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 12,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _replyController,
+                        decoration: InputDecoration(
+                          hintText: 'Write a reply...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        maxLines: null,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: _isSubmitting ? null : _submitReply,
+                      icon: _isSubmitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send),
+                      color: _purple,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
