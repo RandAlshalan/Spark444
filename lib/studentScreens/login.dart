@@ -146,16 +146,11 @@ class _LoginScreenState extends State<LoginScreen>
   String _mapAuthError(dynamic error) {
     if (error is FirebaseAuthException) {
       switch (error.code.toLowerCase()) {
-        // ✅ MODIFIED: Handles new generic Firebase error
         case 'invalid-credential':
           return "Wrong email/username or password";
-
         case 'invalid-email':
           return "Invalid email format";
-        case 'email-not-verified':
-          return "Email not verified";
         case 'too-many-requests':
-          // Removed rate limiting error - allow continued login attempts
           return "Wrong email/username or password";
         case 'network-request-failed':
           return "Network error. Check connection";

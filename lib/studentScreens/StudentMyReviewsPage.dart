@@ -226,7 +226,7 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
     }
 
     return DefaultTabController(
-      length: 1,
+      length: 2,
       child: Scaffold(
         appBar: _gradientAppBar(
           actions: [
@@ -241,13 +241,15 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
             unselectedLabelColor: Colors.white70,
             indicatorColor: Colors.white,
             tabs: [
-              Tab(text: 'Reviews'),
+              Tab(text: 'Company Reviews'),
+              Tab(text: 'Interview Reviews'),
             ],
           ),
         ),
         body: TabBarView(
           children: [
             _buildReviewsTab(),
+            _buildInterviewReviewsTab(),
           ],
         ),
       ),
@@ -315,6 +317,208 @@ class _StudentMyReviewsPageState extends State<StudentMyReviewsPage> {
     );
   }
 
+  Stream<QuerySnapshot<Map<String, dynamic>>> _myInterviewReviewsStream() {
+    final authUid = FirebaseAuth.instance.currentUser?.uid;
+    if (authUid == null || _resolving) return const Stream.empty();
+
+    final ids = <String>{};
+    if (uid != null && uid!.isNotEmpty) ids.add(uid!);
+    ids.add(authUid);
+
+    final coll = FirebaseFirestore.instance.collection('interviewReviews');
+    if (ids.length == 1) {
+      return coll.where('studentId', isEqualTo: ids.first).orderBy('createdAt', descending: true).snapshots();
+    }
+    return coll.where('studentId', whereIn: ids.toList()).orderBy('createdAt', descending: true).snapshots();
+  }
+
+  Widget _buildInterviewReviewsTab() {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _myInterviewReviewsStream(),
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return _buildMessageState('Error: ${snap.error}');
+        }
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final docs = snap.data?.docs ?? [];
+
+        if (docs.isEmpty) {
+          return RefreshIndicator(
+            onRefresh: _onRefresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                const SizedBox(height: 120),
+                _buildMessageState('You have not written any interview reviews yet.', compact: true),
+              ],
+            ),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: _onRefresh,
+          child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+            itemCount: docs.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (_, index) => _buildInterviewReviewCard(docs[index]),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInterviewReviewCard(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+    final feedback = (data['feedback'] ?? '').toString();
+    final companyId = (data['companyId'] ?? '').toString();
+    final created = (data['createdAt'] as Timestamp?)?.toDate();
+    final experienceRating = data['experienceRating'] ?? 'like';
+    final wasAccepted = data['wasAccepted'] as bool?;
+
+    if (companyId.isNotEmpty && !_companyNameCache.containsKey(companyId)) {
+      _fetchCompanyMeta(companyId);
+    }
+    final companyName = _companyNameCache[companyId] ?? 'Interview Review';
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: companyId.isNotEmpty
+            ? () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => StudentCompanyProfilePage(companyId: companyId)),
+                );
+              }
+            : null,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _buildLeading(companyId, companyName),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(companyName, style: GoogleFonts.lato(fontWeight: FontWeight.w700, fontSize: 15)),
+                        const SizedBox(height: 4),
+                        Text('Interview Review', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    experienceRating == 'like' ? Icons.thumb_up : Icons.thumb_down,
+                    color: experienceRating == 'like' ? Colors.green : Colors.red,
+                    size: 20,
+                  ),
+                  IconButton(
+                    tooltip: 'Delete',
+                    onPressed: () => _confirmAndDeleteInterviewReview(doc),
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(feedback.isNotEmpty ? feedback : 'No feedback provided.', style: GoogleFonts.lato(height: 1.4)),
+              if (wasAccepted != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: wasAccepted ? Colors.green.shade50 : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    wasAccepted ? 'Accepted' : 'Not Accepted',
+                    style: GoogleFonts.lato(
+                      fontSize: 11,
+                      color: wasAccepted ? Colors.green.shade700 : Colors.orange.shade700,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  if (created != null)
+                    Text(_dateFmt.format(created), style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
+                  StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                    stream: doc.reference.snapshots(),
+                    builder: (context, snap) {
+                      final latest = snap.data?.data() ?? data;
+                      final likes = (latest['likesCount'] as num?)?.toInt() ?? 0;
+                      final dislikes = (latest['dislikesCount'] as num?)?.toInt() ?? 0;
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.thumb_up_alt_outlined, size: 16, color: Colors.grey.shade700),
+                          const SizedBox(width: 4),
+                          Text('$likes', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade700)),
+                          const SizedBox(width: 12),
+                          Icon(Icons.thumb_down_alt_outlined, size: 16, color: Colors.grey.shade700),
+                          const SizedBox(width: 4),
+                          Text('$dislikes', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade700)),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmAndDeleteInterviewReview(DocumentSnapshot<Map<String, dynamic>> doc) async {
+    final data = doc.data() ?? {};
+    final studentIdOnDoc = (data['studentId'] ?? '').toString();
+    final authUid = FirebaseAuth.instance.currentUser?.uid;
+    final canDelete = authUid != null && studentIdOnDoc.isNotEmpty && (studentIdOnDoc == authUid || studentIdOnDoc == uid);
+
+    if (!canDelete) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You are not authorized to delete this review.')));
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete Interview Review'),
+        content: const Text('Are you sure you want to delete this interview review?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await doc.reference.delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Interview review deleted.')));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+        }
+      }
+    }
+  }
 
   Widget _buildReviewCard(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};

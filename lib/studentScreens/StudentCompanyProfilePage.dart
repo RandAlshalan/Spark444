@@ -3193,6 +3193,14 @@ class _AddInterviewReviewDialogState extends State<_AddInterviewReviewDialog> {
   bool _isSubmitting = false;
 
   @override
+  void initState() {
+    super.initState();
+    _feedbackController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
   void dispose() {
     _feedbackController.dispose();
     super.dispose();
@@ -3335,11 +3343,26 @@ class _AddInterviewReviewDialogState extends State<_AddInterviewReviewDialog> {
               TextField(
                 controller: _feedbackController,
                 maxLines: 5,
+                maxLength: 200,
                 decoration: InputDecoration(
                   hintText: 'Describe your interview experience...',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   filled: true,
                   fillColor: Colors.grey.shade50,
+                  counterText: '',
+                ),
+              ),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '${_feedbackController.text.length}/200',
+                  style: GoogleFonts.lato(
+                    fontSize: 12,
+                    color: _feedbackController.text.length > 200
+                        ? Colors.red
+                        : Colors.grey.shade600,
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
