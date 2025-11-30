@@ -585,7 +585,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         automaticallyImplyLeading: false,
         title: Text(
           'Opportunities',
-          style: GoogleFonts.lato(fontWeight: FontWeight.bold),
+          style: GoogleFonts.lato(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,

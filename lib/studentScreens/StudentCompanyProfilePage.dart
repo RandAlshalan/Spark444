@@ -16,7 +16,6 @@ import '../models/Application.dart';
 import '../models/resume.dart';
 import '../services/applicationService.dart';
 import '../companyScreens/companyStudentProfilePage.dart'; // NEW: company-facing student profile view
-import 'StudentSingleProfilePage.dart'; // Student profile page
 import 'resumeSelectionDialog.dart';
 import 'applicationConfirmationDialog.dart';
 import '../widgets/application_success_dialog.dart';
@@ -266,7 +265,7 @@ class StudentCompanyProfilePage extends StatelessWidget {
         final company = Company.fromMap(snap.data!.id, data);
 
         return DefaultTabController(
-          length: 3,
+          length: 4,
           child: Scaffold(
             extendBodyBehindAppBar: true,
             appBar: AppBar(
@@ -474,29 +473,45 @@ class StudentCompanyProfilePage extends StatelessWidget {
                                     builder: (context, reviewSnap) {
                                       final reviewsCount =
                                           reviewSnap.data?.size ?? 0;
-                                      return TabBar(
-                                        isScrollable: true,
-                                        labelColor: Colors.black,
-                                        labelStyle: GoogleFonts.lato(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                        unselectedLabelStyle:
-                                            GoogleFonts.lato(),
-                                        unselectedLabelColor: Colors.black
-                                            .withOpacity(0.5),
-                                        indicatorColor: _purple,
-                                        indicatorWeight: 3,
-                                        dividerColor: Colors.transparent,
-                                        tabs: [
-                                          const Tab(text: 'Details'),
-                                          Tab(
-                                            text:
-                                                'Opportunities ($oppCount)',
-                                          ),
-                                          Tab(
-                                            text: 'Reviews ($reviewsCount)',
-                                          ),
-                                        ],
+                                      return StreamBuilder<QuerySnapshot>(
+                                        stream: FirebaseFirestore.instance
+                                            .collection('interviewReviews')
+                                            .where(
+                                              'companyId',
+                                              isEqualTo: companyId,
+                                            )
+                                            .snapshots(),
+                                        builder: (context, interviewSnap) {
+                                          final interviewCount =
+                                              interviewSnap.data?.size ?? 0;
+                                          return TabBar(
+                                            isScrollable: true,
+                                            labelColor: Colors.black,
+                                            labelStyle: GoogleFonts.lato(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                            unselectedLabelStyle:
+                                                GoogleFonts.lato(),
+                                            unselectedLabelColor: Colors.black
+                                                .withOpacity(0.5),
+                                            indicatorColor: _purple,
+                                            indicatorWeight: 3,
+                                            dividerColor: Colors.transparent,
+                                            tabs: [
+                                              const Tab(text: 'Details'),
+                                              Tab(
+                                                text:
+                                                    'Opportunities ($oppCount)',
+                                              ),
+                                              Tab(
+                                                text: 'Reviews ($reviewsCount)',
+                                              ),
+                                              Tab(
+                                                text: 'Interview Reviews ($interviewCount)',
+                                              ),
+                                            ],
+                                          );
+                                        },
                                       );
                                     },
                                   ),
@@ -520,6 +535,7 @@ class StudentCompanyProfilePage extends StatelessWidget {
                     _DetailsTab(company: company, data: data),
                     _OpportunitiesTab(companyId: companyId),
                     _ReviewsTab(companyId: companyId, studentId: studentId),
+                    _InterviewReviewsTab(companyId: companyId, studentId: studentId),
                   ],
                 ),
               ),
@@ -2982,5 +2998,451 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
       default:
         return Colors.orange.shade700;
     }
+  }
+}
+
+// ===================== Interview Reviews Tab =====================
+class _InterviewReviewsTab extends StatefulWidget {
+  const _InterviewReviewsTab({required this.companyId, required this.studentId});
+  final String companyId;
+  final String? studentId;
+
+  @override
+  State<_InterviewReviewsTab> createState() => _InterviewReviewsTabState();
+}
+
+class _InterviewReviewsTabState extends State<_InterviewReviewsTab> {
+  void _showAddReviewDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => _AddInterviewReviewDialog(
+        companyId: widget.companyId,
+        studentId: widget.studentId,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.studentId == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text(
+            'Please log in to view and submit interview reviews.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('interviewReviews')
+            .where('companyId', isEqualTo: widget.companyId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final reviews = snapshot.data?.docs ?? [];
+
+          if (reviews.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Text(
+                  'No interview reviews yet. Be the first to share your experience!',
+                  style: GoogleFonts.lato(fontSize: 14, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: reviews.length,
+            itemBuilder: (context, index) {
+              final doc = reviews[index];
+              final data = doc.data() as Map<String, dynamic>;
+              final experienceRating = data['experienceRating'] ?? 'like';
+              final authorName = data['authorName'] ?? 'Anonymous';
+              final feedback = data['feedback'] ?? '';
+              final wasAccepted = data['wasAccepted'] as bool?;
+              final createdAt = data['createdAt'] as Timestamp?;
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                elevation: 1,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: _purple.withOpacity(0.1),
+                            child: Text(
+                              authorName[0].toUpperCase(),
+                              style: TextStyle(color: _purple, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  authorName,
+                                  style: GoogleFonts.lato(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                if (createdAt != null)
+                                  Text(
+                                    DateFormat('MMM d, yyyy').format(createdAt.toDate()),
+                                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            experienceRating == 'like' ? Icons.thumb_up : Icons.thumb_down,
+                            color: experienceRating == 'like' ? Colors.green : Colors.red,
+                            size: 24,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        feedback,
+                        style: GoogleFonts.lato(fontSize: 14, height: 1.5),
+                      ),
+                      if (wasAccepted != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: wasAccepted ? Colors.green.shade50 : Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            wasAccepted ? 'Accepted' : 'Not Accepted',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: wasAccepted ? Colors.green.shade700 : Colors.orange.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          VoteButtons(docRef: doc.reference),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddReviewDialog,
+        backgroundColor: _purple,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+    );
+  }
+}
+
+// ===================== Add Interview Review Dialog =====================
+class _AddInterviewReviewDialog extends StatefulWidget {
+  const _AddInterviewReviewDialog({
+    required this.companyId,
+    required this.studentId,
+  });
+
+  final String companyId;
+  final String? studentId;
+
+  @override
+  State<_AddInterviewReviewDialog> createState() => _AddInterviewReviewDialogState();
+}
+
+class _AddInterviewReviewDialogState extends State<_AddInterviewReviewDialog> {
+  final _feedbackController = TextEditingController();
+  String _experienceRating = 'like';
+  bool? _wasAccepted;
+  bool _showAccount = true;
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _feedbackController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitReview() async {
+    if (_feedbackController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please provide feedback about your interview experience')),
+      );
+      return;
+    }
+
+    if (widget.studentId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to submit a review')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final studentDoc = await FirebaseFirestore.instance
+          .collection('students')
+          .doc(widget.studentId)
+          .get();
+
+      final studentData = studentDoc.data();
+      final authorName = _showAccount
+          ? (studentData?['fullName'] ?? 'Anonymous')
+          : 'Anonymous';
+
+      await FirebaseFirestore.instance.collection('interviewReviews').add({
+        'companyId': widget.companyId,
+        'studentId': widget.studentId,
+        'experienceRating': _experienceRating,
+        'feedback': _feedbackController.text.trim(),
+        'wasAccepted': _wasAccepted,
+        'authorVisible': _showAccount,
+        'authorName': authorName,
+        'createdAt': FieldValue.serverTimestamp(),
+        'likesCount': 0,
+        'dislikesCount': 0,
+      });
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Interview review submitted successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error submitting review: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Share Your Interview Experience',
+                style: GoogleFonts.lato(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: _purple,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              Text(
+                'Overall Experience',
+                style: GoogleFonts.lato(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => setState(() => _experienceRating = 'like'),
+                      icon: Icon(
+                        Icons.thumb_up,
+                        color: _experienceRating == 'like' ? Colors.white : Colors.green,
+                      ),
+                      label: const Text('Positive'),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: _experienceRating == 'like' ? Colors.green : null,
+                        foregroundColor: _experienceRating == 'like' ? Colors.white : Colors.green,
+                        side: BorderSide(color: Colors.green),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => setState(() => _experienceRating = 'dislike'),
+                      icon: Icon(
+                        Icons.thumb_down,
+                        color: _experienceRating == 'dislike' ? Colors.white : Colors.red,
+                      ),
+                      label: const Text('Negative'),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: _experienceRating == 'dislike' ? Colors.red : null,
+                        foregroundColor: _experienceRating == 'dislike' ? Colors.white : Colors.red,
+                        side: BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              Text(
+                'Feedback',
+                style: GoogleFonts.lato(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _feedbackController,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  hintText: 'Describe your interview experience...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              Text(
+                'Were you accepted? (Optional)',
+                style: GoogleFonts.lato(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => setState(() => _wasAccepted = true),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: _wasAccepted == true ? _purple : null,
+                        foregroundColor: _wasAccepted == true ? Colors.white : _purple,
+                        side: BorderSide(color: _purple),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Yes'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => setState(() => _wasAccepted = false),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: _wasAccepted == false ? _purple : null,
+                        foregroundColor: _wasAccepted == false ? Colors.white : _purple,
+                        side: BorderSide(color: _purple),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('No'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => setState(() => _wasAccepted = null),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: _wasAccepted == null ? Colors.grey : null,
+                        foregroundColor: _wasAccepted == null ? Colors.white : Colors.grey,
+                        side: BorderSide(color: Colors.grey),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Skip'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              Row(
+                children: [
+                  Checkbox(
+                    value: _showAccount,
+                    onChanged: (val) => setState(() => _showAccount = val ?? true),
+                    activeColor: _purple,
+                  ),
+                  const Expanded(
+                    child: Text('Show my name on this review'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _isSubmitting ? null : _submitReview,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _purple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text('Submit Review'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
