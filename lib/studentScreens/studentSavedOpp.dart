@@ -43,6 +43,7 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF7F2FB),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         flexibleSpace: Container(
@@ -198,124 +199,137 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
   /// --- Build single opportunity card ---
   Widget _buildOpportunityCard(Opportunity opportunity) {
     final company = _companyCache[opportunity.companyId];
-    return Container(
+    return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      decoration: StudentTheme.cardDecoration,
+      elevation: 2,
+      shadowColor: Colors.black.withOpacity(0.08),
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Card Header: logo, role, name, bookmark ---
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Company logo
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
+                        color: Colors.black.withOpacity(0.06),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
                     ],
                   ),
                   child: CircleAvatar(
-                    radius: 28,
-                    backgroundColor:
-                        StudentTheme.primaryColor.withValues(alpha: 0.08),
-                    backgroundImage: () {
-                      final logoUrl = company?.logoUrl ?? '';
-                      return logoUrl.isNotEmpty
-                          ? CachedNetworkImageProvider(logoUrl)
-                          : null;
-                    }(),
-                    child: () {
-                      final logoUrl = company?.logoUrl ?? '';
-                      return logoUrl.isEmpty
-                          ? Icon(Icons.business, color: StudentTheme.primaryColor)
-                          : null;
-                    }(),
+                    radius: 24,
+                    backgroundColor: const Color(0xFF422F5D).withOpacity(0.08),
+                    backgroundImage: (company?.logoUrl != null &&
+                            company!.logoUrl!.isNotEmpty)
+                        ? CachedNetworkImageProvider(company.logoUrl!)
+                        : null,
+                    child: (company?.logoUrl == null ||
+                            company!.logoUrl!.isEmpty)
+                        ? const Icon(Icons.business,
+                            color: Color(0xFF422F5D), size: 22)
+                        : null,
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Role and name
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        opportunity.role,
+                        company?.companyName ?? '...',
                         style: GoogleFonts.lato(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: StudentTheme.textColor,
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        company?.companyName ?? opportunity.name,
+                        opportunity.role,
                         style: GoogleFonts.lato(
-                          fontSize: 15,
-                          color: StudentTheme.textColor.withValues(alpha: 0.7),
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1A1A1A),
+                          height: 1.2,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                // Bookmark icon (remove)
                 IconButton(
-                  icon: Icon(Icons.bookmark, color: StudentTheme.primaryColor),
+                  icon: const Icon(Icons.bookmark, color: Color(0xFF8D52CC)),
                   onPressed: () => _toggleBookmark(opportunity),
                   tooltip: 'Remove Bookmark',
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            // --- Info Chips ---
+            const SizedBox(height: 12),
             Wrap(
-              spacing: 8.0,
+              spacing: 12.0,
               runSpacing: 8.0,
               children: [
-                if (opportunity.location != null)
-                  _buildInfoChip(Icons.location_on_outlined, opportunity.location!),
-                if (opportunity.workMode != null)
-                  _buildInfoChip(Icons.work_outline, opportunity.workMode!),
-                _buildInfoChip(
-                  Icons.attach_money,
-                  opportunity.isPaid ? 'Paid' : 'Unpaid',
-                  color: opportunity.isPaid ? StudentTheme.successColor : StudentTheme.warningColor,
-                ),
-                if (opportunity.responseDeadlineVisible == true &&
-                    opportunity.responseDeadline != null)
-                  _buildInfoChip(
-                    Icons.event_available,
-                    'Respond by ${DateFormat('MMM d, yyyy').format(opportunity.responseDeadline!.toDate())}',
-                    color: StudentTheme.infoColor,
+                _buildSimpleInfo(Icons.business_center_outlined, opportunity.type),
+                if (opportunity.workMode != null &&
+                    opportunity.workMode!.isNotEmpty)
+                  _buildSimpleInfo(
+                    Icons.laptop_chromebook_outlined,
+                    opportunity.workMode!,
                   ),
+                _buildSimpleInfo(
+                  opportunity.isPaid
+                      ? Icons.attach_money
+                      : Icons.money_off_outlined,
+                  opportunity.isPaid ? 'Paid' : 'Unpaid',
+                ),
               ],
             ),
-            const Padding(padding: EdgeInsets.only(top: 12.0), child: Divider(color: StudentTheme.dividerColor)),
-            // --- View More button ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    // Call the function that fetches status and shows details
-                    _viewOpportunityDetails(opportunity);
-                  },
-                  child: Text(
-                    'View More',
-                    style: GoogleFonts.lato(
-                      color: StudentTheme.primaryColor,
-                      fontWeight: FontWeight.bold,
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8D52CC),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => _viewOpportunityDetails(opportunity),
+                    borderRadius: BorderRadius.circular(12),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                      child: Center(
+                        child: Text(
+                          'View',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ],
         ),
@@ -326,23 +340,34 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
   /// --- Info Chip Widget ---
   Widget _buildInfoChip(IconData icon, String label, {Color? color}) {
     final chipColor = color ?? StudentTheme.primaryColor;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: chipColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(StudentTheme.radiusSM),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: chipColor),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: GoogleFonts.lato(color: chipColor, fontWeight: FontWeight.w600),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: chipColor),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: GoogleFonts.lato(color: chipColor, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSimpleInfo(IconData icon, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: Colors.grey.shade600),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: GoogleFonts.lato(
+            color: Colors.grey.shade700,
+            fontWeight: FontWeight.w500,
+            fontSize: 13,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

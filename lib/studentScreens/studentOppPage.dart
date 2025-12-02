@@ -35,7 +35,18 @@ import '../theme/student_theme.dart';
 
 // --- COLOR CONSTANTS (Use StudentTheme for consistency) ---
 const Color _sparkPrimaryPurple = StudentTheme.primaryColor;
-const Color _pageBackgroundColor = StudentTheme.backgroundColor;
+const Color _pageBackgroundColor = Color(0xFFF7F2FB); // light purple
+String _cleanCity(String city) {
+  var c = city.trim();
+  if (c.contains(',')) {
+    c = c.split(',').first.trim();
+  }
+  final lower = c.toLowerCase();
+  if (lower.contains('saudi arabia')) {
+    c = c.replaceAll(RegExp('saudi arabia', caseSensitive: false), '').trim();
+  }
+  return c.isEmpty ? city.trim() : c;
+}
 
 // Enum for clearer state management
 enum ScreenState { initialLoading, loading, success, error, empty }
@@ -75,7 +86,6 @@ class _studentOppPgaeState extends State<studentOppPgae> {
 
   // Controllers
   final _searchController = TextEditingController();
-  final _cityController = TextEditingController();
   Timer?
   _debounce; // Timer for search input to avoid searching on every keystroke
 
@@ -85,6 +95,8 @@ class _studentOppPgaeState extends State<studentOppPgae> {
   String? _selectedLocationType; // Filter by work mode (remote, in-person)
   bool? _isPaid; // Filter by paid/unpaid
   String? _selectedDuration; // Filter by duration
+
+  List<String> _cityOptions = [];
 
   // --- 2. Lifecycle Methods ---
 
@@ -96,6 +108,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
     _searchController.addListener(
       _onSearchChanged,
     ); // Listen for changes in the search bar
+    _loadCityOptions();
   }
 
   @override
@@ -103,7 +116,6 @@ class _studentOppPgaeState extends State<studentOppPgae> {
     // This method is called when the widget is permanently removed
     // It's important to dispose controllers to free up resources
     _searchController.dispose();
-    _cityController.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -127,6 +139,32 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         setState(() {
           _errorMessage = "Error: ${e.toString()}";
           _state = ScreenState.error;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadCityOptions() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('lists')
+          .doc('city')
+          .get();
+      final names = List<String>.from(
+        (doc.data() as Map<String, dynamic>?)?['names'] ?? [],
+      );
+      if (mounted) {
+        setState(() {
+          // Clean and dedupe
+          final cleaned = names.map(_cleanCity).where((c) => c.isNotEmpty);
+          _cityOptions = cleaned.toSet().toList()..sort();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading cities: $e');
+      if (mounted) {
+        setState(() {
+          _cityOptions = ['Riyadh', 'Jeddah', 'Dammam'];
         });
       }
     }
@@ -776,7 +814,6 @@ class _studentOppPgaeState extends State<studentOppPgae> {
     return Column(
       children: [
         _buildSearchBar(),
-        _buildTypeFilterChips(),
         _buildActiveFiltersBar(), // Shows currently active filters
         Expanded(child: _buildListContent()), // The list itself
       ],
@@ -875,13 +912,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
             final isSelected = _activeTypeFilter == type;
             return Container(
               decoration: BoxDecoration(
-                gradient: isSelected
-                    ? const LinearGradient(
-                        colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
+                color: isSelected ? const Color(0xFF8D52CC) : null,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Material(
@@ -892,15 +923,15 @@ class _studentOppPgaeState extends State<studentOppPgae> {
                     _fetchOpportunities(); // Re-fetch data with the new filter
                   },
                   borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isSelected ? null : Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: isSelected ? null : Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Center(
-                      child: Text(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? null : Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: isSelected ? null : Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Center(
+                        child: Text(
                         type,
                         style: TextStyle(
                           color: isSelected ? Colors.white : Colors.black87,
@@ -925,7 +956,8 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         _selectedCity != null ||
         _selectedLocationType != null ||
         _isPaid != null ||
-        _selectedDuration != null;
+        _selectedDuration != null ||
+        (_activeTypeFilter != null && _activeTypeFilter != 'All');
     if (!hasActiveFilters) return const SizedBox.shrink(); // Hide if no filters
 
     return Padding(
@@ -934,13 +966,20 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         spacing: 8.0,
         runSpacing: 4.0,
         children: [
+          if (_activeTypeFilter != null && _activeTypeFilter != 'All')
+            Chip(
+              label: Text('Type: $_activeTypeFilter'),
+              onDeleted: () {
+                setState(() => _activeTypeFilter = 'All');
+                _fetchOpportunities();
+              },
+            ),
           // Add a chip for each active filter
           if (_selectedCity != null && _selectedCity!.isNotEmpty)
             Chip(
               label: Text('City: $_selectedCity'),
               onDeleted: () {
                 setState(() => _selectedCity = null);
-                _cityController.clear();
                 _fetchOpportunities();
               },
             ),
@@ -1069,14 +1108,16 @@ class _studentOppPgaeState extends State<studentOppPgae> {
 
   /// Shows the filter bottom sheet
   void _showFilterSheet() {
-    _cityController.text = _selectedCity ?? '';
+    String? selectedCityLocal = _selectedCity;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      backgroundColor: Colors.white,
       builder: (context) {
+        const purple = Color(0xFF8D52CC);
         // Use StatefulBuilder to manage the state inside the modal
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
@@ -1094,13 +1135,7 @@ class _studentOppPgaeState extends State<studentOppPgae> {
                   final isSelected = selectedValue == option;
                   return Container(
                     decoration: BoxDecoration(
-                      gradient: isSelected
-                          ? const LinearGradient(
-                              colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                          : null,
+                      color: isSelected ? const Color(0xFF8D52CC) : null,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Material(
@@ -1142,14 +1177,24 @@ class _studentOppPgaeState extends State<studentOppPgae> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Filters',
-                      style: GoogleFonts.lato(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Filters',
+                            style: GoogleFonts.lato(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     // City Filter
                     Text(
                       'City',
@@ -1159,24 +1204,42 @@ class _studentOppPgaeState extends State<studentOppPgae> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
-                      controller: _cityController,
-                      decoration: InputDecoration(
-                        hintText: 'e.g., Riyadh',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: (_cityOptions.isNotEmpty
+                              ? _cityOptions
+                              : <String>['Riyadh', 'Jeddah', 'Dammam'])
+                          .map((city) {
+                        final display = _cleanCity(city);
+                        final isSelected = selectedCityLocal == display;
+                        return ChoiceChip(
+                          label: Text(display),
+                          selected: isSelected,
+                          selectedColor: purple,
+                          backgroundColor: Colors.grey.shade200,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          onSelected: (_) {
+                            setModalState(() {
+                              selectedCityLocal =
+                                  isSelected ? null : display;
+                            });
+                          },
+                        );
+                      }).toList(),
                     ),
                     const SizedBox(height: 24),
-                    // Location Type Filter
-                    Text(
-                      'Location Type',
-                      style: GoogleFonts.lato(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  // Location Type Filter
+                  Text(
+                    'Location Type',
+                    style: GoogleFonts.lato(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
+                  ),
                     const SizedBox(height: 12),
                     buildModalChips<String>(
                       options: ['remote', 'in-person', 'hybrid'],
@@ -1184,6 +1247,30 @@ class _studentOppPgaeState extends State<studentOppPgae> {
                       labelBuilder: (s) => s,
                       onSelected: (value) =>
                           setModalState(() => _selectedLocationType = value),
+                    ),
+                    const SizedBox(height: 24),
+                    // Opportunity Type Filter
+                    Text(
+                      'Opportunity Type',
+                      style: GoogleFonts.lato(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    buildModalChips<String>(
+                      options: const [
+                        'Internship',
+                        'Co-op',
+                        'Graduate Program',
+                        'Bootcamp',
+                      ],
+                      selectedValue:
+                          _activeTypeFilter == 'All' ? null : _activeTypeFilter,
+                      labelBuilder: (s) => s,
+                      onSelected: (value) => setModalState(
+                        () => _activeTypeFilter = value ?? 'All',
+                      ),
                     ),
                     const SizedBox(height: 24),
                     // Payment Filter
@@ -1228,37 +1315,54 @@ class _studentOppPgaeState extends State<studentOppPgae> {
                     // Action Buttons
                     Row(
                       children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => setModalState(() {
-                              // Clear filters inside the modal
-                              _cityController.clear();
-                              _selectedLocationType = null;
-                              _isPaid = null;
-                              _selectedDuration = null;
-                            }),
-                            child: const Text('Clear'),
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () => setModalState(() {
+                // Clear filters inside the modal
+                _selectedLocationType = null;
+                _isPaid = null;
+                _selectedDuration = null;
+                selectedCityLocal = null;
+              }),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: purple, width: 1.2),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'Clear',
+                              style: TextStyle(
+                                color: purple,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _sparkPrimaryPurple,
+                              backgroundColor: purple,
                               foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             onPressed: () {
                               // Apply filters to the main page state
-                              setState(
-                                () => _selectedCity =
-                                    _cityController.text.trim().isEmpty
-                                    ? null
-                                    : _cityController.text.trim(),
-                              );
+                              setState(() => _selectedCity = selectedCityLocal);
                               _fetchOpportunities(); // Re-fetch data
                               Navigator.pop(context); // Close the modal
                             },
-                            child: const Text('Apply Filters'),
+                            child: const Text(
+                              'Apply Filters',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -1277,7 +1381,6 @@ class _studentOppPgaeState extends State<studentOppPgae> {
   /// Resets all filters and re-fetches the list
   void _resetAllFilters() {
     setState(() {
-      _cityController.clear();
       _selectedCity = null;
       _selectedLocationType = null;
       _isPaid = null;
@@ -1479,6 +1582,12 @@ class _OpportunityCard extends StatelessWidget {
                     Icons.laptop_chromebook_outlined,
                     opportunity.workMode!,
                   ),
+                if (opportunity.location != null &&
+                    opportunity.location!.trim().isNotEmpty)
+                  _buildSimpleInfo(
+                    Icons.location_on_outlined,
+                    opportunity.location!.trim(),
+                  ),
                 _buildSimpleInfo(
                   opportunity.isPaid ? Icons.attach_money : Icons.money_off_outlined,
                   opportunity.isPaid ? 'Paid' : 'Unpaid',
@@ -1486,31 +1595,27 @@ class _OpportunityCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            // Apply Button
-            SizedBox(
-              width: double.infinity,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+            // View Button aligned right
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8D52CC),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: onViewMore,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Center(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onViewMore,
+                      borderRadius: BorderRadius.circular(10),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 14),
                         child: Text(
-                          'Apply',
-                          style: GoogleFonts.lato(
+                          'View',
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -1518,7 +1623,7 @@ class _OpportunityCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
           ],
         ),

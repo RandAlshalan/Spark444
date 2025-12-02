@@ -124,7 +124,18 @@ class BookmarkService {
             return indexA.compareTo(indexB);
           });
 
-          return allOpportunities;
+          final now = DateTime.now();
+
+          bool isOpen(Opportunity opp) {
+            if (!opp.isActive) return false;
+            final openDate = opp.applicationOpenDate?.toDate();
+            if (openDate != null && openDate.isAfter(now)) return false;
+            final deadline = opp.applicationDeadline?.toDate();
+            if (deadline != null && deadline.isBefore(now)) return false;
+            return true;
+          }
+
+          return allOpportunities.where(isOpen).toList();
         });
   }
 }
