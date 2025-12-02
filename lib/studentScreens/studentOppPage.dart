@@ -3,11 +3,11 @@
 // --- IMPORTS ---
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 // Note: Ensure your import paths are correct for your project
 import '../models/Application.dart';
 import '../models/company.dart';
@@ -170,7 +170,22 @@ class _studentOppPgaeState extends State<studentOppPgae> {
 
       // 3. Apply client-side filtering for company name search & duration
       final query = rawSearch.toLowerCase();
+      final now = DateTime.now();
       final filtered = opportunities.where((opp) {
+        // Check if opportunity is open (not before applicationOpenDate and not after applicationDeadline)
+        final applicationOpenDate = opp.applicationOpenDate?.toDate();
+        final applicationDeadline = opp.applicationDeadline?.toDate();
+
+        // Hide if application period hasn't started yet
+        if (applicationOpenDate != null && now.isBefore(applicationOpenDate)) {
+          return false;
+        }
+
+        // Hide if application deadline has passed
+        if (applicationDeadline != null && now.isAfter(applicationDeadline)) {
+          return false;
+        }
+
         // Check Type Filter
         final matchesType =
             _activeTypeFilter == 'All' || opp.type == _activeTypeFilter;
@@ -233,98 +248,126 @@ class _studentOppPgaeState extends State<studentOppPgae> {
   Future<void> _applyNow() async {
     if (_selectedOpportunity == null || _studentId == null) return;
 
-    final selection = await showDialog<Map<String, dynamic>?>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ResumeSelectionDialog(
-        studentId: _studentId!,
-      ),
-    );
+    final companyNameForDialog =
+        await _getCompanyNameForDialog(_selectedOpportunity!.companyId);
 
-    if (selection == null) return;
-
-    final resume = selection['resume'] as Resume?;
-    final coverLetter = selection['coverLetter'] as String?;
-    if (resume == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a resume to continue.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ApplicationConfirmationDialog(
-        opportunity: _selectedOpportunity!,
-        resume: resume,
-        coverLetter: coverLetter,
-      ),
-    );
-
-    if (confirm != true) return;
-
-    setState(() => _isApplying = true);
-    try {
-      await _applicationService.submitApplication(
-        studentId: _studentId!,
-        opportunityId: _selectedOpportunity!.id,
-        resumeId: resume.id,
-        resumePdfUrl: resume.pdfUrl,
-        coverLetterText: coverLetter,
-      );
-
-      if (!mounted) return;
-
-      final includeCoverLetter =
-          coverLetter != null && coverLetter.trim().isNotEmpty;
-
-      String companyName =
-          _companyCache[_selectedOpportunity!.companyId]?.companyName ?? '';
-      if (companyName.isEmpty) {
-        final fetchedCompany =
-            await _authService.getCompany(_selectedOpportunity!.companyId);
-        companyName = fetchedCompany?.companyName ?? 'the hiring team';
-      }
-
-      await _viewOpportunityDetails(_selectedOpportunity!);
-      if (!mounted) return;
-
-      setState(() => _isApplying = false);
-
-      await showDialog<void>(
+    while (true) {
+      final selection = await showDialog<Map<String, dynamic>?>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => ApplicationSuccessDialog(
-          opportunityTitle: _selectedOpportunity!.role,
-          companyName: companyName,
-          resumeTitle: resume.title,
-          includeCoverLetter: includeCoverLetter,
-          onViewApplications: () {
-            if (!mounted) return;
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => StudentApplicationsScreen(
-                  studentId: _studentId!,
+        builder: (context) => ResumeSelectionDialog(
+          studentId: _studentId!,
+        ),
+      );
+
+      if (selection == null) return;
+
+      final resume = selection['resume'] as Resume?;
+      final coverLetter = selection['coverLetter'] as String?;
+      if (resume == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a resume to continue.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final bool? confirm = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => ApplicationConfirmationDialog(
+          opportunity: _selectedOpportunity!,
+          resume: resume,
+          coverLetter: coverLetter,
+          companyName: companyNameForDialog,
+        ),
+      );
+
+      if (confirm != true) {
+        // If user discarded/closed, stop and return to details
+        if (confirm == null) return;
+        // Otherwise back to resume selection
+        continue;
+      }
+
+      setState(() => _isApplying = true);
+      try {
+        await _applicationService.submitApplication(
+          studentId: _studentId!,
+          opportunityId: _selectedOpportunity!.id,
+          resumeId: resume.id,
+          resumePdfUrl: resume.pdfUrl,
+          coverLetterText: coverLetter,
+        );
+
+        if (!mounted) return;
+
+        final includeCoverLetter =
+            coverLetter != null && coverLetter.trim().isNotEmpty;
+
+        String companyName =
+            _companyCache[_selectedOpportunity!.companyId]?.companyName ?? '';
+        if (companyName.isEmpty) {
+          final fetchedCompany =
+              await _authService.getCompany(_selectedOpportunity!.companyId);
+          companyName = fetchedCompany?.companyName ?? 'the hiring team';
+        }
+
+        await _viewOpportunityDetails(_selectedOpportunity!);
+        if (!mounted) return;
+
+        setState(() => _isApplying = false);
+
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => ApplicationSuccessDialog(
+            opportunityTitle: _selectedOpportunity!.role,
+            companyName: companyName,
+            resumeTitle: resume.title,
+            includeCoverLetter: includeCoverLetter,
+            onViewApplications: () {
+              if (!mounted) return;
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => StudentApplicationsScreen(
+                    studentId: _studentId!,
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isApplying = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+              );
+            },
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _isApplying = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      break;
     }
+  }
+
+  Future<String> _getCompanyNameForDialog(String companyId) async {
+    final cached = _companyCache[companyId]?.companyName;
+    if (cached != null && cached.trim().isNotEmpty) return cached;
+    try {
+      final company = await _authService.getCompany(companyId);
+      final name = company?.companyName ?? '';
+      if (company != null && name.trim().isNotEmpty) {
+        _companyCache[companyId] = company!;
+        return name;
+      }
+    } catch (_) {
+      // ignore
+    }
+    return 'Company';
   }
 
   /// Called when the "Withdraw" button is pressed
@@ -334,21 +377,96 @@ class _studentOppPgaeState extends State<studentOppPgae> {
     // Show confirmation dialog
     final bool? confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Withdraw Application?'),
-        content: const Text(
-          'This will update your application status to "Withdrawn". You cannot undo this.',
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.warning_amber_rounded,
+                        color: Colors.red.shade700),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Withdraw application?',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'This will update your application status to "Withdrawn". You cannot undo this.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF8D52CC)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Keep',
+                        style: TextStyle(
+                          color: Color(0xFF8D52CC),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade700,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Withdraw',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Withdraw', style: TextStyle(color: Colors.red)),
-          ),
-        ],
       ),
     );
 
@@ -583,6 +701,11 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       // AppBar for the List View
       return AppBar(
         automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.filter_list, color: Colors.white),
+          onPressed: _showFilterSheet, // Open filters
+          tooltip: 'Filter',
+        ),
         title: Text(
           'Opportunities',
           style: GoogleFonts.lato(fontWeight: FontWeight.bold, color: Colors.white),
@@ -600,11 +723,6 @@ class _studentOppPgaeState extends State<studentOppPgae> {
         ),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list, color: Colors.white),
-            onPressed: _showFilterSheet, // Open filters
-            tooltip: 'Filter',
-          ),
           IconButton(
             icon: const Icon(Icons.bookmarks_outlined, color: Colors.white),
             onPressed: _navigateToSaved, // Open saved opportunities
@@ -755,18 +873,44 @@ class _studentOppPgaeState extends State<studentOppPgae> {
           itemBuilder: (context, index) {
             final type = types[index];
             final isSelected = _activeTypeFilter == type;
-            return ChoiceChip(
-              label: Text(type),
-              selected: isSelected,
-              onSelected: (_) {
-                setState(() => _activeTypeFilter = type);
-                _fetchOpportunities(); // Re-fetch data with the new filter
-              },
-              selectedColor: _sparkPrimaryPurple,
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : Colors.black87,
+            return Container(
+              decoration: BoxDecoration(
+                gradient: isSelected
+                    ? const LinearGradient(
+                        colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                borderRadius: BorderRadius.circular(8),
               ),
-              backgroundColor: Colors.white,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    setState(() => _activeTypeFilter = type);
+                    _fetchOpportunities(); // Re-fetch data with the new filter
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? null : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: isSelected ? null : Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Center(
+                      child: Text(
+                        type,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.black87,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             );
           },
           separatorBuilder: (_, __) => const SizedBox(width: 8),
@@ -945,18 +1089,41 @@ class _studentOppPgaeState extends State<studentOppPgae> {
             }) {
               return Wrap(
                 spacing: 8.0,
+                runSpacing: 8.0,
                 children: options.map((option) {
                   final isSelected = selectedValue == option;
-                  return ChoiceChip(
-                    label: Text(labelBuilder(option)),
-                    selected: isSelected,
-                    onSelected: (selected) =>
-                        onSelected(selected ? option : null),
-                    selectedColor: _sparkPrimaryPurple,
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black87,
+                  return Container(
+                    decoration: BoxDecoration(
+                      gradient: isSelected
+                          ? const LinearGradient(
+                              colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                          : null,
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    backgroundColor: Colors.grey[200],
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => onSelected(isSelected ? null : option),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isSelected ? null : Colors.grey[200],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            labelBuilder(option),
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black87,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   );
                 }).toList(),
               );
@@ -1139,18 +1306,6 @@ class _studentOppPgaeState extends State<studentOppPgae> {
 
   // --- 14. Utility & Helper Functions ---
 
-  /// Shows a simple message at the bottom of the screen (SnackBar)
-  void _showInfoMessage(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: GoogleFonts.lato()),
-        backgroundColor: _sparkPrimaryPurple,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
 }
 
 // --- SEPARATE CARD WIDGET ---
@@ -1174,30 +1329,41 @@ class _OpportunityCard extends StatelessWidget {
   String formatDate(DateTime? date) =>
       date == null ? 'N/A' : DateFormat('MMM d, yyyy').format(date);
 
-  // Enhanced info chips
-  Widget _buildInfoChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: const Color(0xFF422F5D)),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: GoogleFonts.lato(
-              color: const Color(0xFF1A1A1A),
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
+  // Simple info display without container background
+  Widget _buildSimpleInfo(IconData icon, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: Colors.grey.shade600),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: GoogleFonts.lato(
+            color: Colors.grey.shade700,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+
+  // Opportunity type info
+  Widget _buildTypeInfo(String type) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.business_center_outlined, size: 16, color: Colors.grey.shade600),
+        const SizedBox(width: 4),
+        Text(
+          type,
+          style: GoogleFonts.lato(
+            color: Colors.grey.shade700,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1215,284 +1381,151 @@ class _OpportunityCard extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onViewMore,
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Company Logo - Enhanced with shadow
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.06),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: CircleAvatar(
-                      radius: 32,
-                      backgroundColor: const Color(0xFF422F5D).withValues(alpha: 0.08),
-                      backgroundImage:
-                          (company?.logoUrl != null &&
-                              company!.logoUrl!.isNotEmpty)
-                          ? CachedNetworkImageProvider(company!.logoUrl!)
-                          : null,
-                      child:
-                          (company?.logoUrl == null || company!.logoUrl!.isEmpty)
-                          ? Icon(Icons.business, color: const Color(0xFF422F5D), size: 28)
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Role Title - Enhanced
-                        Text(
-                          opportunity.role,
-                          style: GoogleFonts.lato(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1A1A1A),
-                            height: 1.2,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 6),
-                        // Opportunity Type Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF422F5D).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            opportunity.type,
-                            style: GoogleFonts.lato(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF422F5D),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        // Company Name - Enhanced
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.business_outlined,
-                              size: 14,
-                              color: Colors.grey.shade600,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                company?.companyName ?? "...",
-                                style: GoogleFonts.lato(
-                                  fontSize: 14,
-                                  color: Colors.grey.shade700,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Bookmark Icon
-                  if (studentId != null)
-                    StreamBuilder<bool>(
-                      stream: _bookmarkService.isBookmarkedStream(
-                        studentId: studentId!,
-                        opportunityId: opportunity.id,
-                      ),
-                      builder: (context, snapshot) => IconButton(
-                        icon: Icon(
-                          snapshot.data == true
-                              ? Icons.bookmark
-                              : Icons.bookmark_border,
-                          color: _sparkPrimaryPurple,
-                        ),
-                        onPressed: () =>
-                            onToggleBookmark(snapshot.data ?? false),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // Date info in containers with subtle background
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF422F5D).withValues(alpha: 0.03),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF422F5D).withValues(alpha: 0.08),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        _buildDateInfo(
-                          Icons.calendar_today_outlined,
-                          'Duration',
-                          '${formatDate(opportunity.startDate?.toDate())} - ${formatDate(opportunity.endDate?.toDate())}',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        _buildDateInfo(
-                          Icons.event_available_outlined,
-                          'Apply By',
-                          formatDate(opportunity.applicationDeadline?.toDate()),
-                        ),
-                      ],
-                    ),
-                    // Show response deadline if visible and exists
-                    if (opportunity.responseDeadlineVisible == true &&
-                        opportunity.responseDeadline != null) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          _buildDateInfo(
-                            Icons.schedule_outlined,
-                            'Response By',
-                            formatDate(opportunity.responseDeadline?.toDate()),
-                          ),
-                        ],
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Company Logo
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
-                  ],
+                  ),
+                  child: CircleAvatar(
+                    radius: 24,
+                    backgroundColor: const Color(0xFF422F5D).withValues(alpha: 0.08),
+                    backgroundImage: (company?.logoUrl != null && company!.logoUrl!.isNotEmpty)
+                        ? CachedNetworkImageProvider(company!.logoUrl!)
+                        : null,
+                    child: (company?.logoUrl == null || company!.logoUrl!.isEmpty)
+                        ? Icon(Icons.business, color: const Color(0xFF422F5D), size: 22)
+                        : null,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              // --- (NEW) INFO CHIPS ADDED ---
-              Wrap(
-                spacing: 8.0,
-                runSpacing: 4.0,
-                children: [
-                  if (opportunity.location != null &&
-                      opportunity.location!.isNotEmpty)
-                    _buildInfoChip(
-                      Icons.location_on_outlined,
-                      opportunity.location!,
-                    ),
-                  if (opportunity.workMode != null &&
-                      opportunity.workMode!.isNotEmpty)
-                    _buildInfoChip(
-                      Icons.laptop_chromebook_outlined,
-                      opportunity.workMode!,
-                    ),
-                  _buildInfoChip(
-                    opportunity.isPaid
-                        ? Icons.attach_money_outlined
-                        : Icons.money_off_outlined,
-                    opportunity.isPaid ? 'Paid' : 'Unpaid',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // Enhanced View More button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: onViewMore,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF422F5D),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Company Name
                       Text(
-                        'View Details',
+                        company?.companyName ?? "...",
                         style: GoogleFonts.lato(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward, size: 18),
+                      const SizedBox(height: 4),
+                      // Role Title
+                      Text(
+                        opportunity.role,
+                        style: GoogleFonts.lato(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1A1A1A),
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
                   ),
                 ),
+                // Bookmark Icon
+                if (studentId != null)
+                  StreamBuilder<bool>(
+                    stream: _bookmarkService.isBookmarkedStream(
+                      studentId: studentId!,
+                      opportunityId: opportunity.id,
+                    ),
+                    builder: (context, snapshot) {
+                      final isBookmarked = snapshot.data == true;
+                      return IconButton(
+                        icon: Icon(
+                          isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                          color: const Color(0xFF8D52CC),
+                          size: 24,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () => onToggleBookmark(snapshot.data ?? false),
+                      );
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Info row - opportunity type, work mode, paid status
+            Wrap(
+              spacing: 12.0,
+              runSpacing: 8.0,
+              children: [
+                _buildTypeInfo(opportunity.type),
+                if (opportunity.workMode != null && opportunity.workMode!.isNotEmpty)
+                  _buildSimpleInfo(
+                    Icons.laptop_chromebook_outlined,
+                    opportunity.workMode!,
+                  ),
+                _buildSimpleInfo(
+                  opportunity.isPaid ? Icons.attach_money : Icons.money_off_outlined,
+                  opportunity.isPaid ? 'Paid' : 'Unpaid',
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Apply Button
+            SizedBox(
+              width: double.infinity,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onViewMore,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Center(
+                        child: Text(
+                          'Apply',
+                          style: GoogleFonts.lato(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  /// Helper widget to build the date info sections in the card
-  Widget _buildDateInfo(IconData icon, String title, String value) {
-    return Expanded(
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF422F5D).withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 18, color: const Color(0xFF422F5D)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.lato(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: GoogleFonts.lato(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1A1A1A),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // --- UTILITY EXTENSION ---

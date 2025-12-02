@@ -40,7 +40,7 @@ class _StudentChatPageState extends State<StudentChatPage> {
   @override
   void initState() {
     super.initState();
-    const welcome = "Hi! I'm your AI Interview Coach. 👋";
+    const welcome = "Hey I'm Sparkie, I'm here to help you prepare for your interviews! Ask me any questions 👋";
     _messages.add({"role": "ai", "text": welcome});
 
     _player.onPlayerComplete.listen((_) {
@@ -144,30 +144,86 @@ class _StudentChatPageState extends State<StudentChatPage> {
   }
 
   // --------------------
-  // 🔥 دالة التعامل مع زر الرجوع 🔥
+  // Warning Dialog
   // --------------------
   Future<bool> _onWillPop() async {
     return (await showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Warning ⚠️'),
-            content: const Text('If you go back, the chat history will be deleted. Are you sure?'),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: _aiGradient,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.warning_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'End Chat Session?',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            content: const Text(
+              'Your conversation history will be lost if you leave. Do you want to continue?',
+              style: TextStyle(
+                fontSize: 15,
+                height: 1.4,
+              ),
+            ),
             actions: <Widget>[
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false), // لا تخرج
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true), // اخرج
+                onPressed: () => Navigator.of(context).pop(false),
                 child: const Text(
-                  'Exit',
-                  style: TextStyle(color: Colors.red),
+                  'Stay',
+                  style: TextStyle(
+                    color: Color(0xFF8D52CC),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF6B6B), Color(0xFFEE5A6F)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      'End Session',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
         )) ??
-        false; // إذا ضغط خارج الصندوق لا تخرج
+        false;
   }
 
   // --------------------

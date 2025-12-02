@@ -423,18 +423,27 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: CompanyColors.background,
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _fetchCompanyData,
-              child: CustomScrollView(
-                slivers: [_buildSliverAppBar(), _buildCurrentSection()],
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF422F5D), Color(0xFFD64483)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: Colors.transparent,
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: Colors.white))
+            : RefreshIndicator(
+                onRefresh: _fetchCompanyData,
+                child: CustomScrollView(
+                  slivers: [_buildSliverAppBar(), _buildCurrentSection()],
+                ),
               ),
-            ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+        bottomNavigationBar: _buildBottomNavigationBar(),
+      ),
     );
   }
 

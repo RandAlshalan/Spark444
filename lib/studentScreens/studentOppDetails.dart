@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/Application.dart';
 import '../models/company.dart';
 import '../models/opportunity.dart';
 import '../services/authService.dart';
+import '../services/bookmarkService.dart';
 import '../theme/student_theme.dart';
 
 // --- Color Constants (Use StudentTheme for consistency) ---
@@ -18,7 +21,7 @@ const Color _profileTextColor = StudentTheme.textColor;
 ///
 /// It can optionally display application status and a context-aware
 /// "Apply" or "Withdraw" button.
-class OpportunityDetailsContent extends StatelessWidget {
+class OpportunityDetailsContent extends StatefulWidget {
   final Opportunity opportunity;
   final Function(String) onNavigateToCompany; // Callback to handle navigation
 
@@ -27,9 +30,7 @@ class OpportunityDetailsContent extends StatelessWidget {
   final VoidCallback? onApply; // Action for the "Apply" button
   final VoidCallback? onWithdraw; // Action for the "Withdraw" button
 
-  final AuthService _authService = AuthService();
-
-  OpportunityDetailsContent({
+  const OpportunityDetailsContent({
     super.key,
     required this.opportunity,
     required this.onNavigateToCompany,
@@ -37,6 +38,15 @@ class OpportunityDetailsContent extends StatelessWidget {
     this.onApply, // Pass the function to call when "Apply" is tapped
     this.onWithdraw, // Pass the function to call when "Withdraw" is tapped
   });
+
+  @override
+  State<OpportunityDetailsContent> createState() => _OpportunityDetailsContentState();
+}
+
+class _OpportunityDetailsContentState extends State<OpportunityDetailsContent> {
+  final AuthService _authService = AuthService();
+  final BookmarkService _bookmarkService = BookmarkService();
+  bool _isAddingToCalendar = false;
 
   @override
   Widget build(BuildContext context) {
@@ -49,47 +59,43 @@ class OpportunityDetailsContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 1. Company Header (Always shown)
-                _buildDetailHeader(context, opportunity),
+                _buildDetailHeader(context, widget.opportunity),
                 const SizedBox(height: 24),
 
                 // 2. "Your Application" Section (Conditionally shown)
-                if (application != null) ...[
-                  _buildApplicationSection(application!),
+                if (widget.application != null) ...[
+                  _buildApplicationSection(widget.application!),
                   const SizedBox(height: 24),
                 ],
 
-                // 3. Opportunity Details (Always shown)
-                _buildDetailKeyInfoSection(opportunity),
-                const SizedBox(height: 24),
-                if (opportunity.description != null &&
-                    opportunity.description!.isNotEmpty)
-                  _buildDetailSection(
-                    title: 'Description',
-                    content: Text(
-                      opportunity.description!,
-                      style: GoogleFonts.lato(
-                        height: 1.6,
-                        fontSize: 15,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                if (opportunity.skills != null &&
-                    opportunity.skills!.isNotEmpty)
+                // 3. Core Opportunity Info (role basics)
+                _buildRoleInfoSection(widget.opportunity),
+
+                // 4. Timeline / deadlines with add-to-calendar
+                _buildTimelineSection(widget.opportunity),
+
+                // 5. Opportunity Details (Always shown if data exists)
+                if (widget.opportunity.skills != null &&
+                    widget.opportunity.skills!.isNotEmpty)
                   _buildDetailSection(
                     title: 'Key Skills',
-                    content: _buildChipList(opportunity.skills!),
+                    content: _buildChipList(widget.opportunity.skills!),
                   ),
-                if (opportunity.requirements != null &&
-                    opportunity.requirements!.isNotEmpty)
+                if (widget.opportunity.requirements != null &&
+                    widget.opportunity.requirements!.isNotEmpty)
                   _buildDetailSection(
                     title: 'Requirements',
-                    content: _buildRequirementList(opportunity.requirements!),
+                    content: _buildRequirementList(widget.opportunity.requirements!),
                   ),
-                _buildDetailSection(
-                  title: 'More Info',
-                  content: _buildMoreInfo(opportunity),
-                ),
+                if (widget.opportunity.preferredMajor != null &&
+                    widget.opportunity.preferredMajor!.trim().isNotEmpty)
+                  _buildDetailSection(
+                    title: 'Preferred Major',
+                    content: Text(
+                      widget.opportunity.preferredMajor!,
+                      style: GoogleFonts.lato(fontSize: 15, height: 1.5),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -106,12 +112,12 @@ class OpportunityDetailsContent extends StatelessWidget {
   /// Builds the smart button bar at the bottom.
   Widget _buildBottomBar(BuildContext context) {
     // Scenario 1: Application exists and is withdrawable
-    if (application != null && onWithdraw != null) {
-      final status = application!.status.toLowerCase();
+    if (widget.application != null && widget.onWithdraw != null) {
+      final status = widget.application!.status.toLowerCase();
       if (status == 'pending' || status == 'reviewed') {
         return _buildActionButton(
           context: context,
-          onPressed: onWithdraw!,
+          onPressed: widget.onWithdraw!,
           label: 'Withdraw Application',
           icon: Icons.delete_forever_outlined,
           color: Colors.red.shade700,
@@ -124,9 +130,9 @@ class OpportunityDetailsContent extends StatelessWidget {
     }
 
     // Scenario 2: No application exists (or was withdrawn), check if application period is open
-    if (application == null && onApply != null) {
+    if (widget.application == null && widget.onApply != null) {
       final now = DateTime.now();
-      final applicationOpenDate = opportunity.applicationOpenDate?.toDate();
+      final applicationOpenDate = widget.opportunity.applicationOpenDate?.toDate();
 
       // Check if application period hasn't started yet
       if (applicationOpenDate != null && now.isBefore(applicationOpenDate)) {
@@ -136,7 +142,7 @@ class OpportunityDetailsContent extends StatelessWidget {
       // Application period is open - show Apply Now button
       return _buildActionButton(
         context: context,
-        onPressed: onApply!,
+        onPressed: widget.onApply!,
         label: 'Apply Now',
         icon: Icons.send_outlined,
         color: _sparkPrimaryPurple, // Use primary color for "Apply"
@@ -223,6 +229,9 @@ class OpportunityDetailsContent extends StatelessWidget {
     required IconData icon,
     required Color color,
   }) {
+    // Use gradient for "Apply Now" button, solid color for others
+    final isApplyButton = label == 'Apply Now';
+
     return Container(
       padding: EdgeInsets.fromLTRB(
         20,
@@ -242,30 +251,42 @@ class OpportunityDetailsContent extends StatelessWidget {
       ),
       child: SizedBox(
         width: double.infinity,
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 0,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: isApplyButton
+                ? const LinearGradient(
+                    colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: isApplyButton ? null : color,
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.lato(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onPressed,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      label,
+                      style: GoogleFonts.lato(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Icon(icon, size: 20, color: Colors.white),
+                  ],
                 ),
               ),
-              const SizedBox(width: 10),
-              Icon(icon, size: 20),
-            ],
+            ),
           ),
         ),
       ),
@@ -296,11 +317,218 @@ class OpportunityDetailsContent extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          _buildInfoTile(
-            icon: Icons.event_note_outlined,
-            title: 'Applied On',
-            value: DateFormat('MMMM d, yyyy').format(app.appliedDate.toDate()),
+          Row(
+            children: [
+              Icon(Icons.event_note_outlined, color: Colors.grey.shade600, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Applied On: ',
+                style: GoogleFonts.lato(
+                  fontSize: 14,
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                DateFormat('MMMM d, yyyy').format(app.appliedDate.toDate()),
+                style: GoogleFonts.lato(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Adds opportunity to calendar (bookmarks it)
+  Future<void> _addToCalendar() async {
+    final studentId = FirebaseAuth.instance.currentUser?.uid;
+    if (studentId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to add to calendar')),
+      );
+      return;
+    }
+
+    setState(() => _isAddingToCalendar = true);
+    try {
+      await _bookmarkService.addBookmark(
+        studentId: studentId,
+        opportunityId: widget.opportunity.id,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Text('Added "${widget.opportunity.role}" to your calendar!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isAddingToCalendar = false);
+      }
+    }
+  }
+
+  /// Builds the deadline section with "closes in N days" and "Add to Calendar" button
+  Widget _buildDeadlineSection(Opportunity opportunity) {
+    final deadline = opportunity.applicationDeadline!.toDate();
+    final now = DateTime.now();
+    final daysUntil = deadline.difference(now).inDays;
+    final hoursUntil = deadline.difference(now).inHours;
+
+    String timeRemaining;
+    Color timeColor;
+
+    if (daysUntil > 7) {
+      timeRemaining = 'Closes in $daysUntil days';
+      timeColor = Colors.green.shade700;
+    } else if (daysUntil > 3) {
+      timeRemaining = 'Closes in $daysUntil days';
+      timeColor = Colors.orange.shade700;
+    } else if (daysUntil > 0) {
+      timeRemaining = 'Closes in $daysUntil ${daysUntil == 1 ? 'day' : 'days'}';
+      timeColor = Colors.red.shade700;
+    } else if (hoursUntil > 0) {
+      timeRemaining = 'Closes in $hoursUntil ${hoursUntil == 1 ? 'hour' : 'hours'}';
+      timeColor = Colors.red.shade700;
+    } else {
+      timeRemaining = 'Closing soon!';
+      timeColor = Colors.red.shade700;
+    }
+
+    final studentId = FirebaseAuth.instance.currentUser?.uid;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: timeColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: timeColor.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.access_time, color: timeColor, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      timeRemaining,
+                      style: GoogleFonts.lato(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: timeColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Apply before ${DateFormat('MMM d, yyyy').format(deadline)}',
+                      style: GoogleFonts.lato(
+                        fontSize: 13,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (studentId != null) ...[
+            const SizedBox(height: 12),
+            StreamBuilder<bool>(
+              stream: _bookmarkService.isBookmarkedStream(
+                studentId: studentId,
+                opportunityId: opportunity.id,
+              ),
+              builder: (context, snapshot) {
+                final isBookmarked = snapshot.data == true;
+
+                if (isBookmarked) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green.shade700, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Added to your calendar',
+                          style: GoogleFonts.lato(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isAddingToCalendar ? null : _addToCalendar,
+                    icon: _isAddingToCalendar
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.calendar_today, size: 18),
+                    label: Text(
+                      _isAddingToCalendar ? 'Adding...' : 'Add to Calendar',
+                      style: GoogleFonts.lato(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8D52CC),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
         ],
       ),
     );
@@ -309,7 +537,7 @@ class OpportunityDetailsContent extends StatelessWidget {
   /// Builds the header card in the detail view.
   Widget _buildDetailHeader(BuildContext context, Opportunity opportunity) {
     return InkWell(
-      onTap: () => onNavigateToCompany(opportunity.companyId),
+      onTap: () => widget.onNavigateToCompany(opportunity.companyId),
       borderRadius: BorderRadius.circular(20),
       child: Card(
         elevation: 0,
@@ -408,30 +636,17 @@ class OpportunityDetailsContent extends StatelessWidget {
                       height: 1.2,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  // Quick info chips
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      if (opportunity.location != null && opportunity.location!.isNotEmpty)
-                        _buildQuickInfoChip(
-                          Icons.location_on_outlined,
-                          opportunity.location!,
-                        ),
-                      if (opportunity.workMode != null && opportunity.workMode!.isNotEmpty)
-                        _buildQuickInfoChip(
-                          Icons.laptop_chromebook_outlined,
-                          opportunity.workMode!,
-                        ),
-                      _buildQuickInfoChip(
-                        opportunity.isPaid
-                            ? Icons.attach_money_outlined
-                            : Icons.money_off_outlined,
-                        opportunity.isPaid ? 'Paid' : 'Unpaid',
+                  if (opportunity.description != null && opportunity.description!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      opportunity.description!,
+                      style: GoogleFonts.lato(
+                        height: 1.6,
+                        fontSize: 15,
+                        color: Colors.grey.shade700,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ],
               );
             },
@@ -441,124 +656,7 @@ class OpportunityDetailsContent extends StatelessWidget {
     );
   }
 
-  /// Builds the "Key Info" section for the detail view.
-  Widget _buildDetailKeyInfoSection(Opportunity opportunity) {
-    String formatDate(DateTime? date) =>
-        date == null ? 'N/A' : DateFormat('MMMM d, yyyy').format(date);
-    return Column(
-      children: [
-        _buildInfoTile(
-          icon: Icons.apartment_outlined,
-          title: 'Location / Work Mode',
-          value:
-              '${opportunity.workMode?.capitalize() ?? ''} · ${opportunity.location ?? 'Remote'}',
-        ),
-        _buildInfoTile(
-          icon: Icons.calendar_today_outlined,
-          title: 'Duration',
-          value:
-              '${formatDate(opportunity.startDate?.toDate())} - ${formatDate(opportunity.endDate?.toDate())}',
-        ),
-        _buildInfoTile(
-          icon: Icons.event_available_outlined,
-          title: 'Apply Before',
-          value: formatDate(opportunity.applicationDeadline?.toDate()),
-          valueColor: Colors.red.shade700,
-        ),
-        // Show response deadline only if it's visible and exists
-        if (opportunity.responseDeadlineVisible == true &&
-            opportunity.responseDeadline != null)
-          _buildInfoTile(
-            icon: Icons.schedule_outlined,
-            title: 'Company Response By',
-            value: formatDate(opportunity.responseDeadline?.toDate()),
-            valueColor: Colors.orange.shade700,
-          ),
-      ],
-    );
-  }
-
   // --- Reusable Helper Widgets ---
-
-  Widget _buildQuickInfoChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: const Color(0xFF422F5D)),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: GoogleFonts.lato(
-              color: const Color(0xFF1A1A1A),
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoTile({
-    required IconData icon,
-    required String title,
-    required String value,
-    Color? valueColor,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF422F5D).withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: _sparkPrimaryPurple, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.lato(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: GoogleFonts.lato(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: valueColor ?? const Color(0xFF1A1A1A),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildDetailSection({required String title, required Widget content}) {
     return Container(
@@ -678,45 +776,6 @@ class OpportunityDetailsContent extends StatelessWidget {
     );
   }
 
-  Widget _buildMoreInfo(Opportunity opportunity) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        children: [
-          _buildMoreInfoRow(Icons.badge_outlined, 'Type', opportunity.type),
-          if (opportunity.preferredMajor != null)
-            _buildMoreInfoRow(
-              Icons.school_outlined,
-              'Preferred Major',
-              opportunity.preferredMajor!,
-            ),
-          _buildMoreInfoRow(
-            Icons.attach_money_outlined,
-            'Payment',
-            opportunity.isPaid ? 'Paid' : 'Unpaid',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMoreInfoRow(IconData icon, String title, String value) =>
-      ListTile(
-        leading: Icon(icon, color: Colors.grey.shade600),
-        title: Text(
-          title,
-          style: GoogleFonts.lato(fontWeight: FontWeight.w600),
-        ),
-        trailing: Text(
-          value,
-          style: GoogleFonts.lato(fontSize: 15, fontWeight: FontWeight.w500),
-        ),
-      );
-
   Widget _buildStatusChip(String status) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -749,6 +808,182 @@ class OpportunityDetailsContent extends StatelessWidget {
       case 'pending':
       default:
         return Colors.orange.shade700;
+    }
+  }
+
+  Widget _buildRoleInfoSection(Opportunity opp) {
+    return _buildDetailSection(
+      title: 'Opportunity Info',
+      content: Column(
+        children: [
+          _buildInfoRow('Type', opp.type),
+          _buildInfoRow('Compensation', opp.isPaid ? 'Paid' : 'Unpaid'),
+          _buildInfoRow('Work Mode', opp.workMode ?? 'Not specified'),
+          _buildInfoRow('Location', opp.location ?? 'Not specified'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineSection(Opportunity opp) {
+    String? formatDate(Timestamp? ts) =>
+        ts != null ? DateFormat('MMM d, y').format(ts.toDate()) : null;
+
+    final start = formatDate(opp.startDate);
+    final end = formatDate(opp.endDate);
+    final deadline = formatDate(opp.applicationDeadline);
+    final responseDeadline = (opp.responseDeadlineVisible == true)
+        ? formatDate(opp.responseDeadline)
+        : null;
+
+    return _buildDetailSection(
+      title: 'Timeline',
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (start != null) _buildInfoRow('Start Date', start),
+          if (end != null) _buildInfoRow('End Date', end),
+          if (deadline != null)
+            _buildInfoRow('Apply Before', deadline, emphasize: true),
+          if (responseDeadline != null)
+            _buildInfoRow('Response Deadline', responseDeadline),
+          const SizedBox(height: 12),
+          StreamBuilder<bool>(
+            stream: _bookmarkService.isBookmarkedStream(
+              studentId: FirebaseAuth.instance.currentUser?.uid ?? '',
+              opportunityId: opp.id,
+            ),
+            builder: (context, snapshot) {
+              final isBookmarked = snapshot.data == true;
+              return SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isAddingToCalendar
+                      ? null
+                      : () => _toggleCalendar(isBookmarked),
+                  icon: _isAddingToCalendar
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(
+                          isBookmarked ? Icons.check_circle : Icons.calendar_today,
+                          size: 18,
+                        ),
+                  label: Text(
+                    _isAddingToCalendar
+                        ? 'Please wait...'
+                        : (isBookmarked ? 'Added to Calendar' : 'Add to Calendar'),
+                    style: GoogleFonts.lato(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        isBookmarked ? Colors.green.shade600 : const Color(0xFF8D52CC),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value, {bool emphasize = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 150,
+            child: Text(
+              label,
+              style: GoogleFonts.lato(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: Colors.grey.shade800,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: GoogleFonts.lato(
+                fontSize: 14,
+                fontWeight: emphasize ? FontWeight.w700 : FontWeight.w400,
+                color:
+                    emphasize ? const Color(0xFFD54DB9) : Colors.grey.shade800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _toggleCalendar(bool currentlyBookmarked) async {
+    final studentId = FirebaseAuth.instance.currentUser?.uid;
+    if (studentId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to manage calendar entries')),
+      );
+      return;
+    }
+
+    setState(() => _isAddingToCalendar = true);
+    try {
+      if (currentlyBookmarked) {
+        await _bookmarkService.removeBookmark(
+          studentId: studentId,
+          opportunityId: widget.opportunity.id,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Removed from calendar')),
+          );
+        }
+      } else {
+        await _bookmarkService.addBookmark(
+          studentId: studentId,
+          opportunityId: widget.opportunity.id,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: const [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('Added to your calendar'),
+                ],
+              ),
+              backgroundColor: Colors.green.shade600,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isAddingToCalendar = false);
     }
   }
 }

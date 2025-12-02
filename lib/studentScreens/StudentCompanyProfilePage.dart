@@ -269,13 +269,14 @@ class StudentCompanyProfilePage extends StatelessWidget {
         return DefaultTabController(
           length: 4,
           child: Scaffold(
-            extendBodyBehindAppBar: true,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              foregroundColor: Colors.white,
-            ),
-            body: NestedScrollView(
+            backgroundColor: Colors.white,
+              extendBodyBehindAppBar: true,
+              appBar: AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                foregroundColor: Colors.white,
+              ),
+              body: NestedScrollView(
               headerSliverBuilder: (context, innerBoxIsScrolled) {
                 return [
                   SliverToBoxAdapter(
@@ -288,7 +289,7 @@ class StudentCompanyProfilePage extends StatelessWidget {
                         height: 260,
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [_purple, _pink],
+                            colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -345,50 +346,6 @@ class StudentCompanyProfilePage extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (studentId != null)
-                        Positioned(
-                          right: 16,
-                          bottom: 72,
-                          child: StreamBuilder<bool>(
-                            stream: _isFollowingStream(studentId),
-                            builder: (context, s) {
-                              final following = s.data ?? false;
-                              return OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  side: const BorderSide(color: Colors.white),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                    vertical: 10,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(22),
-                                  ),
-                                ),
-                                onPressed: () async {
-                                  try {
-                                    await _toggleFollow(
-                                      studentId: studentId,
-                                      following: following,
-                                    );
-                                  } catch (e) {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(content: Text('Failed: $e')),
-                                      );
-                                    }
-                                  }
-                                },
-                                child: Text(
-                                  following ? 'Following' : 'Follow',
-                                  style: GoogleFonts.lato(),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
                     ],
                   ),
 
@@ -397,7 +354,7 @@ class StudentCompanyProfilePage extends StatelessWidget {
                     transform: Matrix4.translationValues(0, -36, 0),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Material(
-                      elevation: 0,
+                      elevation: 4,
                       borderRadius: BorderRadius.circular(18),
                       color: Colors.white,
                       child: Padding(
@@ -405,12 +362,75 @@ class StudentCompanyProfilePage extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              company.companyName,
-                              style: GoogleFonts.lato(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                              ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    company.companyName,
+                                    style: GoogleFonts.lato(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                if (studentId != null)
+                                  StreamBuilder<bool>(
+                                    stream: _isFollowingStream(studentId),
+                                    builder: (context, s) {
+                                      final following = s.data ?? false;
+                                      return Container(
+                                        decoration: BoxDecoration(
+                                          gradient: following
+                                              ? const LinearGradient(
+                                                  colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                )
+                                              : null,
+                                          color: following ? null : Colors.white,
+                                          border: following
+                                              ? null
+                                              : Border.all(color: const Color(0xFF8D52CC), width: 1.5),
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: () async {
+                                              try {
+                                                await _toggleFollow(
+                                                  studentId: studentId,
+                                                  following: following,
+                                                );
+                                              } catch (e) {
+                                                if (context.mounted) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(content: Text('Failed: $e')),
+                                                  );
+                                                }
+                                              }
+                                            },
+                                            borderRadius: BorderRadius.circular(20),
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 16,
+                                                vertical: 8,
+                                              ),
+                                              child: Text(
+                                                following ? 'Following' : 'Follow',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: following ? Colors.white : const Color(0xFF8D52CC),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                              ],
                             ),
                             const SizedBox(height: 4),
                             if (company.sector.isNotEmpty)
@@ -421,41 +441,78 @@ class StudentCompanyProfilePage extends StatelessWidget {
                                   fontSize: 14,
                                 ),
                               ),
-                            const SizedBox(height: 10),
-                            if ((company.description ?? '').isNotEmpty)
-                              Text(
-                                company.description!,
-                                style: GoogleFonts.lato(
-                                  color: Colors.black.withOpacity(0.75),
-                                  height: 1.4,
-                                ),
-                              ),
-                            const SizedBox(height: 16),
-                            // Followers count row
+                            const SizedBox(height: 12),
+                            // Followers count and rating row
                             StreamBuilder<int>(
                               stream: _followersCountStream(),
                               builder: (context, followersSnap) {
                                 final followersCount = followersSnap.data ?? 0;
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12.0),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.people_outline,
-                                        size: 18,
-                                        color: Colors.black.withOpacity(0.6),
+                                return StreamBuilder<QuerySnapshot>(
+                                  stream: FirebaseFirestore.instance
+                                      .collection('reviews')
+                                      .where('companyId', isEqualTo: companyId)
+                                      .snapshots(),
+                                  builder: (context, reviewSnap) {
+                                    // Calculate average rating
+                                    double avgRating = 0.0;
+                                    if (reviewSnap.hasData && reviewSnap.data!.docs.isNotEmpty) {
+                                      double totalRating = 0.0;
+                                      int count = 0;
+                                      for (var doc in reviewSnap.data!.docs) {
+                                        final data = doc.data() as Map<String, dynamic>?;
+                                        if (data != null) {
+                                          final rating = data['rating'];
+                                          if (rating != null) {
+                                            totalRating += (rating is int) ? rating.toDouble() : (rating as double);
+                                            count++;
+                                          }
+                                        }
+                                      }
+                                      if (count > 0) {
+                                        avgRating = totalRating / count;
+                                      }
+                                    }
+
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 12.0),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.people_outline,
+                                            size: 18,
+                                            color: Colors.black.withOpacity(0.6),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            '$followersCount ${followersCount == 1 ? 'Follower' : 'Followers'}',
+                                            style: GoogleFonts.lato(
+                                              fontSize: 14,
+                                              color: Colors.black.withOpacity(0.7),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          if (avgRating > 0) ...[
+                                            const SizedBox(width: 32),
+                                            Icon(
+                                              Icons.star,
+                                              size: 18,
+                                              color: Colors.amber.shade700,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              avgRating.toStringAsFixed(1),
+                                              style: GoogleFonts.lato(
+                                                fontSize: 14,
+                                                color: Colors.black.withOpacity(0.7),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        '$followersCount ${followersCount == 1 ? 'Follower' : 'Followers'}',
-                                        style: GoogleFonts.lato(
-                                          fontSize: 14,
-                                          color: Colors.black.withOpacity(0.7),
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    );
+                                  },
                                 );
                               },
                             ),
@@ -488,7 +545,7 @@ class StudentCompanyProfilePage extends StatelessWidget {
                                               interviewSnap.data?.size ?? 0;
                                           return TabBar(
                                             isScrollable: true,
-                                            labelColor: Colors.black,
+                                            labelColor: const Color(0xFFD54DB9),
                                             labelStyle: GoogleFonts.lato(
                                               fontWeight: FontWeight.w700,
                                             ),
@@ -496,7 +553,7 @@ class StudentCompanyProfilePage extends StatelessWidget {
                                                 GoogleFonts.lato(),
                                             unselectedLabelColor: Colors.black
                                                 .withOpacity(0.5),
-                                            indicatorColor: _purple,
+                                            indicatorColor: const Color(0xFFD54DB9),
                                             indicatorWeight: 3,
                                             dividerColor: Colors.transparent,
                                             tabs: [
@@ -622,7 +679,7 @@ class _DetailsTab extends StatelessWidget {
         .trim();
 
     Widget sectionTitle(String t) => Padding(
-      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      padding: const EdgeInsets.only(left: 16, top: 4, bottom: 8),
       child: Text(
         t,
         style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700),
@@ -630,19 +687,24 @@ class _DetailsTab extends StatelessWidget {
     );
 
     return ListView(
-      padding: const EdgeInsets.only(top: 8, bottom: 16),
+      padding: const EdgeInsets.only(left: 0, right: 16, top: 0, bottom: 16),
       children: [
         sectionTitle('About Us'),
-        Text(
-          about.isNotEmpty ? about : 'No description provided.',
-          style: GoogleFonts.lato(
-            color: Colors.black.withOpacity(0.75),
-            height: 1.45,
+        Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: Text(
+            about.isNotEmpty ? about : 'No description provided.',
+            style: GoogleFonts.lato(
+              color: Colors.black.withOpacity(0.75),
+              height: 1.45,
+            ),
           ),
         ),
         const Divider(height: 28),
         sectionTitle('Contact Details'),
         Card(
+          elevation: 4,
+          color: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -654,12 +716,28 @@ class _DetailsTab extends StatelessWidget {
                   email.isNotEmpty ? 'Email: $email' : 'Email: Not provided',
                   style: GoogleFonts.lato(),
                 ),
-                subtitle: contactName.isNotEmpty
-                    ? Text(contactName, style: GoogleFonts.lato())
-                    : null,
-                trailing: ElevatedButton(
-                  onPressed: email.isEmpty ? null : () => _launchEmail(email),
-                  child: Text('Email', style: GoogleFonts.lato()),
+                trailing: SizedBox(
+                  width: 70,
+                  height: 32,
+                  child: ElevatedButton(
+                    onPressed: email.isEmpty ? null : () => _launchEmail(email),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      padding: EdgeInsets.zero,
+                      side: const BorderSide(color: Color(0xFF8D52CC), width: 1.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Email',
+                      style: GoogleFonts.lato(
+                        color: const Color(0xFF8D52CC),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const Divider(height: 1),
@@ -669,9 +747,28 @@ class _DetailsTab extends StatelessWidget {
                   phone.isNotEmpty ? 'Phone: $phone' : 'Phone: Not provided',
                   style: GoogleFonts.lato(),
                 ),
-                trailing: ElevatedButton(
-                  onPressed: phone.isEmpty ? null : () => _launchPhone(phone),
-                  child: Text('Call', style: GoogleFonts.lato()),
+                trailing: SizedBox(
+                  width: 70,
+                  height: 32,
+                  child: ElevatedButton(
+                    onPressed: phone.isEmpty ? null : () => _launchPhone(phone),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      padding: EdgeInsets.zero,
+                      side: const BorderSide(color: Color(0xFF8D52CC), width: 1.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Call',
+                      style: GoogleFonts.lato(
+                        color: const Color(0xFF8D52CC),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
                 ),
               ),
               if (location.isNotEmpty) ...[
@@ -2348,38 +2445,46 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
   Future<void> _applyNow() async {
     if (_studentId == null) return;
 
-    final selection = await showDialog<Map<String, dynamic>?>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => ResumeSelectionDialog(studentId: _studentId!),
-    );
+    final companyNameForDialog =
+        await _getCompanyNameForDialog(widget.opportunity.companyId);
 
-    if (selection == null) return;
+    while (true) {
+      final selection = await showDialog<Map<String, dynamic>?>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => ResumeSelectionDialog(studentId: _studentId!),
+      );
 
-    final resume = selection['resume'] as Resume?;
-    final coverLetter = selection['coverLetter'] as String?;
+      if (selection == null) return;
 
-    if (resume == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a resume to continue.'),
-          backgroundColor: Colors.red,
+      final resume = selection['resume'] as Resume?;
+      final coverLetter = selection['coverLetter'] as String?;
+
+      if (resume == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a resume to continue.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final bool? confirm = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => ApplicationConfirmationDialog(
+          opportunity: widget.opportunity,
+          resume: resume,
+          coverLetter: coverLetter,
+          companyName: companyNameForDialog,
         ),
       );
-      return;
-    }
 
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ApplicationConfirmationDialog(
-        opportunity: widget.opportunity,
-        resume: resume,
-        coverLetter: coverLetter,
-      ),
-    );
-
-    if (confirm != true) return;
+      if (confirm != true) {
+        if (confirm == null) return; // discard -> back to details
+        continue;
+      }
 
     setState(() => _isApplying = true);
     try {
@@ -2419,6 +2524,22 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
         ),
       );
     }
+      break;
+    }
+  }
+
+  Future<String> _getCompanyNameForDialog(String companyId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(companyId)
+          .get();
+      final data = doc.data();
+      final name =
+          (data?['companyName'] ?? data?['name'] ?? '').toString().trim();
+      if (name.isNotEmpty) return name;
+    } catch (_) {}
+    return 'Company';
   }
 
   Future<void> _withdrawApplication() async {

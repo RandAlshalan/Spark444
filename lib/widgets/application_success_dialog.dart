@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ApplicationSuccessDialog extends StatelessWidget {
+  static const _primary = Color(0xFF8D52CC);
   final String opportunityTitle;
   final String? companyName;
   final String resumeTitle;
@@ -36,12 +37,12 @@ class ApplicationSuccessDialog extends StatelessWidget {
                 height: 70,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Color(0x14422F5D),
+                  color: Color(0x1A8D52CC),
                 ),
                 child: const Icon(
                   Icons.check_circle,
                   size: 52,
-                  color: Color(0xFF422F5D),
+                  color: _primary,
                 ),
               ),
               const SizedBox(height: 20),
@@ -49,7 +50,7 @@ class ApplicationSuccessDialog extends StatelessWidget {
                 'Application Sent!',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF422F5D),
+                  color: _primary,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -59,7 +60,7 @@ class ApplicationSuccessDialog extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: Colors.black87,
-                  height: 1.4,
+                  height: 1.5,
                 ),
               ),
               const SizedBox(height: 24),
@@ -80,18 +81,18 @@ class ApplicationSuccessDialog extends StatelessWidget {
               if (onViewApplications != null)
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      onViewApplications!();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF422F5D),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    onViewApplications!();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                  ),
                     child: const Text(
                       'View My Applications',
                       style: TextStyle(
@@ -111,12 +112,12 @@ class ApplicationSuccessDialog extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    side: const BorderSide(color: Color(0xFF422F5D)),
+                    side: const BorderSide(color: _primary, width: 1.5),
                   ),
                   child: const Text(
                     'Done',
                     style: TextStyle(
-                      color: Color(0xFF422F5D),
+                      color: _primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -132,9 +133,9 @@ class ApplicationSuccessDialog extends StatelessWidget {
   String _buildMessage() {
     final trimmedCompany = companyName?.trim();
     if (trimmedCompany != null && trimmedCompany.isNotEmpty) {
-      return 'We\'ll notify you once $trimmedCompany reviews your application for "$opportunityTitle".';
+      return 'We\'ll notify you when $trimmedCompany reviews your application for "$opportunityTitle". You can track or withdraw anytime from the Applications tab.';
     }
-    return 'We\'ll notify you once your application for "$opportunityTitle" is reviewed.';
+    return 'We\'ll notify you when your application for "$opportunityTitle" is reviewed. You can track or withdraw anytime from the Applications tab.';
   }
 }
 
@@ -142,6 +143,7 @@ class _InfoTile extends StatelessWidget {
   final String label;
   final String value;
   final IconData icon;
+  static const _primary = Color(0xFF8D52CC);
 
   const _InfoTile({
     required this.label,
@@ -157,12 +159,12 @@ class _InfoTile extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F0FA),
+        color: const Color(0xFFF4ECFF),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFF422F5D)),
+          Icon(icon, color: _primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -171,7 +173,7 @@ class _InfoTile extends StatelessWidget {
                 Text(
                   label,
                   style: theme.textTheme.labelMedium?.copyWith(
-                    color: const Color(0xFF6B4791),
+                    color: _primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -179,8 +181,8 @@ class _InfoTile extends StatelessWidget {
                 Text(
                   value,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF422F5D),
+                    fontWeight: FontWeight.w700,
+                    color: _primary,
                   ),
                 ),
               ],

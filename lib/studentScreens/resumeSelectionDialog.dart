@@ -4,7 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../models/resume.dart';
+import '../models/student.dart';
 import '../theme/student_theme.dart';
+import 'studentResumeForm.dart';
 
 /// A dialog that allows students to select a resume and optionally add a cover letter
 /// when applying for an opportunity.
@@ -131,76 +133,128 @@ class _ResumeSelectionDialogState extends State<ResumeSelectionDialog> {
     Navigator.of(context).pop(null);
   }
 
+  Future<void> _openCreateResume() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('student')
+          .doc(widget.studentId)
+          .get();
+      if (!doc.exists) {
+        throw Exception('Student profile not found');
+      }
+      final student = Student.fromFirestore(doc);
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => ResumeFormScreen(student: student),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open resume form: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Dialog(
+      backgroundColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
       child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F2FB), // light purple background
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
         constraints: BoxConstraints(
-          maxWidth: screenWidth > 700 ? 650 : screenWidth * 0.9,
+          maxWidth: screenWidth > 900 ? 840 : screenWidth * 0.98,
           maxHeight: screenHeight * 0.85,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Flexible(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(28, 28, 28, 0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-              // Header
-              Row(
+            // Gradient header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+              decoration: const BoxDecoration(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+                gradient: LinearGradient(
+                  colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF422F5D).withValues(alpha: 0.1),
+                      color: Colors.white.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
                       Icons.description_outlined,
-                      color: Color(0xFF422F5D),
-                      size: 28,
+                      color: Colors.white,
+                      size: 26,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'Select Your Resume',
-                          style: _titleStyle,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                         if (_resumes.isNotEmpty)
                           Text(
                             '${_resumes.length} resume${_resumes.length == 1 ? '' : 's'} available',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 13,
-                              color: Colors.grey[600],
+                              color: Colors.white70,
                             ),
                           ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Icons.close, color: Colors.white),
                     onPressed: _cancel,
                     tooltip: 'Cancel',
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.grey[100],
-                    ),
                   ),
                 ],
               ),
-              const Divider(height: 32, thickness: 1),
+            ),
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
 
               // Content
               if (_isLoading)
@@ -265,160 +319,137 @@ class _ResumeSelectionDialogState extends State<ResumeSelectionDialog> {
               else
                 Expanded(
                   child: SingleChildScrollView(
+                    padding: EdgeInsets.only(bottom: bottomInset + 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Resume Selection Section
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF422F5D).withValues(alpha: 0.03),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(0xFF422F5D).withValues(alpha: 0.1),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.description,
+                              size: 20,
+                              color: Color(0xFF422F5D),
                             ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.description,
-                                    size: 20,
-                                    color: Color(0xFF422F5D),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Choose a resume',
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: 'Choose a resume',
                                       style: _sectionTitleStyle,
                                     ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red[50],
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: Colors.red[200]!),
-                                    ),
-                                    child: Text(
-                                      'Required',
+                                    const TextSpan(
+                                      text: ' *',
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        color: Colors.red,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.red[700],
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Select the resume that best showcases your qualifications',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey[700],
-                                  height: 1.3,
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 16),
-                              ..._resumes.map((resume) => _buildResumeCard(resume)),
-                            ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Select the resume that best showcases your qualifications',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[700],
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ..._resumes.map((resume) => _buildResumeCard(resume)),
+
+                        const SizedBox(height: 16),
+
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _openCreateResume,
+                            icon: const Icon(Icons.add, size: 20),
+                            label: const Text(
+                              'Create New Resume',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF8D52CC),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 2,
+                            ),
                           ),
                         ),
 
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
 
-                        // Cover Letter Section
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.green[50],
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.green[200]!),
+                        // Cover Letter Section (lighter styling)
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.lightbulb_outline,
+                              size: 20,
+                              color: Color(0xFF422F5D),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Cover Letter (Optional)',
+                                style: _sectionTitleStyle,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Stand out! A brief cover letter can increase your chances.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[800],
+                            height: 1.3,
+                            fontWeight: FontWeight.w500,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.lightbulb_outline,
-                                    size: 20,
-                                    color: Colors.green[700],
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Cover Letter',
-                                      style: _sectionTitleGreenStyle,
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green[100],
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      'Optional',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green[800],
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _coverLetterController,
+                          maxLines: 8,
+                          maxLength: 1000,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                          decoration: InputDecoration(
+                            hintText:
+                                'Dear Hiring Manager,\n\nI am excited to apply for this position because...',
+                            hintStyle: TextStyle(color: Colors.grey[400]),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(
+                                color: Color(0xFF422F5D),
+                                width: 2,
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Stand out! A cover letter significantly increases your chances of getting noticed.',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.green[900],
-                                  height: 1.3,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: _coverLetterController,
-                                maxLines: 8,
-                                maxLength: 1000,
-                                decoration: InputDecoration(
-                                  hintText:
-                                      'Dear Hiring Manager,\n\nI am excited to apply for this position because...',
-                                  hintStyle: TextStyle(color: Colors.grey[400]),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide(color: Colors.grey[300]!),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide(color: Colors.grey[300]!),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(
-                                      color: Color(0xFF422F5D),
-                                      width: 2,
-                                    ),
-                                  ),
-                                  contentPadding: const EdgeInsets.all(16),
-                                  counterStyle: TextStyle(color: Colors.grey[600]),
-                                ),
-                              ),
-                            ],
+                            ),
+                            contentPadding: const EdgeInsets.all(16),
+                            counterStyle: TextStyle(color: Colors.grey[600]),
                           ),
                         ),
                       ],
@@ -436,14 +467,14 @@ class _ResumeSelectionDialogState extends State<ResumeSelectionDialog> {
                 padding: const EdgeInsets.all(28.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _cancel,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: const BorderSide(
-                            color: Color(0xFF422F5D),
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _cancel,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: BorderSide(
+                            color: const Color(0xFF8D52CC),
                             width: 1.5,
                           ),
                           shape: RoundedRectangleBorder(
@@ -453,46 +484,46 @@ class _ResumeSelectionDialogState extends State<ResumeSelectionDialog> {
                         child: const Text(
                           'Cancel',
                           style: TextStyle(
-                            color: Color(0xFF422F5D),
+                            color: Color(0xFF8D52CC),
                             fontWeight: FontWeight.w600,
                             fontSize: 15,
                           ),
                         ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8D52CC),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Text(
+                      'Continue',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _submit,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF422F5D),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 2,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Text(
-                              'Continue',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                            ),
-                            SizedBox(width: 8),
-                            Icon(Icons.arrow_forward, size: 20),
-                          ],
-                        ),
-                      ),
-                    ),
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_forward, size: 20),
                   ],
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
           ],
         ),
       ),
@@ -513,16 +544,21 @@ class _ResumeSelectionDialogState extends State<ResumeSelectionDialog> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF422F5D).withValues(alpha: 0.08)
-              : Colors.grey[100],
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF422F5D)
-                : Colors.grey[300]!,
+                ? const Color(0xFF8D52CC)
+                : Colors.grey.shade200,
             width: isSelected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
@@ -534,12 +570,12 @@ class _ResumeSelectionDialogState extends State<ResumeSelectionDialog> {
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: isSelected
-                      ? const Color(0xFF422F5D)
+                      ? const Color(0xFF8D52CC)
                       : Colors.grey[400]!,
                   width: 2,
                 ),
                 color: isSelected
-                    ? const Color(0xFF422F5D)
+                    ? const Color(0xFF8D52CC)
                     : Colors.transparent,
               ),
               child: isSelected

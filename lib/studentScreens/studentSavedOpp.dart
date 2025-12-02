@@ -457,38 +457,46 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
   Future<void> _handleApplyToOpportunity() async {
     if (_selectedOpportunity == null) return;
 
-    final selection = await showDialog<Map<String, dynamic>?>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => ResumeSelectionDialog(studentId: widget.studentId),
-    );
+    final companyNameForDialog =
+        await _getCompanyNameForDialog(_selectedOpportunity!.companyId);
 
-    if (selection == null) return;
+    while (true) {
+      final selection = await showDialog<Map<String, dynamic>?>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => ResumeSelectionDialog(studentId: widget.studentId),
+      );
 
-    final resume = selection['resume'] as Resume?;
-    final coverLetter = selection['coverLetter'] as String?;
+      if (selection == null) return;
 
-    if (resume == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a resume to continue.'),
-          backgroundColor: Colors.red,
+      final resume = selection['resume'] as Resume?;
+      final coverLetter = selection['coverLetter'] as String?;
+
+      if (resume == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a resume to continue.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final bool? confirm = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => ApplicationConfirmationDialog(
+          opportunity: _selectedOpportunity!,
+          resume: resume,
+          coverLetter: coverLetter,
+          companyName: companyNameForDialog,
         ),
       );
-      return;
-    }
 
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ApplicationConfirmationDialog(
-        opportunity: _selectedOpportunity!,
-        resume: resume,
-        coverLetter: coverLetter,
-      ),
-    );
-
-    if (confirm != true) return;
+      if (confirm != true) {
+        if (confirm == null) return; // discard -> back to details
+        continue;
+      }
 
     setState(() => _isApplying = true);
     try {
@@ -543,8 +551,18 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
         ),
       );
     }
+      break;
+    }
   }
 
+  Future<String> _getCompanyNameForDialog(String companyId) async {
+    try {
+      final company = await _authService.getCompany(companyId);
+      final name = company?.companyName ?? '';
+      if (name.trim().isNotEmpty) return name;
+    } catch (_) {}
+    return 'Company';
+  }
   /// Called when "Withdraw" is pressed
   Future<void> _handleWithdrawApplication() async {
     if (_currentApplication == null) return;

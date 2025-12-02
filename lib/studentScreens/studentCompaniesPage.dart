@@ -18,7 +18,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/CustomBottomNavBar.dart';
 import '../studentScreens/studentViewProfile.dart';
 import '../studentScreens/StudentChatPage.dart';
-import '../studentScreens/studentSavedOpp.dart';
 import '../studentScreens/studentOppPage.dart';
 import '../studentScreens/StudentHomePage.dart';
 import '../utils/page_transitions.dart';
@@ -150,20 +149,6 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
     }
   }
 
-  void _navigateToSaved() {
-    final studentId = _auth.currentUser?.uid;
-    if (studentId != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => SavedstudentOppPgae(studentId: studentId),
-        ),
-      );
-    } else {
-      _showInfoMessage("Could not open saved items. User ID not found.");
-    }
-  }
-
   Future<void> _backfillCompanyNameLowerOnce() async {
     final col = FirebaseFirestore.instance.collection('companies');
     final qs = await col.get();
@@ -189,18 +174,6 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
     );
   }
 
-  void _showInfoMessage(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: GoogleFonts.lato()),
-        backgroundColor: const Color(0xFF422F5D),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
   // --- NAV BAR HANDLERS END ---
 
   @override
@@ -220,6 +193,7 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
         return false;
       },
       child: Scaffold(
+        backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           flexibleSpace: Container(
@@ -243,15 +217,7 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
           elevation: 0,
           surfaceTintColor: Colors.transparent,
           automaticallyImplyLeading: false,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.bookmarks_outlined, color: Colors.white),
-              onPressed: _navigateToSaved,
-              tooltip: 'Saved',
-            ),
-          ],
         ),
-
         body: Column(
           children: [
             Container(
@@ -289,11 +255,11 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
                 stream: companiesStream,
                 builder: (context, compSnap) {
                   if (compSnap.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(child: CircularProgressIndicator(color: Colors.white));
                   }
                   final companies = compSnap.data ?? [];
                   if (companies.isEmpty) {
-                    return const Center(child: Text('No companies found.'));
+                    return const Center(child: Text('No companies found.', style: TextStyle(color: Colors.white)));
                   }
 
                   return _buildList(
@@ -387,35 +353,57 @@ class _StudentCompaniesPageState extends State<StudentCompaniesPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (id.isNotEmpty)
-                OutlinedButton(
-                  onPressed: pending
-                      ? null
-                      : () => _toggleFollow(
-                          studentId: studentId,
-                          companyId: id,
-                          isFollowing: isFollowing,
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: isFollowing
+                        ? const LinearGradient(
+                            colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: isFollowing ? null : Colors.white,
+                    border: isFollowing
+                        ? null
+                        : Border.all(color: const Color(0xFF8D52CC), width: 1.5),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: pending
+                          ? null
+                          : () => _toggleFollow(
+                              studentId: studentId,
+                              companyId: id,
+                              isFollowing: isFollowing,
+                            ),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
                         ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    shape: const StadiumBorder(),
-                    foregroundColor: isFollowing ? Colors.white : StudentTheme.primaryColor,
-                    backgroundColor: isFollowing ? StudentTheme.primaryColor : Colors.transparent,
-                    side: BorderSide(color: StudentTheme.primaryColor),
-                    textStyle: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                        child: pending
+                            ? SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: isFollowing ? Colors.white : const Color(0xFF8D52CC),
+                                ),
+                              )
+                            : Text(
+                                isFollowing ? 'Following' : 'Follow',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isFollowing ? Colors.white : const Color(0xFF8D52CC),
+                                ),
+                              ),
+                      ),
                     ),
                   ),
-                  child: pending
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(isFollowing ? 'Following' : 'Follow'),
                 ),
             ],
             ),
