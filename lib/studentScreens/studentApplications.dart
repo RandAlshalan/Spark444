@@ -1,5 +1,4 @@
 // --- IMPORTS ---
-import 'dart:async';
 import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -39,10 +38,6 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
   final ApplicationService _applicationService = ApplicationService();
   final AuthService _authService = AuthService();
 
-  // Controllers
-  final TextEditingController _searchController = TextEditingController();
-  Timer? _debounce; // Timer for search input delay
-
   // UI State
   bool _isLoading = true;
   Application? _selectedApplication; // Holds the application being viewed
@@ -63,6 +58,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     'Accepted',
     'Rejected',
     'No Response',
+    'Withdrawn',
   ];
 
   // --- 2. Lifecycle Methods ---
@@ -71,14 +67,10 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
   void initState() {
     super.initState();
     _loadApplications(); // Load initial data when the screen starts
-    _searchController.addListener(_onSearchChanged); // Listen for search text changes
   }
 
   @override
   void dispose() {
-    // Clean up controllers and timers when the widget is removed
-    _searchController.dispose();
-    _debounce?.cancel();
     super.dispose();
   }
 
@@ -167,18 +159,10 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     return results;
   }
 
-  /// Called when search text changes. Uses a debounce to wait 500ms
-  /// after the user stops typing before starting the filter.
-  void _onSearchChanged() {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), _filterApplications);
-  }
-
   /// Filters the `_allApplications` list based on the active status filter
-  /// and the search query, then updates `_filteredApplications`.
+  /// then updates `_filteredApplications`.
   void _filterApplications() {
     List<Application> results = List.from(_allApplications);
-    final query = _searchController.text.toLowerCase();
 
     // 1. Apply Status Filter
     if (_activeStatusFilter != 'All') {
@@ -199,25 +183,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       }).toList();
     }
 
-    // 2. Apply Search Query Filter
-    if (query.isNotEmpty) {
-      results = results.where((app) {
-        // Get data from cache
-        final opportunity = _opportunityDetailsCache[app.opportunityId];
-        if (opportunity == null) return false;
-        
-        final company = _companyDetailsCache[opportunity.companyId];
-        
-        // Check for matches in role or company name
-        final bool roleMatch = opportunity.role.toLowerCase().contains(query);
-        final bool companyMatch =
-            company?.companyName.toLowerCase().contains(query) ?? false;
-
-        return roleMatch || companyMatch;
-      }).toList();
-    }
-
-    // 3. Update the UI state
+    // 2. Update the UI state
     setState(() => _filteredApplications = results);
   }
 
@@ -439,14 +405,13 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
 
   // --- 7. Core View Builders ---
 
-  /// Builds the main list view with search, filters, and the list of cards.
+  /// Builds the main list view with filters and the list of cards.
   Widget _buildListView() {
     return RefreshIndicator(
       onRefresh: _loadApplications, // Enable pull-to-refresh
       color: _sparkPrimaryPurple,
       child: Column(
         children: [
-          _buildSearchBar(),
           _buildFilterButtons(),
           Expanded(
             child: _filteredApplications.isEmpty
@@ -502,27 +467,11 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
 
   // --- 8. List View Components ---
 
-  /// Builds the search bar widget.
-  Widget _buildSearchBar() => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        child: TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: 'Search by role or company...',
-            prefixIcon: const Icon(Icons.search),
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none),
-          ),
-        ),
-      );
-
   /// Builds the horizontal scrolling list of filter buttons.
   Widget _buildFilterButtons() {
+    const purple = Color(0xFF8D52CC);
     return SizedBox(
-      height: 50,
+      height: 56,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -530,7 +479,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
         itemBuilder: (context, index) {
           final status = _statusFilters[index];
           final isSelected = _activeStatusFilter == status;
-          final color = _getFilterColor(status); // Get color for this status
+          final color = purple;
 
           return ElevatedButton(
             onPressed: () {
@@ -540,19 +489,26 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
             },
             style: ElevatedButton.styleFrom(
               foregroundColor: isSelected ? Colors.white : color,
-              backgroundColor: isSelected ? color : color.withOpacity(0.1),
+              backgroundColor: isSelected ? color : Colors.white,
               elevation: isSelected ? 2 : 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(
-                  color: isSelected ? color : Colors.transparent,
+                  color: color,
                 ),
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             ),
-            child: Text(status),
+            child: Text(
+              status,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           );
         },
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
       ),
     );
   }
@@ -565,29 +521,8 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
 
   /// Returns a specific color for each filter button.
   Color _getFilterColor(String filter) {
-    // We still need this for the filter buttons in _buildFilterButtons
-    switch (filter) {
-      case 'All':
-        return _sparkPrimaryPurple;
-      case 'Pending':
-        return Colors.orange.shade700; // Hardcoded status color
-      case 'Interviewing':
-        return Colors.blue.shade600; // Hardcoded status color
-      case 'In Progress':
-        return Colors.blue.shade600; // Hardcoded status color
-      case 'Accepted':
-        return Colors.green.shade600; // Hardcoded status color
-      case 'Rejected':
-        return Colors.red.shade600; // Hardcoded status color
-      case 'No Response':
-        return Colors.amber.shade800; // Hardcoded status color
-      case 'Withdrawn':
-        return Colors.grey.shade600; // Hardcoded status color
-      case 'Draft':
-        return Colors.blueGrey;
-      default:
-        return _sparkPrimaryPurple;
-    }
+    // Deprecated per unified design; keep primary for legacy use
+    return _sparkPrimaryPurple;
   }
 
   // _getStatusColor() was removed as it's no longer used in this file.
@@ -620,8 +555,12 @@ class _ApplicationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final formattedAppliedDate =
         DateFormat('MMM d, yyyy').format(application.appliedDate.toDate());
+    final lastUpdateText = formatDate(
+        application.lastStatusUpdateDate?.toDate() ??
+            application.appliedDate.toDate());
 
     return Card(
+      color: Colors.white,
       margin: const EdgeInsets.only(bottom: 20),
       elevation: 3,
       shadowColor: Colors.black.withOpacity(0.15),
@@ -637,13 +576,11 @@ class _ApplicationCard extends StatelessWidget {
             // Date info
             Row(
               children: [
-                _buildDateInfo(
-                    Icons.calendar_today_outlined,
-                    'Duration',
-                    '${formatDate(opportunity.startDate?.toDate())} - ${formatDate(opportunity.endDate?.toDate())}'),
-                const SizedBox(width: 16),
-                _buildDateInfo(Icons.event_note_outlined, 'Applied On',
+                _buildDateInfo(Icons.event_note_outlined, 'Applied On:',
                     formattedAppliedDate),
+                const SizedBox(width: 16),
+                _buildDateInfo(Icons.update, 'Status Updated On:',
+                    lastUpdateText),
               ],
             ),
             // Action buttons (Withdraw, View More)
@@ -663,12 +600,16 @@ class _ApplicationCard extends StatelessWidget {
                               color: Colors.red, fontWeight: FontWeight.bold)),
                     ),
                   const SizedBox(width: 8),
-                  TextButton(
+                  ElevatedButton(
                     onPressed: onViewMore,
-                    child: const Text('View More',
-                        style: TextStyle(
-                            color: _sparkPrimaryPurple,
-                            fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8D52CC),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text('View Details'),
                   )
                 ],
               )

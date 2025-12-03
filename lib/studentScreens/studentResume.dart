@@ -127,12 +127,24 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
             itemBuilder: (context, index) {
               final resume = resumes[index];
               // Each list item is a 'Card'
-              return Card(
+              return Container(
                 margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
                 child: ListTile(
                   leading: const Icon(
                     Icons.article_outlined,
-                    color: Color(0xFF422F5D),
+                    color: Color(0xFF8D52CC),
                   ),
                   title: Text(
                     resume.title,
@@ -141,9 +153,7 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
                   subtitle: Text(
                     'Modified: ${DateFormat.yMMMd().format(resume.lastModifiedAt)}',
                   ),
-                  // This is the 'three-dot' menu on the right
                   trailing: PopupMenuButton<String>(
-                    // This 'onSelected' function runs when the user taps an option
                     onSelected: (value) {
                       if (value == 'edit') {
                         _navigateToForm(resume: resume);
@@ -153,7 +163,6 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
                         _viewResumeAsPdf(resume);
                       }
                     },
-                    // These are the items in the menu
                     itemBuilder: (context) => [
                       const PopupMenuItem(
                         value: 'view',
@@ -177,11 +186,28 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
       ),
 
       // The '+' button at the bottom right
-      floatingActionButton: FloatingActionButton(
-        // When pressed, navigate to the form to create a *new* resume (no 'resume' object is passed)
-        onPressed: () => _navigateToForm(),
-        backgroundColor: const Color(0xFF422F5D),
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+            colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          onPressed: () => _navigateToForm(),
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
       ),
     );
   }

@@ -64,11 +64,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: const Color(0xFFF7F2FB),
       appBar: AppBar(
         title: const Text('Edit Profile'),
-        backgroundColor: Colors.white,
-        elevation: 1,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
       ),
       body: ListView(
         children: [
@@ -157,29 +166,40 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   /// Builds the top section with the user's profile picture and name.
   Widget _buildHeader() {
     return Container(
-      color: Colors.white,
+      width: double.infinity,
       padding: const EdgeInsets.all(20.0),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
       child: Column(
         children: [
           CircleAvatar(
             radius: 40,
-            backgroundColor: Colors.grey.shade200,
+            backgroundColor: Colors.white.withOpacity(0.15),
             backgroundImage: _student.profilePictureUrl != null
                 ? NetworkImage(_student.profilePictureUrl!)
                 : null,
             child: _student.profilePictureUrl == null
-                ? const Icon(Icons.person, size: 40, color: Colors.grey)
+                ? const Icon(Icons.person, size: 40, color: Colors.white)
                 : null,
           ),
           const SizedBox(height: 12),
           Text(
             '${_student.firstName} ${_student.lastName}',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             '@${_student.username}',
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+            style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 16),
           ),
         ],
       ),
@@ -196,16 +216,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Text(
             header.toUpperCase(),
             style: TextStyle(
-              color: Colors.grey.shade600,
+              color: Colors.grey.shade700,
               fontWeight: FontWeight.w600,
               fontSize: 13,
             ),
           ),
         ),
-        Container(
-          color: Colors.white,
-          child: Column(children: tiles),
-        ),
+        Column(children: tiles),
         const SizedBox(height: 10),
       ],
     );
@@ -219,15 +236,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     VoidCallback onTap, {
     Color? color,
   }) {
-    return ListTile(
-      leading: Icon(icon, color: color ?? const Color(0xFF422F5D)),
-      title: Text(title, style: TextStyle(color: color)),
-      trailing: const Icon(
-        Icons.arrow_forward_ios,
-        size: 16,
-        color: Colors.grey,
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      onTap: onTap,
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          leading: Icon(icon, color: Colors.white),
+          title: Text(
+            title,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          trailing: const Icon(
+            Icons.arrow_forward_ios,
+            size: 16,
+            color: Colors.white70,
+          ),
+          onTap: onTap,
+        ),
+      ),
     );
   }
 }
