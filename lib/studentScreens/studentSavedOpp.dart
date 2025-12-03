@@ -293,6 +293,12 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
                     Icons.laptop_chromebook_outlined,
                     opportunity.workMode!,
                   ),
+                if (opportunity.location != null &&
+                    opportunity.location!.trim().isNotEmpty)
+                  _buildSimpleInfo(
+                    Icons.location_on_outlined,
+                    opportunity.location!.trim(),
+                  ),
                 _buildSimpleInfo(
                   opportunity.isPaid
                       ? Icons.attach_money
@@ -302,26 +308,26 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
               ],
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF8D52CC),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => _viewOpportunityDetails(opportunity),
-                    borderRadius: BorderRadius.circular(12),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-                      child: Center(
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8D52CC),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _viewOpportunityDetails(opportunity),
+                      borderRadius: BorderRadius.circular(10),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 14),
                         child: Text(
                           'View',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -329,7 +335,7 @@ class _SavedstudentOppPgaeState extends State<SavedstudentOppPgae> {
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
           ],
         ),

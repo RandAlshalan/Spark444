@@ -186,10 +186,11 @@ class _studentOppPgaeState extends State<studentOppPgae> {
       final rawSearch = _searchController.text.trim();
 
       // 1. Fetch opportunities from Firestore with server-side filters where possible
+      // Note: City filtering is done client-side due to inconsistent data format
       final opportunities = await _opportunityService.getOpportunities(
         searchQuery: rawSearch.isEmpty ? null : rawSearch,
         type: _activeTypeFilter == 'All' ? null : _activeTypeFilter,
-        city: _selectedCity,
+        city: null, // Don't filter by city on server-side
         locationType: _selectedLocationType,
         isPaid: _isPaid,
       );
@@ -239,9 +240,10 @@ class _studentOppPgaeState extends State<studentOppPgae> {
             companyNameMatch;
 
         // Check other filters
-        final matchesCity =
-            _selectedCity == null ||
-            (opp.location?.toLowerCase() == _selectedCity?.toLowerCase());
+        // Use flexible city matching with contains for better compatibility
+        final matchesCity = _selectedCity == null ||
+            (opp.location != null &&
+             opp.location!.toLowerCase().contains(_selectedCity!.toLowerCase()));
         final matchesLocation =
             _selectedLocationType == null ||
             (opp.workMode?.toLowerCase() ==
@@ -1544,6 +1546,20 @@ class _OpportunityCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      // Opportunity Name in dark pink
+                      if (opportunity.name.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          opportunity.name,
+                          style: GoogleFonts.lato(
+                            fontSize: 13,
+                            color: const Color(0xFFD54DB9),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
                   ),
                 ),

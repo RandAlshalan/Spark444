@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow authenticated users to upload/read their own profile pictures
+    match /students/{userId}/profile/{allPaths=**} {
+      allow read: if true; // Anyone can read profile pictures
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow authenticated companies to upload/read their logos
+    match /company_logos/{allPaths=**} {
+      allow read: if true; // Anyone can read company logos
+      allow write: if request.auth != null;
+    }
+
+    // Allow authenticated students to upload/read their document groups
+    match /students/{userId}/documentGroups/{allPaths=**} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow authenticated students to upload/read their documents and resumes
+    match /students/{userId}/{collection}/{allPaths=**} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Default deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

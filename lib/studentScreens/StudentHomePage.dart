@@ -987,6 +987,20 @@ class _StudentHomePageState extends State<StudentHomePage> {
                       ),
                   ],
                 ),
+                // Opportunity Name in dark pink
+                if (opportunity.name.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    opportunity.name,
+                    style: GoogleFonts.lato(
+                      fontSize: 13,
+                      color: const Color(0xFFD54DB9),
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Row(
                   children: [

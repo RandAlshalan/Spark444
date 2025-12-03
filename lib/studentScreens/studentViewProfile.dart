@@ -24,21 +24,15 @@ import '../studentScreens/StudentChatPage.dart';
 import '../utils/page_transitions.dart';
 
 // --- Color Constants inspired by Spark Logo ---
-const Color _sparkPrimaryPurple = Color(
-  0xFF422F5D,
-); // Deep Purple from Spark text
+const Color _sparkPrimaryPurple = Color(0xFF8D52CC); // Primary purple
 const Color _sparkOrange = Color(0xFFF99D46); // Orange from Spark flame
-const Color _sparkPink = Color(0xFFD64483); // Pink/Fuchsia from Spark flame
+const Color _sparkPink = Color(0xFFD54DB9); // Pink for gradient
 const Color _sparkRed = Color(0xFFCC3333); // Reddish tone from Spark flame
 
-const Color _profileBackgroundColor = Color(
-  0xFFF8F9FA,
-); // Light background for contrast
+const Color _profileBackgroundColor = Color(0xFFF8F9FA); // Light background for contrast
 const Color _profileTextColor = Color(0xFF1E1E1E); // Dark text for readability
 const Color _profileCardColor = Color(0xFFFFFFFF); // White cards
-const Color _profileSurfaceColor = Color(
-  0xFFEEEAEF,
-); // A very light purple/grey for surfaces
+const Color _profileSurfaceColor = Color(0xFFF1F3F5); // A very light grey for surfaces
 
 /// The main profile page that displays student information.
 class StudentViewProfile extends StatefulWidget {
@@ -418,104 +412,81 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
         children: [
-          TweenAnimationBuilder<double>(
-            tween: Tween<double>(begin: 0, end: completion),
-            duration: const Duration(milliseconds: 1200),
-            curve: Curves.easeInOutCubic,
-            builder: (context, value, child) {
-              return SizedBox(
-                width: 110,
-                height: 110,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      value: 1.0,
-                      strokeWidth: 8,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        _sparkPrimaryPurple.withOpacity(0.1),
-                      ),
-                    ),
-                    ShaderMask(
-                      shaderCallback: (rect) {
-                        return const LinearGradient(
-                          colors: [_sparkOrange, _sparkPink],
-                          begin: Alignment.bottomLeft,
-                          end: Alignment.topRight,
-                        ).createShader(rect);
-                      },
-                      blendMode: BlendMode.srcIn,
-                      child: CircularProgressIndicator(
-                        value: value,
-                        strokeWidth: 8,
-                        strokeCap: StrokeCap.round,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Colors.white,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      width: 86,
-                      height: 86,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _profileCardColor,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        radius: 43,
-                        backgroundColor: _profileSurfaceColor,
-                        backgroundImage: profile.profilePictureUrl != null
-                            ? NetworkImage(profile.profilePictureUrl!)
-                            : null,
-                        child: profile.profilePictureUrl == null
-                            ? const Icon(
-                                Icons.person_rounded,
-                                size: 40,
-                                color: _sparkPrimaryPurple,
-                              )
-                            : null,
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 4,
-                      right: 4,
-                      child: Material(
-                        color: _sparkPrimaryPurple,
-                        shape: const CircleBorder(),
-                        elevation: 3,
-                        child: IconButton(
-                          tooltip: 'Edit photo',
-                          onPressed: () => _openScreen(
-                            PersonalInformationScreen(student: student),
-                          ),
-                          icon: const Icon(
-                            Icons.edit,
-                            size: 14,
-                            color: Colors.white,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints.tightFor(
-                            width: 28,
-                            height: 28,
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: completion),
+                duration: const Duration(milliseconds: 1200),
+                curve: Curves.easeInOutCubic,
+                builder: (context, value, child) {
+                  return SizedBox(
+                    width: 110,
+                    height: 110,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          value: 1.0,
+                          strokeWidth: 8,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            _sparkPrimaryPurple.withOpacity(0.1),
                           ),
                         ),
-                      ),
+                        ShaderMask(
+                          shaderCallback: (rect) {
+                            return const LinearGradient(
+                              colors: [_sparkOrange, _sparkPink],
+                              begin: Alignment.bottomLeft,
+                              end: Alignment.topRight,
+                            ).createShader(rect);
+                          },
+                          blendMode: BlendMode.srcIn,
+                          child: CircularProgressIndicator(
+                            value: value,
+                            strokeWidth: 8,
+                            strokeCap: StrokeCap.round,
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          width: 86,
+                          height: 86,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _profileCardColor,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 43,
+                            backgroundColor: _profileSurfaceColor,
+                            backgroundImage: profile.profilePictureUrl != null
+                                ? NetworkImage(profile.profilePictureUrl!)
+                                : null,
+                            child: profile.profilePictureUrl == null
+                                ? const Icon(
+                                    Icons.person_rounded,
+                                    size: 40,
+                                    color: _sparkPrimaryPurple,
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  );
+                },
+              ),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -623,6 +594,34 @@ class _StudentViewProfileState extends State<StudentViewProfile> {
               if (profile.major.isNotEmpty)
                 _InfoPill(icon: Icons.book_outlined, label: profile.major),
             ],
+          ),
+            ],
+          ),
+          // Edit button positioned at top right of card
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Material(
+              color: _sparkPrimaryPurple,
+              shape: const CircleBorder(),
+              elevation: 3,
+              child: IconButton(
+                tooltip: 'Edit photo',
+                onPressed: () => _openScreen(
+                  PersonalInformationScreen(student: student),
+                ),
+                icon: const Icon(
+                  Icons.edit,
+                  size: 16,
+                  color: Colors.white,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(
+                  width: 32,
+                  height: 32,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -1225,7 +1224,7 @@ class _BadgeChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [_sparkOrange, _sparkPink],
+          colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),

@@ -14,9 +14,9 @@ import '../services/authService.dart';
 import 'login.dart';
 import 'studentEditProfile.dart' show DocumentsScreen;
 
-const Color _profilePrimaryColor = Color(0xFF422F5D);
-const Color _profileSecondaryColor = Color(0xFFF99D46);
-const Color _profileAccentColor = Color(0xFFD64483);
+const Color _profilePrimaryColor = Color(0xFF8D52CC);
+const Color _profileSecondaryColor = Color(0xFF8D52CC);
+const Color _profileAccentColor = Color(0xFF8D52CC);
 const Color _profileBackgroundColor = Color(0xFFF8F9FA);
 const Color _profileTextColor = Color(0xFF1E1E1E);
 const Color _profileCardColor = Color(0xFFFFFFFF);
@@ -195,7 +195,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildHeaderSection(profile, student, headerContentTopPadding),
-              const SizedBox(height: 100),
+              const SizedBox(height: 60),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
@@ -242,20 +242,16 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
     final progressPrompt = _buildProgressPrompt(completion);
 
     return SizedBox(
-      height: backgroundHeight + 120,
+      height: backgroundHeight + 140,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Container(
             height: backgroundHeight,
             width: double.infinity,
-            padding: EdgeInsets.fromLTRB(24, topPadding, 24, 96),
+            padding: EdgeInsets.fromLTRB(24, topPadding, 24, 80),
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [_profileSecondaryColor, _profileAccentColor],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: _profilePrimaryColor,
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(32),
                 bottomRight: Radius.circular(32),
@@ -286,9 +282,9 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
             ),
           ),
           Positioned(
-            left: 20,
-            right: 20,
-            bottom: -36,
+            left: 16,
+            right: 16,
+            bottom: 0,
             child: _buildProfileSummaryCard(
               profile,
               student,
@@ -308,7 +304,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
     int completionPercent,
   ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
         color: _profileCardColor,
         borderRadius: BorderRadius.circular(24),
@@ -327,109 +323,75 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
         children: [
-          TweenAnimationBuilder<double>(
-            tween: Tween<double>(begin: 0, end: completion),
-            duration: const Duration(milliseconds: 1200),
-            curve: Curves.easeInOutCubic,
-            builder: (context, value, child) {
-              return SizedBox(
-                width: 120,
-                height: 120,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Background progress circle
-                    CircularProgressIndicator(
-                      value: 1.0,
-                      strokeWidth: 6,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        _withAlpha(_profilePrimaryColor, 0.08),
-                      ),
-                      backgroundColor: Colors.transparent,
-                    ),
-                    // Animated progress circle
-                    ShaderMask(
-                      shaderCallback: (rect) {
-                        return const LinearGradient(
-                          colors: [_profileSecondaryColor, _profileAccentColor],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ).createShader(rect);
-                      },
-                      blendMode: BlendMode.srcIn,
-                      child: CircularProgressIndicator(
-                        value: value,
-                        strokeWidth: 6,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Colors.white,
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: completion),
+                duration: const Duration(milliseconds: 1200),
+                curve: Curves.easeInOutCubic,
+                builder: (context, value, child) {
+                  return SizedBox(
+                    width: 120,
+                    height: 120,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Background progress circle
+                        CircularProgressIndicator(
+                          value: 1.0,
+                          strokeWidth: 6,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            _withAlpha(_profilePrimaryColor, 0.08),
+                          ),
+                          backgroundColor: Colors.transparent,
                         ),
-                        backgroundColor: Colors.transparent,
-                      ),
-                    ),
-                    // Profile picture centered in the circle
-                    Container(
-                      width: 96,
-                      height: 96,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _profileCardColor,
-                        boxShadow: [
-                          BoxShadow(
-                            color: _withAlpha(_profileTextColor, 0.12),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                        // Animated progress circle
+                        CircularProgressIndicator(
+                          value: value,
+                          strokeWidth: 6,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            _profilePrimaryColor,
                           ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        radius: 46,
-                        backgroundColor: _withAlpha(_profilePrimaryColor, 0.04),
-                        backgroundImage: profile.profilePictureUrl != null
-                            ? NetworkImage(profile.profilePictureUrl!)
-                            : null,
-                        child: profile.profilePictureUrl == null
-                            ? const Icon(
-                                Icons.person_rounded,
-                                size: 42,
-                                color: _profilePrimaryColor,
-                              )
-                            : null,
-                      ),
-                    ),
-                    // Edit button positioned at bottom right
-                    Positioned(
-                      bottom: 4,
-                      right: 4,
-                      child: Material(
-                        color: _profilePrimaryColor,
-                        shape: const CircleBorder(),
-                        elevation: 3,
-                        child: IconButton(
-                          tooltip: 'Edit photo',
-                          onPressed: () => _openScreen(
-                            PersonalInformationScreen(student: student),
+                          backgroundColor: Colors.transparent,
+                        ),
+                        // Profile picture centered in the circle
+                        Container(
+                          width: 96,
+                          height: 96,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _profileCardColor,
+                            boxShadow: [
+                              BoxShadow(
+                                color: _withAlpha(_profileTextColor, 0.12),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                          icon: const Icon(
-                            Icons.edit,
-                            size: 12,
-                            color: Colors.white,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints.tightFor(
-                            width: 22,
-                            height: 22,
+                          child: CircleAvatar(
+                            radius: 46,
+                            backgroundColor: _withAlpha(_profilePrimaryColor, 0.04),
+                            backgroundImage: profile.profilePictureUrl != null
+                                ? NetworkImage(profile.profilePictureUrl!)
+                                : null,
+                            child: profile.profilePictureUrl == null
+                                ? const Icon(
+                                    Icons.person_rounded,
+                                    size: 42,
+                                    color: _profilePrimaryColor,
+                                  )
+                                : null,
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  );
+                },
+              ),
           const SizedBox(height: 16),
           Text(
             profile.fullName,
@@ -485,15 +447,11 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [_profileSecondaryColor, _profileAccentColor],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
+              color: _profilePrimaryColor,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: _withAlpha(_profileAccentColor, 0.3),
+                  color: _withAlpha(_profilePrimaryColor, 0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -569,6 +527,34 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
                 ),
               ),
             ],
+          ),
+            ],
+          ),
+          // Edit button positioned at top right of card
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Material(
+              color: _profilePrimaryColor,
+              shape: const CircleBorder(),
+              elevation: 3,
+              child: IconButton(
+                tooltip: 'Edit photo',
+                onPressed: () => _openScreen(
+                  PersonalInformationScreen(student: student),
+                ),
+                icon: const Icon(
+                  Icons.edit,
+                  size: 16,
+                  color: Colors.white,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(
+                  width: 32,
+                  height: 32,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -687,18 +673,18 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 6),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 4),
           child: Column(
             children: [
               for (var i = 0; i < sections.length; i++) ...[
                 if (i > 0)
                   Container(
-                    margin: const EdgeInsets.symmetric(vertical: 18),
+                    margin: const EdgeInsets.symmetric(vertical: 16),
                     child: Divider(
                       height: 1,
                       thickness: 0.7,
-                      indent: 24,
-                      endIndent: 24,
+                      indent: 20,
+                      endIndent: 20,
                       color: _withAlpha(_profileTextColor, 0.08),
                     ),
                   ),
@@ -721,8 +707,8 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
           Divider(
             height: 1,
             thickness: 0.5,
-            indent: 68,
-            endIndent: 20,
+            indent: 64,
+            endIndent: 16,
             color: _withAlpha(_profileTextColor, 0.06),
           ),
         );
@@ -733,7 +719,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
 
   Widget _buildMenuListTile(_MenuItemData item) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
@@ -741,19 +727,12 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
         ),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Container(
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                _withAlpha(item.iconColor ?? _profilePrimaryColor, 0.22),
-                _withAlpha(item.iconColor ?? _profilePrimaryColor, 0.08),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: _withAlpha(item.iconColor ?? _profilePrimaryColor, 0.15),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Icon(
@@ -1035,11 +1014,7 @@ class _SectionHeader extends StatelessWidget {
             width: 4,
             height: 20,
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [_profileSecondaryColor, _profileAccentColor],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+              color: _profilePrimaryColor,
               borderRadius: BorderRadius.all(Radius.circular(2)),
             ),
           ),
@@ -1070,14 +1045,14 @@ class _BadgeChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [_profileSecondaryColor, _profileAccentColor],
+          colors: [Color(0xFFD54DB9), Color(0xFF8D52CC)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: _profileAccentColor.withValues(alpha: 0.2),
+            color: _profilePrimaryColor.withValues(alpha: 0.2),
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
@@ -1151,15 +1126,11 @@ class _QuickActionButton extends StatelessWidget {
       child: Ink(
         height: 72,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [_profileSecondaryColor, _profileAccentColor],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: _profilePrimaryColor,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: _profileAccentColor.withOpacity(0.25),
+              color: _profilePrimaryColor.withValues(alpha: 0.25),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -1173,7 +1144,7 @@ class _QuickActionButton extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, size: 20, color: Colors.white),

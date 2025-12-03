@@ -209,7 +209,26 @@ class StudentCompanyProfilePage extends StatelessWidget {
         .collection('opportunities')
         .where('companyId', isEqualTo: companyId)
         .snapshots()
-        .map((s) => s.size);
+        .map((snapshot) {
+          final now = DateTime.now();
+          return snapshot.docs.where((doc) {
+            final opportunity = Opportunity.fromFirestore(doc);
+            final applicationOpenDate = opportunity.applicationOpenDate?.toDate();
+            final applicationDeadline = opportunity.applicationDeadline?.toDate();
+
+            // Hide if application period hasn't started yet
+            if (applicationOpenDate != null && now.isBefore(applicationOpenDate)) {
+              return false;
+            }
+
+            // Hide if application deadline has passed
+            if (applicationDeadline != null && now.isAfter(applicationDeadline)) {
+              return false;
+            }
+
+            return true;
+          }).length;
+        });
   }
 
   Stream<int> _followersCountStream() {
@@ -269,7 +288,7 @@ class StudentCompanyProfilePage extends StatelessWidget {
         return DefaultTabController(
           length: 4,
           child: Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: const Color(0xFFF8F9FA),
               extendBodyBehindAppBar: true,
               appBar: AppBar(
                 backgroundColor: Colors.transparent,
@@ -545,6 +564,8 @@ class StudentCompanyProfilePage extends StatelessWidget {
                                               interviewSnap.data?.size ?? 0;
                                           return TabBar(
                                             isScrollable: true,
+                                            tabAlignment: TabAlignment.start,
+                                            padding: EdgeInsets.zero,
                                             labelColor: const Color(0xFFD54DB9),
                                             labelStyle: GoogleFonts.lato(
                                               fontWeight: FontWeight.w700,
@@ -694,6 +715,7 @@ class _DetailsTab extends StatelessWidget {
           padding: const EdgeInsets.only(left: 16),
           child: Text(
             about.isNotEmpty ? about : 'No description provided.',
+            textAlign: TextAlign.justify,
             style: GoogleFonts.lato(
               color: Colors.black.withOpacity(0.75),
               height: 1.45,
@@ -702,19 +724,16 @@ class _DetailsTab extends StatelessWidget {
         ),
         const Divider(height: 28),
         sectionTitle('Contact Details'),
-        Card(
-          elevation: 4,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: [
-              ListTile(
+        Column(
+          children: [
+            ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 leading: const Icon(Icons.email_outlined, color: _purple),
                 title: Text(
                   email.isNotEmpty ? 'Email: $email' : 'Email: Not provided',
-                  style: GoogleFonts.lato(),
+                  style: GoogleFonts.lato(fontSize: 14),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 trailing: SizedBox(
                   width: 70,
@@ -742,10 +761,13 @@ class _DetailsTab extends StatelessWidget {
               ),
               const Divider(height: 1),
               ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 leading: const Icon(Icons.phone_outlined, color: _purple),
                 title: Text(
                   phone.isNotEmpty ? 'Phone: $phone' : 'Phone: Not provided',
-                  style: GoogleFonts.lato(),
+                  style: GoogleFonts.lato(fontSize: 14),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 trailing: SizedBox(
                   width: 70,
@@ -774,16 +796,21 @@ class _DetailsTab extends StatelessWidget {
               if (location.isNotEmpty) ...[
                 const Divider(height: 1),
                 ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   leading: const Icon(
                     Icons.location_on_outlined,
                     color: _purple,
                   ),
-                  title: Text('Location: $location', style: GoogleFonts.lato()),
+                  title: Text(
+                    'Location: $location',
+                    style: GoogleFonts.lato(fontSize: 14),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ],
           ),
-        ),
       ],
     );
   }
@@ -860,18 +887,39 @@ class _OpportunitiesTab extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         final oppDocs = oppSnap.data?.docs ?? [];
-        if (oppDocs.isEmpty) {
+
+        // Filter opportunities to show only open ones
+        final now = DateTime.now();
+        final openOpportunities = oppDocs.where((doc) {
+          final opportunity = Opportunity.fromFirestore(doc);
+          final applicationOpenDate = opportunity.applicationOpenDate?.toDate();
+          final applicationDeadline = opportunity.applicationDeadline?.toDate();
+
+          // Hide if application period hasn't started yet
+          if (applicationOpenDate != null && now.isBefore(applicationOpenDate)) {
+            return false;
+          }
+
+          // Hide if application deadline has passed
+          if (applicationDeadline != null && now.isAfter(applicationDeadline)) {
+            return false;
+          }
+
+          return true;
+        }).toList();
+
+        if (openOpportunities.isEmpty) {
           return Center(
-            child: Text('No opportunities yet.', style: GoogleFonts.lato()),
+            child: Text('No open opportunities at the moment.', style: GoogleFonts.lato()),
           );
         }
 
         return ListView.separated(
           padding: const EdgeInsets.only(top: 8, bottom: 16),
-          itemCount: oppDocs.length,
+          itemCount: openOpportunities.length,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, i) {
-            final doc = oppDocs[i];
+            final doc = openOpportunities[i];
             final opportunity = Opportunity.fromFirestore(doc);
 
             return _OpportunityCard(
@@ -907,124 +955,182 @@ class _OpportunityCard extends StatelessWidget {
   final Stream<bool>? bookmarkStream;
   final Future<void> Function(bool isBookmarked)? onToggleBookmark;
 
+  // Simple info display without container background
+  Widget _buildSimpleInfo(IconData icon, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: Colors.grey.shade600),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: GoogleFonts.lato(
+            color: Colors.grey.shade700,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Opportunity type info
+  Widget _buildTypeInfo(String type) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.business_center_outlined, size: 16, color: Colors.grey.shade600),
+        const SizedBox(width: 4),
+        Text(
+          type,
+          style: GoogleFonts.lato(
+            color: Colors.grey.shade700,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    Widget buildRow(IconData icon, String text) {
-      return Row(
-        children: [
-          Icon(icon, size: 18, color: Colors.grey.shade600),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              text,
-              style: GoogleFonts.lato(
-                fontSize: 14,
-                color: Colors.grey.shade700,
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
     return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.08),
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              opportunity.role,
-              style: GoogleFonts.lato(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: _purple,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              opportunity.name,
-              style: GoogleFonts.lato(
-                fontSize: 14,
-                color: _pink,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 12),
-            buildRow(
-              Icons.location_on_outlined,
-              opportunity.location ?? 'Location not specified',
-            ),
-            const SizedBox(height: 6),
-            if (opportunity.workMode != null)
-              buildRow(
-                Icons.apartment_outlined,
-                opportunity.workMode ?? 'Work mode not specified',
-              ),
-            const SizedBox(height: 6),
-            buildRow(
-              Icons.payments_outlined,
-              opportunity.isPaid ? 'Paid opportunity' : 'Unpaid opportunity',
-            ),
-            if (opportunity.applicationDeadline != null) ...[
-              const SizedBox(height: 6),
-              buildRow(
-                Icons.event_available_outlined,
-                'Apply before ${DateFormat('MMM d, yyyy').format(opportunity.applicationDeadline!.toDate())}',
-              ),
-            ],
-            const SizedBox(height: 16),
-            if (bookmarkStream != null && onToggleBookmark != null)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // --- "View More" Button ---
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              OpportunityDetailPage(opportunity: opportunity),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Role Title
+                      Text(
+                        opportunity.role,
+                        style: GoogleFonts.lato(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1A1A1A),
+                          height: 1.2,
                         ),
-                      );
-                    },
-                    child: Text(
-                      'View More',
-                      style: GoogleFonts.lato(
-                        color: _purple, // Use primary color
-                        fontWeight: FontWeight.w600,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
+                      // Opportunity Name in dark pink
+                      if (opportunity.name.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          opportunity.name,
+                          style: GoogleFonts.lato(
+                            fontSize: 13,
+                            color: const Color(0xFFD54DB9),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
                   ),
-
-                  // --- Bookmark Button (existing) ---
+                ),
+                // Bookmark Icon
+                if (bookmarkStream != null && onToggleBookmark != null)
                   StreamBuilder<bool>(
                     stream: bookmarkStream,
                     builder: (context, snapshot) {
-                      final isBookmarked = snapshot.data ?? false;
-                      return TextButton.icon(
-                        onPressed: () => onToggleBookmark!(isBookmarked),
+                      final isBookmarked = snapshot.data == true;
+                      return IconButton(
                         icon: Icon(
-                          isBookmarked
-                              ? Icons.bookmark
-                              : Icons.bookmark_outline,
-                          color: isBookmarked ? _pink : _purple,
+                          isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                          color: const Color(0xFF8D52CC),
+                          size: 24,
                         ),
-                        label: Text(
-                          isBookmarked ? 'Bookmarked' : 'Save',
-                          style: GoogleFonts.lato(
-                            color: isBookmarked ? _pink : _purple,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () => onToggleBookmark!(isBookmarked),
                       );
                     },
                   ),
-                ],
-              ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Info row - opportunity type, work mode, paid status
+            Wrap(
+              spacing: 12.0,
+              runSpacing: 8.0,
+              children: [
+                _buildTypeInfo(opportunity.type),
+                if (opportunity.workMode != null && opportunity.workMode!.isNotEmpty)
+                  _buildSimpleInfo(
+                    Icons.laptop_chromebook_outlined,
+                    opportunity.workMode!,
+                  ),
+                if (opportunity.location != null &&
+                    opportunity.location!.trim().isNotEmpty)
+                  _buildSimpleInfo(
+                    Icons.location_on_outlined,
+                    opportunity.location!.trim(),
+                  ),
+                _buildSimpleInfo(
+                  opportunity.isPaid ? Icons.attach_money : Icons.money_off_outlined,
+                  opportunity.isPaid ? 'Paid' : 'Unpaid',
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // View Button aligned right
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8D52CC),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                OpportunityDetailPage(opportunity: opportunity),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+                        child: Text(
+                          'View',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -1879,6 +1985,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
 
     return Card(
       elevation: 2,
+      color: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
