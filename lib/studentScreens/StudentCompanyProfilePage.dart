@@ -1791,6 +1791,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 16.0),
+      color: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -1802,6 +1803,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
               style: GoogleFonts.lato(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
+                color: Colors.black87,
               ),
             ),
             const SizedBox(height: 12),
@@ -1846,8 +1848,10 @@ class _ReviewsTabState extends State<_ReviewsTab> {
               ],
               decoration: InputDecoration(
                 hintText: 'Share your experience...',
+                filled: true,
+                fillColor: Colors.white,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 counterText: '', // keep existing appearance
               ),
@@ -2046,8 +2050,10 @@ class _ReviewsTabState extends State<_ReviewsTab> {
                 ],
                 decoration: InputDecoration(
                   hintText: 'Write a reply…',
+                  filled: true,
+                  fillColor: Colors.white,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   contentPadding: const EdgeInsets.all(12),
                   counterText: '',
@@ -2137,10 +2143,9 @@ class _ReviewsTabState extends State<_ReviewsTab> {
       margin: const EdgeInsets.only(top: 8, bottom: 6),
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: const Color(
-          0xFFF2F4EF,
-        ), // company reply background, slightly different
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3590,6 +3595,7 @@ class _AddInterviewReviewDialogState extends State<_AddInterviewReviewDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: SingleChildScrollView(
         child: Padding(
@@ -3627,9 +3633,9 @@ class _AddInterviewReviewDialogState extends State<_AddInterviewReviewDialog> {
                       ),
                       label: const Text('Positive'),
                       style: OutlinedButton.styleFrom(
-                        backgroundColor: _experienceRating == 'like' ? Colors.green : null,
-                        foregroundColor: _experienceRating == 'like' ? Colors.white : Colors.green,
-                        side: BorderSide(color: Colors.green),
+                        backgroundColor: _experienceRating == 'like' ? _purple : Colors.white,
+                        foregroundColor: _experienceRating == 'like' ? Colors.white : _purple,
+                        side: BorderSide(color: _purple),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -3640,13 +3646,15 @@ class _AddInterviewReviewDialogState extends State<_AddInterviewReviewDialog> {
                       onPressed: () => setState(() => _experienceRating = 'dislike'),
                       icon: Icon(
                         Icons.thumb_down,
-                        color: _experienceRating == 'dislike' ? Colors.white : Colors.red,
+                        color: _experienceRating == 'dislike' ? Colors.white : _purple,
                       ),
                       label: const Text('Negative'),
                       style: OutlinedButton.styleFrom(
-                        backgroundColor: _experienceRating == 'dislike' ? Colors.red : null,
-                        foregroundColor: _experienceRating == 'dislike' ? Colors.white : Colors.red,
-                        side: BorderSide(color: Colors.red),
+                        backgroundColor:
+                            _experienceRating == 'dislike' ? _purple : Colors.white,
+                        foregroundColor:
+                            _experienceRating == 'dislike' ? Colors.white : _purple,
+                        side: BorderSide(color: _purple),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -3669,9 +3677,9 @@ class _AddInterviewReviewDialogState extends State<_AddInterviewReviewDialog> {
                 maxLength: 200,
                 decoration: InputDecoration(
                   hintText: 'Describe your interview experience...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   filled: true,
-                  fillColor: Colors.grey.shade50,
+                  fillColor: Colors.white,
                   counterText: '',
                 ),
               ),
@@ -3771,7 +3779,7 @@ class _AddInterviewReviewDialogState extends State<_AddInterviewReviewDialog> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                     child: _isSubmitting
@@ -3931,7 +3939,7 @@ class _InterviewReviewRepliesSheetState extends State<_InterviewReviewRepliesShe
                 margin: const EdgeInsets.all(16),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey.shade200),
                 ),

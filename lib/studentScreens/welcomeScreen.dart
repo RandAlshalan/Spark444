@@ -55,7 +55,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     final size = MediaQuery.of(context).size;
     final isSmall = size.height < 740;
     final taglineHeight = (size.width * 0.45).clamp(130.0, 200.0);
-    final studentsHeight = (size.height * 0.22).clamp(140.0, 210.0);
+    const double studentsHeight = 200.0; // keep the hero image steady across screen sizes
     final topInset = MediaQuery.of(context).padding.top;
 
     return Scaffold(
