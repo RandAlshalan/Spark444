@@ -1730,6 +1730,23 @@ class DocumentsScreen extends StatefulWidget {
   State<DocumentsScreen> createState() => _DocumentsScreenState();
 }
 
+// Palette aligned with the refreshed student UI
+const Color _docPrimary = Color(0xFF8D52CC);
+const Color _docSecondary = Color(0xFFD54DB9);
+const Color _docMuted = Color(0xFF5F6368);
+const Color _docSurface = Colors.white;
+const Color _docBackground = Color(0xFFF7F2FB);
+const LinearGradient _docHeaderGradient = LinearGradient(
+  colors: [_docSecondary, _docPrimary],
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+);
+const LinearGradient _docPageGradient = LinearGradient(
+  colors: [Color(0xFFF7F2FB), Color(0xFFFFFBFF)],
+  begin: Alignment.topCenter,
+  end: Alignment.bottomCenter,
+);
+
 class _DocumentsScreenState extends State<DocumentsScreen> {
   final StorageService _storageService = StorageService();
   bool _loading = false;
@@ -2212,7 +2229,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       case 'jpg':
       case 'jpeg':
         icon = Icons.image;
-        iconColor = CompanyColors.secondary;
+        iconColor = _docSecondary;
         accentColor = const Color(0xFFFBE3EE);
         break;
       case 'doc':
@@ -2223,18 +2240,18 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         break;
       case 'txt':
         icon = Icons.text_snippet;
-        iconColor = CompanyColors.muted;
+        iconColor = _docMuted;
         accentColor = const Color(0xFFF3F4F6);
         break;
       default:
         icon = Icons.insert_drive_file;
-        iconColor = CompanyColors.primary;
+        iconColor = _docPrimary;
         accentColor = const Color(0xFFEDE7F6);
     }
 
     return Card(
       elevation: CompanySpacing.cardElevation,
-      color: CompanyColors.surface,
+      color: _docSurface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: InkWell(
         onTap: () => _previewDocument(document),
@@ -2262,7 +2279,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: CompanyColors.primary,
+                      color: _docPrimary,
                     ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
@@ -2276,7 +2293,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   IconButton(
                     onPressed: () => _previewDocument(document),
                     icon: const Icon(Icons.visibility_outlined,
-                        color: CompanyColors.primary),
+                        color: _docPrimary),
                     tooltip: 'Preview',
                     iconSize: 22,
                   ),
@@ -2285,7 +2302,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                       onPressed: () => _deleteDocument(groupId, document),
                       icon: const Icon(
                         Icons.delete_outline,
-                        color: CompanyColors.secondary,
+                        color: _docSecondary,
                       ),
                       tooltip: 'Delete',
                       iconSize: 22,
@@ -2307,12 +2324,15 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         if (!didPop) Navigator.of(context).pop(_changed);
       },
       child: Scaffold(
-        backgroundColor: CompanyColors.background,
+        backgroundColor: _docBackground,
         appBar: AppBar(
           title: const Text('Documents'),
-          backgroundColor: CompanyColors.primary,
+          backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
           elevation: 0,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(gradient: _docHeaderGradient),
+          ),
           actions: [
             if (_editMode)
               Padding(
@@ -2323,8 +2343,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   label: const Text('Add Group'),
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white,
-                    backgroundColor: Colors.white.withOpacity(0.18),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    backgroundColor: Colors.white.withOpacity(0.2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -2344,13 +2365,13 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           ],
         ),
         body: Container(
-          decoration: CompanyDecorations.pageBackground,
+          decoration: const BoxDecoration(gradient: _docPageGradient),
           child: SafeArea(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : RefreshIndicator(
-                    color: CompanyColors.primary,
-                    backgroundColor: CompanyColors.surface,
+                    color: _docPrimary,
+                    backgroundColor: _docSurface,
                     onRefresh: _loadGroups,
                     child: _groups.isEmpty
                         ? _buildEmptyState(context)
@@ -2369,7 +2390,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                 key: ValueKey(group.id),
                                 margin: const EdgeInsets.only(bottom: 20),
                                 elevation: CompanySpacing.cardElevation,
-                                color: CompanyColors.surface,
+                                color: _docSurface,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: CompanySpacing.cardRadius,
                                 ),
@@ -2383,7 +2404,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                         vertical: 18,
                                       ),
                                       decoration: const BoxDecoration(
-                                        gradient: CompanyColors.heroGradient,
+                                        gradient: _docHeaderGradient,
                                         borderRadius: BorderRadius.vertical(
                                           top: Radius.circular(20),
                                         ),
@@ -2452,12 +2473,12 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                         child: Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: const [
-                                            Icon(Icons.folder_open, color: CompanyColors.muted),
+                                            Icon(Icons.folder_open, color: _docMuted),
                                             SizedBox(width: 8),
                                             Text(
                                               'No documents in this group yet.',
                                               style: TextStyle(
-                                                color: CompanyColors.muted,
+                                                color: _docMuted,
                                               ),
                                             ),
                                           ],
@@ -2514,7 +2535,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         Card(
           elevation: CompanySpacing.cardElevation,
           shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
-          color: CompanyColors.surface,
+          color: _docSurface,
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -2525,19 +2546,19 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: CompanyColors.primary,
+                    color: _docPrimary,
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   'Create your first group to organise resumes, certificates, and other supporting files.',
-                  style: TextStyle(color: CompanyColors.muted),
+                  style: TextStyle(color: _docMuted),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: _addNewGroup,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: CompanyColors.primary,
+                    backgroundColor: _docPrimary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     shape: RoundedRectangleBorder(
@@ -2570,11 +2591,11 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       children: [
         Container(
           decoration: BoxDecoration(
-            gradient: CompanyColors.heroGradient,
+            gradient: _docHeaderGradient,
             borderRadius: CompanySpacing.cardRadius,
             boxShadow: [
               BoxShadow(
-                color: CompanyColors.primary.withOpacity(0.18),
+                color: _docPrimary.withOpacity(0.18),
                 blurRadius: 20,
                 offset: const Offset(0, 12),
               ),
