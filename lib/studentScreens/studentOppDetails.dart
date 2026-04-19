@@ -11,6 +11,7 @@ import '../models/opportunity.dart';
 import '../services/authService.dart';
 import '../services/bookmarkService.dart';
 import '../theme/student_theme.dart';
+import '../widgets/application_status_chip.dart';
 
 // --- Color Constants (Use StudentTheme for consistency) ---
 const Color _sparkPrimaryPurple = StudentTheme.primaryColor;
@@ -313,7 +314,7 @@ class _OpportunityDetailsContentState extends State<OpportunityDetailsContent> {
                 ),
               ),
               const SizedBox(width: 8),
-              _buildStatusChip(app.status),
+              ApplicationStatusChip(status: app.status, capitalize: true),
             ],
           ),
           const SizedBox(height: 16),
@@ -776,40 +777,6 @@ class _OpportunityDetailsContentState extends State<OpportunityDetailsContent> {
     );
   }
 
-  Widget _buildStatusChip(String status) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: _getStatusColor(status).withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status.capitalize(),
-        style: GoogleFonts.lato(
-          color: _getStatusColor(status),
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'hired':
-      case 'accepted':
-        return Colors.green.shade600;
-      case 'reviewed': // "In Progress"
-        return Colors.blue.shade600;
-      case 'rejected':
-        return Colors.red.shade600;
-      case 'withdrawn':
-        return Colors.grey.shade600;
-      case 'pending':
-      default:
-        return Colors.orange.shade700;
-    }
-  }
 
   Widget _buildRoleInfoSection(Opportunity opp) {
     return _buildDetailSection(

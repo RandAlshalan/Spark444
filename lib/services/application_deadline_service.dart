@@ -1,44 +1,32 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'periodic_background_service.dart';
 
 /// Service to automatically update application statuses when response deadline passes
-class ApplicationDeadlineService {
+class ApplicationDeadlineService extends PeriodicBackgroundService {
   static final ApplicationDeadlineService _instance = ApplicationDeadlineService._internal();
   factory ApplicationDeadlineService() => _instance;
   ApplicationDeadlineService._internal();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  Timer? _checkTimer;
-  bool _isRunning = false;
 
-  /// Start the background service to check for expired response deadlines
-  /// Checks every 30 minutes
-  void startMonitoring() {
-    if (_isRunning) {
-      debugPrint('⚠️ ApplicationDeadlineService already running');
-      return;
-    }
+  @override
+  Duration get interval => const Duration(minutes: 30);
 
-    _isRunning = true;
-    debugPrint('✅ ApplicationDeadlineService started');
+  @override
+  String get guardMessage => '⚠️ ApplicationDeadlineService already running';
 
-    // Run immediately on start
-    _checkExpiredDeadlines();
+  @override
+  String get startMessage => '✅ ApplicationDeadlineService started';
 
-    // Then check every 30 minutes
-    _checkTimer = Timer.periodic(const Duration(minutes: 30), (_) {
-      _checkExpiredDeadlines();
-    });
-  }
+  @override
+  String get stopMessage => '⏹️ ApplicationDeadlineService stopped';
 
-  /// Stop the monitoring service
-  void stopMonitoring() {
-    _checkTimer?.cancel();
-    _checkTimer = null;
-    _isRunning = false;
-    debugPrint('⏹️ ApplicationDeadlineService stopped');
-  }
+  @override
+  Future<void> performCheck() => _checkExpiredDeadlines();
+
+  bool get isRunning => isActive;
 
   /// Check for opportunities with expired response deadlines and update applications
   Future<void> _checkExpiredDeadlines() async {
@@ -204,7 +192,4 @@ class ApplicationDeadlineService {
       debugPrint('❌ Error checking opportunity deadline: $e');
     }
   }
-
-  /// Get status of the service
-  bool get isRunning => _isRunning;
 }

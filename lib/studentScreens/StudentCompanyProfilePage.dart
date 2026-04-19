@@ -21,6 +21,7 @@ import 'StudentSingleProfilePage.dart'; // Student profile view
 import 'resumeSelectionDialog.dart';
 import 'applicationConfirmationDialog.dart';
 import '../widgets/application_success_dialog.dart';
+import '../widgets/application_status_chip.dart';
 import '../services/notification_helper.dart';
 // ---------------------------------------------------------
 
@@ -3171,7 +3172,7 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
               ),
             ),
             const SizedBox(height: 4),
-            _buildStatusChip(status), // Show status (e.g., "Pending")
+            ApplicationStatusChip(status: status, horizontalPadding: 12, verticalPadding: 6, fontSize: 14), // Show status (e.g., "Pending")
           ],
         ),
         const SizedBox(width: 16),
@@ -3201,40 +3202,6 @@ class _OpportunityDetailPageState extends State<OpportunityDetailPage> {
     );
   }
 
-  Widget _buildStatusChip(String status) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: _getStatusColor(status).withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status,
-        style: GoogleFonts.lato(
-          color: _getStatusColor(status),
-          fontWeight: FontWeight.bold,
-          fontSize: 14,
-        ),
-      ),
-    );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'hired':
-      case 'accepted':
-        return Colors.green.shade600;
-      case 'reviewed':
-        return Colors.blue.shade600;
-      case 'rejected':
-        return Colors.red.shade600;
-      case 'withdrawn':
-        return Colors.grey.shade600;
-      case 'pending':
-      default:
-        return Colors.orange.shade700;
-    }
-  }
 }
 
 // ===================== Interview Reviews Tab =====================

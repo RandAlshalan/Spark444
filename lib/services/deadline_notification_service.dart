@@ -3,53 +3,42 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/opportunity.dart';
 import 'notification_helper.dart';
+import 'periodic_background_service.dart';
 
 /// Service to manage deadline notifications for applications and bookmarks
-class DeadlineNotificationService {
+class DeadlineNotificationService extends PeriodicBackgroundService {
   static final DeadlineNotificationService _instance = DeadlineNotificationService._internal();
   factory DeadlineNotificationService() => _instance;
   DeadlineNotificationService._internal();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  Timer? _reminderCheckTimer;
-  bool _isMonitoring = false;
 
-  /// Start monitoring for upcoming deadlines (24 hours before)
-  void startMonitoring() {
-    if (_isMonitoring) {
-      debugPrint('⚠️ DeadlineNotificationService already monitoring');
-      return;
-    }
+  @override
+  Duration get interval => const Duration(hours: 1);
 
-    _isMonitoring = true;
-    debugPrint('✅ DeadlineNotificationService started monitoring');
+  @override
+  String get guardMessage => '⚠️ DeadlineNotificationService already monitoring';
 
-    // Check immediately on start
-    _checkUpcomingDeadlines();
+  @override
+  String get startMessage => '✅ DeadlineNotificationService started monitoring';
 
-    // Check every hour for upcoming deadlines
-    _reminderCheckTimer = Timer.periodic(const Duration(hours: 1), (_) {
-      _checkUpcomingDeadlines();
-    });
-  }
+  @override
+  String get stopMessage => '⏹️ DeadlineNotificationService stopped';
 
-  /// Stop monitoring
-  void stopMonitoring() {
-    _reminderCheckTimer?.cancel();
-    _reminderCheckTimer = null;
-    _isMonitoring = false;
-    debugPrint('⏹️ DeadlineNotificationService stopped');
-  }
+  @override
+  Future<void> performCheck() => _checkUpcomingDeadlines();
+
+  bool get isMonitoring => isActive;
 
   /// Check for deadlines that are 24 hours away and send reminders
   Future<void> _checkUpcomingDeadlines() async {
     try {
       debugPrint('🔍 Checking for upcoming deadlines...');
-      
+
       final now = DateTime.now();
       final tomorrow = now.add(const Duration(hours: 24));
       final dayAfterTomorrow = now.add(const Duration(hours: 25));
-      
+
       // Find opportunities with deadlines in the next 24-25 hours
       final opportunitiesSnapshot = await _firestore
           .collection('opportunities')
@@ -194,7 +183,7 @@ class DeadlineNotificationService {
       }
 
       final opportunity = Opportunity.fromFirestore(oppDoc);
-      
+
       if (opportunity.applicationDeadline == null) {
         debugPrint('ℹ️ Opportunity has no deadline');
         return;
@@ -216,7 +205,7 @@ class DeadlineNotificationService {
       // Format deadline
       final deadlineDate = opportunity.applicationDeadline!.toDate();
       final daysUntil = deadlineDate.difference(DateTime.now()).inDays;
-      
+
       String deadlineText;
       if (daysUntil == 0) {
         deadlineText = 'today';
@@ -226,10 +215,10 @@ class DeadlineNotificationService {
         deadlineText = 'in $daysUntil days';
       }
 
-      final title = action == 'applied' 
-          ? '📅 Application Deadline' 
+      final title = action == 'applied'
+          ? '📅 Application Deadline'
           : '📌 Bookmark Reminder';
-      
+
       final body = 'The deadline for ${opportunity.role} at $companyName is $deadlineText';
 
       // Create in-app notification
@@ -255,6 +244,4 @@ class DeadlineNotificationService {
       debugPrint('❌ Error sending immediate deadline notification: $e');
     }
   }
-
-  bool get isMonitoring => _isMonitoring;
 }

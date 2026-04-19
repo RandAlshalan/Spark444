@@ -12,8 +12,7 @@ import '../services/applicationService.dart';
 import '../services/authService.dart';
 import '../studentScreens/studentCompanyProfilePage.dart'; // Import for navigation
 import '../studentScreens/studentOppDetails.dart';
-// --- IMPORT YOUR NEW WIDGET ---
-
+import '../widgets/application_status_chip.dart';
 
 // --- Color Constants ---
 const Color _sparkPrimaryPurple = Color(0xFF422F5D);
@@ -44,8 +43,10 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
   String _activeStatusFilter = 'All'; // Current active status filter
 
   // Data State
-  List<Application> _allApplications = []; // Stores all applications from Firestore
-  List<Application> _filteredApplications = []; // Stores the visible applications after filtering
+  List<Application> _allApplications =
+      []; // Stores all applications from Firestore
+  List<Application> _filteredApplications =
+      []; // Stores the visible applications after filtering
   // Caches to store details and avoid re-fetching from Firestore
   Map<String, Opportunity> _opportunityDetailsCache = {};
   Map<String, Company> _companyDetailsCache = {};
@@ -96,8 +97,10 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
 
       // 2. Get unique Opportunity IDs and load in batches (Firestore whereIn limit)
       if (applications.isNotEmpty) {
-        final opportunityIds =
-            applications.map((app) => app.opportunityId).toSet().toList();
+        final opportunityIds = applications
+            .map((app) => app.opportunityId)
+            .toSet()
+            .toList();
         _opportunityDetailsCache = await _fetchDocumentsInChunks<Opportunity>(
           collectionPath: 'opportunities',
           ids: opportunityIds,
@@ -116,8 +119,9 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
           _companyDetailsCache = await _fetchDocumentsInChunks<Company>(
             collectionPath: 'companies',
             ids: companyIds,
-            parser: (doc) =>
-                Company.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>),
+            parser: (doc) => Company.fromFirestore(
+              doc as DocumentSnapshot<Map<String, dynamic>>,
+            ),
           );
         }
       }
@@ -143,8 +147,7 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     required T Function(DocumentSnapshot<Map<String, dynamic>> doc) parser,
   }) async {
     const chunkSize = 10; // Firestore whereIn limit per query
-    final collection =
-        FirebaseFirestore.instance.collection(collectionPath);
+    final collection = FirebaseFirestore.instance.collection(collectionPath);
     final results = <String, T>{};
 
     for (var i = 0; i < ids.length; i += chunkSize) {
@@ -163,13 +166,11 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
   /// then updates `_filteredApplications`.
   void _filterApplications() {
     List<Application> results = List.from(_allApplications);
-
     // 1. Apply Status Filter
     if (_activeStatusFilter != 'All') {
       results = results.where((app) {
         final status = app.status.toLowerCase();
         final filter = _activeStatusFilter.toLowerCase();
-
         // Handle special case where "In Progress" button maps to "Reviewed" status
         if (filter == 'in progress') {
           return status == 'reviewed';
@@ -182,7 +183,6 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
         return status == filter;
       }).toList();
     }
-
     // 2. Update the UI state
     setState(() => _filteredApplications = results);
   }
@@ -197,15 +197,16 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Withdraw Application?'),
         content: const Text(
-            'This will update your application status to "Withdrawn". You cannot undo this.'),
+          'This will update your application status to "Withdrawn". You cannot undo this.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child:
-                const Text('Withdraw', style: TextStyle(color: Colors.red)),
+            child: const Text('Withdraw', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -214,16 +215,23 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     if (confirm == true) {
       try {
         await _applicationService.withdrawApplication(
-            applicationId: application.id);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          applicationId: application.id,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
             content: Text('Application withdrawn.'),
-            backgroundColor: Colors.green));
+            backgroundColor: Colors.green,
+          ),
+        );
         _showApplicationList(); // Go back to the list view
         _loadApplications(); // Refresh the list
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
             content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red));
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -236,11 +244,13 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Delete Permanently?'),
         content: const Text(
-            'This action is irreversible and will permanently remove this application record.'),
+          'This action is irreversible and will permanently remove this application record.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -253,22 +263,28 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       try {
         // 1. Delete from Firestore
         await _applicationService.deleteApplication(
-            applicationId: application.id);
+          applicationId: application.id,
+        );
 
         // 2. Remove from local state to update UI immediately
         setState(() {
           _allApplications.removeWhere((app) => app.id == application.id);
-          _filteredApplications
-              .removeWhere((app) => app.id == application.id);
+          _filteredApplications.removeWhere((app) => app.id == application.id);
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
             content: Text('Application permanently deleted.'),
-            backgroundColor: Colors.green));
+            backgroundColor: Colors.green,
+          ),
+        );
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
             content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red));
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -327,18 +343,20 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       leading: _selectedApplication != null
           ? IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: _showApplicationList)
+              onPressed: _showApplicationList,
+            )
           : null,
       // Use default back button only on list view
       automaticallyImplyLeading: _selectedApplication == null,
       title: Text(
-          _selectedApplication == null
-              ? 'My Applications'
-              : 'Application Details',
-          style: GoogleFonts.lato(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          )),
+        _selectedApplication == null
+            ? 'My Applications'
+            : 'Application Details',
+        style: GoogleFonts.lato(
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
       backgroundColor: Colors.transparent,
       elevation: 0,
       foregroundColor: Colors.white,
@@ -359,7 +377,8 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
-          child: CircularProgressIndicator(color: _sparkPrimaryPurple));
+        child: CircularProgressIndicator(color: _sparkPrimaryPurple),
+      );
     }
 
     if (_allApplications.isEmpty) {
@@ -382,8 +401,9 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
             children: [
               const Text('Could not load opportunity details.'),
               TextButton(
-                  onPressed: _showApplicationList,
-                  child: const Text('Go Back')),
+                onPressed: _showApplicationList,
+                child: const Text('Go Back'),
+              ),
             ],
           ),
         );
@@ -393,8 +413,11 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
       return OpportunityDetailsContent(
         opportunity: opportunity,
         application: _selectedApplication!, // Pass the application
-        onNavigateToCompany: _navigateToCompanyProfile, // Pass navigation callback
-        onWithdraw: () => _withdrawApplication(_selectedApplication!), // Pass withdraw callback
+        onNavigateToCompany:
+            _navigateToCompanyProfile, // Pass navigation callback
+        onWithdraw: () => _withdrawApplication(
+          _selectedApplication!,
+        ), // Pass withdraw callback
         // 'onApply' is omitted, so the "Apply" button will not show
       );
       // --- END OF MODIFIED PART ---
@@ -417,16 +440,19 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
             child: _filteredApplications.isEmpty
                 // Show message if filters result in no applications
                 ? const Center(
-                    child: Text('No applications match your criteria.'))
+                    child: Text('No applications match your criteria.'),
+                  )
                 // Otherwise, build the list
                 : ListView.builder(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     itemCount: _filteredApplications.length,
                     itemBuilder: (context, index) {
                       final app = _filteredApplications[index];
                       final opp = _opportunityDetailsCache[app.opportunityId];
-                      
+
                       // If opportunity data is not found (e.g., deleted), show nothing
                       if (opp == null) return const SizedBox.shrink();
 
@@ -454,12 +480,16 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
         children: [
           const Icon(Icons.inbox_outlined, size: 80, color: Colors.grey),
           const SizedBox(height: 16),
-          Text('No Applications Yet',
-              style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(
+            'No Applications Yet',
+            style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          Text('Your submitted applications will appear here.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.lato(color: Colors.grey)),
+          Text(
+            'Your submitted applications will appear here.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.lato(color: Colors.grey),
+          ),
         ],
       ),
     );
@@ -493,18 +523,13 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
               elevation: isSelected ? 2 : 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
-                side: BorderSide(
-                  color: color,
-                ),
+                side: BorderSide(color: color),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             ),
             child: Text(
               status,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
           );
         },
@@ -553,11 +578,13 @@ class _ApplicationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formattedAppliedDate =
-        DateFormat('MMM d, yyyy').format(application.appliedDate.toDate());
+    final formattedAppliedDate = DateFormat(
+      'MMM d, yyyy',
+    ).format(application.appliedDate.toDate());
     final lastUpdateText = formatDate(
-        application.lastStatusUpdateDate?.toDate() ??
-            application.appliedDate.toDate());
+      application.lastStatusUpdateDate?.toDate() ??
+          application.appliedDate.toDate(),
+    );
 
     return Card(
       color: Colors.white,
@@ -576,17 +603,25 @@ class _ApplicationCard extends StatelessWidget {
             // Date info
             Row(
               children: [
-                _buildDateInfo(Icons.event_note_outlined, 'Applied On:',
-                    formattedAppliedDate),
+                _buildDateInfo(
+                  Icons.event_note_outlined,
+                  'Applied On:',
+                  formattedAppliedDate,
+                ),
                 const SizedBox(width: 16),
-                _buildDateInfo(Icons.update, 'Status Updated On:',
-                    lastUpdateText),
+                _buildDateInfo(
+                  Icons.update,
+                  'Status Updated On:',
+                  lastUpdateText,
+                ),
               ],
             ),
             // Action buttons (Withdraw, View More)
             if (!isDetailView) ...[
               const Padding(
-                  padding: EdgeInsets.only(top: 12.0), child: Divider()),
+                padding: EdgeInsets.only(top: 12.0),
+                child: Divider(),
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -595,9 +630,13 @@ class _ApplicationCard extends StatelessWidget {
                       application.status.toLowerCase() == 'reviewed')
                     TextButton(
                       onPressed: onWithdraw,
-                      child: const Text('Withdraw',
-                          style: TextStyle(
-                              color: Colors.red, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Withdraw',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   const SizedBox(width: 8),
                   ElevatedButton(
@@ -610,10 +649,10 @@ class _ApplicationCard extends StatelessWidget {
                       ),
                     ),
                     child: const Text('View Details'),
-                  )
+                  ),
                 ],
-              )
-            ]
+              ),
+            ],
           ],
         ),
       ),
@@ -632,11 +671,13 @@ class _ApplicationCard extends StatelessWidget {
             CircleAvatar(
               radius: 28,
               backgroundColor: Colors.grey.shade200,
-              backgroundImage: (snapshot.data?.logoUrl != null &&
+              backgroundImage:
+                  (snapshot.data?.logoUrl != null &&
                       snapshot.data!.logoUrl!.isNotEmpty)
                   ? CachedNetworkImageProvider(snapshot.data!.logoUrl!)
                   : null,
-              child: (snapshot.data?.logoUrl == null ||
+              child:
+                  (snapshot.data?.logoUrl == null ||
                       snapshot.data!.logoUrl!.isEmpty)
                   ? const Icon(Icons.business, color: Colors.grey)
                   : null,
@@ -647,13 +688,21 @@ class _ApplicationCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(opportunity.role,
-                      style: GoogleFonts.lato(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    opportunity.role,
+                    style: GoogleFonts.lato(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(snapshot.data?.companyName ?? "...",
-                      style: GoogleFonts.lato(
-                          fontSize: 14, color: Colors.grey.shade700)),
+                  Text(
+                    snapshot.data?.companyName ?? "...",
+                    style: GoogleFonts.lato(
+                      fontSize: 14,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -661,7 +710,7 @@ class _ApplicationCard extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildStatusChip(application.status),
+                ApplicationStatusChip(status: application.status),
                 // Show delete 'x' button only for withdrawn applications
                 if (application.status.toLowerCase() == 'withdrawn')
                   Padding(
@@ -699,17 +748,21 @@ class _ApplicationCard extends StatelessWidget {
             children: [
               Icon(icon, size: 16, color: Colors.grey.shade600),
               const SizedBox(width: 6),
-              Text(title,
-                  style: GoogleFonts.lato(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.bold)),
+              Text(
+                title,
+                style: GoogleFonts.lato(
+                  fontSize: 13,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
-          Text(value,
-              style:
-                  GoogleFonts.lato(fontSize: 14, fontWeight: FontWeight.w600)),
+          Text(
+            value,
+            style: GoogleFonts.lato(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );
@@ -718,40 +771,6 @@ class _ApplicationCard extends StatelessWidget {
   String formatDate(DateTime? date) =>
       date == null ? 'N/A' : DateFormat('MMM d, yyyy').format(date);
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'hired':
-      case 'accepted':
-        return Colors.green.shade600;
-      case 'reviewed':
-        return Colors.blue.shade600;
-      case 'rejected':
-        return Colors.red.shade600;
-      case 'withdrawn':
-        return Colors.grey.shade600;
-      case 'pending':
-      default:
-        return Colors.orange.shade700;
-    }
-  }
-
-  Widget _buildStatusChip(String status) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: _getStatusColor(status).withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status,
-        style: GoogleFonts.lato(
-          color: _getStatusColor(status),
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
 }
 
 // --- UTILITY EXTENSION ---
