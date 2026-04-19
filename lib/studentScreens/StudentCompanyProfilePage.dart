@@ -28,6 +28,23 @@ import '../services/notification_helper.dart';
 const _purple = Color(0xFF422F5D);
 const _pink = Color(0xFFD64483);
 
+bool _isOpportunityOpenForApplications(Opportunity opportunity, DateTime now) {
+  final applicationOpenDate = opportunity.applicationOpenDate?.toDate();
+  final applicationDeadline = opportunity.applicationDeadline?.toDate();
+  final hasNotStarted =
+      applicationOpenDate != null && now.isBefore(applicationOpenDate);
+  final isPastDeadline =
+      applicationDeadline != null && now.isAfter(applicationDeadline);
+  return !hasNotStarted && !isPastDeadline;
+}
+
+bool _isCompanySnapshotUnavailable(
+  AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> snapshot,
+) {
+  final doc = snapshot.data;
+  return !snapshot.hasData || doc == null || !doc.exists || doc.data() == null;
+}
+
 // New: review length limits
 const int _reviewMinLength = 1;
 const int _reviewMaxLength = 1000;
@@ -213,20 +230,7 @@ class StudentCompanyProfilePage extends StatelessWidget {
           final now = DateTime.now();
           return snapshot.docs.where((doc) {
             final opportunity = Opportunity.fromFirestore(doc);
-            final applicationOpenDate = opportunity.applicationOpenDate?.toDate();
-            final applicationDeadline = opportunity.applicationDeadline?.toDate();
-
-            // Hide if application period hasn't started yet
-            if (applicationOpenDate != null && now.isBefore(applicationOpenDate)) {
-              return false;
-            }
-
-            // Hide if application deadline has passed
-            if (applicationDeadline != null && now.isAfter(applicationDeadline)) {
-              return false;
-            }
-
-            return true;
+            return _isOpportunityOpenForApplications(opportunity, now);
           }).length;
         });
   }
@@ -275,7 +279,7 @@ class StudentCompanyProfilePage extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        if (!snap.hasData || !snap.data!.exists || snap.data!.data() == null) {
+        if (_isCompanySnapshotUnavailable(snap)) {
           return Scaffold(
             appBar: AppBar(title: const Text('Company')),
             body: const Center(child: Text('Company not found')),
@@ -892,20 +896,7 @@ class _OpportunitiesTab extends StatelessWidget {
         final now = DateTime.now();
         final openOpportunities = oppDocs.where((doc) {
           final opportunity = Opportunity.fromFirestore(doc);
-          final applicationOpenDate = opportunity.applicationOpenDate?.toDate();
-          final applicationDeadline = opportunity.applicationDeadline?.toDate();
-
-          // Hide if application period hasn't started yet
-          if (applicationOpenDate != null && now.isBefore(applicationOpenDate)) {
-            return false;
-          }
-
-          // Hide if application deadline has passed
-          if (applicationDeadline != null && now.isAfter(applicationDeadline)) {
-            return false;
-          }
-
-          return true;
+          return _isOpportunityOpenForApplications(opportunity, now);
         }).toList();
 
         if (openOpportunities.isEmpty) {

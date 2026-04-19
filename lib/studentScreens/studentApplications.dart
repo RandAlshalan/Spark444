@@ -83,46 +83,9 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      // 1. Fetch all applications for this student
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('applications')
-          .where('studentId', isEqualTo: widget.studentId)
-          .orderBy('appliedDate', descending: true)
-          .get();
+      final applications = await _fetchStudentApplications();
+      await _cacheRelatedApplicationDetails(applications);
 
-      final applications = querySnapshot.docs
-          .map((doc) => Application.fromFirestore(doc))
-          .toList();
-
-      // 2. Get unique Opportunity IDs and load in batches (Firestore whereIn limit)
-      if (applications.isNotEmpty) {
-        final opportunityIds =
-            applications.map((app) => app.opportunityId).toSet().toList();
-        _opportunityDetailsCache = await _fetchDocumentsInChunks<Opportunity>(
-          collectionPath: 'opportunities',
-          ids: opportunityIds,
-          parser: (doc) => Opportunity.fromFirestore(doc),
-        );
-      }
-
-      // 3. Get unique Company IDs from cached opportunities and load in batches
-      if (_opportunityDetailsCache.isNotEmpty) {
-        final companyIds = _opportunityDetailsCache.values
-            .map((opp) => opp.companyId)
-            .toSet()
-            .toList();
-
-        if (companyIds.isNotEmpty) {
-          _companyDetailsCache = await _fetchDocumentsInChunks<Company>(
-            collectionPath: 'companies',
-            ids: companyIds,
-            parser: (doc) =>
-                Company.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>),
-          );
-        }
-      }
-
-      // 8. Update the state with all fetched data
       if (mounted) {
         setState(() {
           _allApplications = applications;
@@ -133,6 +96,49 @@ class _StudentApplicationsScreenState extends State<StudentApplicationsScreen> {
     } catch (e) {
       debugPrint("Error fetching applications: $e");
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<List<Application>> _fetchStudentApplications() async {
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('applications')
+        .where('studentId', isEqualTo: widget.studentId)
+        .orderBy('appliedDate', descending: true)
+        .get();
+
+    return querySnapshot.docs
+        .map((doc) => Application.fromFirestore(doc))
+        .toList();
+  }
+
+  Future<void> _cacheRelatedApplicationDetails(
+    List<Application> applications,
+  ) async {
+    if (applications.isNotEmpty) {
+      final opportunityIds = applications
+          .map((app) => app.opportunityId)
+          .toSet()
+          .toList();
+      _opportunityDetailsCache = await _fetchDocumentsInChunks<Opportunity>(
+        collectionPath: 'opportunities',
+        ids: opportunityIds,
+        parser: (doc) => Opportunity.fromFirestore(doc),
+      );
+    }
+
+    if (_opportunityDetailsCache.isNotEmpty) {
+      final companyIds = _opportunityDetailsCache.values
+          .map((opp) => opp.companyId)
+          .toSet()
+          .toList();
+
+      if (companyIds.isNotEmpty) {
+        _companyDetailsCache = await _fetchDocumentsInChunks<Company>(
+          collectionPath: 'companies',
+          ids: companyIds,
+          parser: (doc) => Company.fromFirestore(doc),
+        );
+      }
     }
   }
 
