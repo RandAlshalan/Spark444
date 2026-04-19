@@ -39,6 +39,8 @@ class _NotificationPreview {
 }
 
 class _CompanyHomePageState extends State<CompanyHomePage> {
+  static const Color _homeBackgroundColor = Color(0xFFFDFBF7);
+
   final AuthService _authService = AuthService();
   final OpportunityService _opportunityService = OpportunityService();
   final ApplicationService _applicationService = ApplicationService();
@@ -423,27 +425,18 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF422F5D), Color(0xFFD64483)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Scaffold(
-        key: _scaffoldKey,
-        backgroundColor: Colors.transparent,
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Colors.white))
-            : RefreshIndicator(
-                onRefresh: _fetchCompanyData,
-                child: CustomScrollView(
-                  slivers: [_buildSliverAppBar(), _buildCurrentSection()],
-                ),
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: _homeBackgroundColor,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _fetchCompanyData,
+              child: CustomScrollView(
+                slivers: [_buildSliverAppBar(), _buildCurrentSection()],
               ),
-        bottomNavigationBar: _buildBottomNavigationBar(),
-      ),
+            ),
+      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
@@ -1197,7 +1190,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
   Widget _buildSliverAppBar() {
     return SliverAppBar(
-      backgroundColor: CompanyColors.background,
+      backgroundColor: _homeBackgroundColor,
       expandedHeight: _headerHeight,
       pinned: true,
       floating: false,
