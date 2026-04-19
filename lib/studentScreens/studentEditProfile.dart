@@ -199,7 +199,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           const SizedBox(height: 4),
           Text(
             '@${_student.username}',
-            style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 16),
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.85),
+              fontSize: 16,
+            ),
           ),
         ],
       ),
@@ -259,7 +262,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           leading: Icon(icon, color: Colors.white),
           title: Text(
             title,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           trailing: const Icon(
             Icons.arrow_forward_ios,
@@ -1841,10 +1847,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 valueListenable: controller,
                 builder: (_, value, __) => Text(
                   '${value.text.length}/50',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ),
             ],
@@ -1882,7 +1885,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      messenger.showSnackBar(SnackBar(content: Text('Failed to create group: $e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to create group: $e')),
+      );
     }
   }
 
@@ -1899,20 +1904,32 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       withData: true,
       allowMultiple: true,
       type: FileType.custom,
-      allowedExtensions: const ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx', 'txt'],
+      allowedExtensions: const [
+        'pdf',
+        'png',
+        'jpg',
+        'jpeg',
+        'doc',
+        'docx',
+        'txt',
+      ],
     );
     if (result == null) return;
     final validExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx', 'txt'];
     final validFiles = result.files.where((file) {
       final extension = file.extension?.toLowerCase();
       final hasBytes = file.bytes != null;
-      return hasBytes && extension != null && validExtensions.contains(extension);
+      return hasBytes &&
+          extension != null &&
+          validExtensions.contains(extension);
     }).toList();
     final skippedCount = result.files.length - validFiles.length;
     if (validFiles.isEmpty) {
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('Only PDF, PNG, JPG, DOC, DOCX, and TXT files can be uploaded.'),
+          content: Text(
+            'Only PDF, PNG, JPG, DOC, DOCX, and TXT files can be uploaded.',
+          ),
         ),
       );
       return;
@@ -1953,7 +1970,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         if (!context.mounted) return;
         await Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => _DocumentPreviewPage(title: file.name, url: file.url),
+            builder: (_) =>
+                _DocumentPreviewPage(title: file.name, url: file.url),
           ),
         );
       } else {
@@ -2072,10 +2090,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 valueListenable: controller,
                 builder: (_, value, __) => Text(
                   '${value.text.length}/50',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ),
             ],
@@ -2127,7 +2142,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     // Don't allow deleting the default "Untitled" group
     if (group.title == 'Untitled') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cannot delete the default Untitled group.')),
+        const SnackBar(
+          content: Text('Cannot delete the default Untitled group.'),
+        ),
       );
       return;
     }
@@ -2174,9 +2191,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       _changed = true;
       await _loadGroups();
       if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Group deleted.')),
-      );
+      messenger.showSnackBar(const SnackBar(content: Text('Group deleted.')));
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -2197,18 +2212,15 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     });
 
     try {
-      await _storageService.updateGroupOrder(
-        uid: user.uid,
-        groups: _groups,
-      );
+      await _storageService.updateGroupOrder(uid: user.uid, groups: _groups);
       _changed = true;
     } catch (e) {
       // Revert on error
       await _loadGroups();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to reorder groups: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to reorder groups: $e')));
     }
   }
 
@@ -2292,8 +2304,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 children: [
                   IconButton(
                     onPressed: () => _previewDocument(document),
-                    icon: const Icon(Icons.visibility_outlined,
-                        color: _docPrimary),
+                    icon: const Icon(
+                      Icons.visibility_outlined,
+                      color: _docPrimary,
+                    ),
                     tooltip: 'Preview',
                     iconSize: 22,
                   ),
@@ -2344,8 +2358,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: Colors.white.withOpacity(0.2),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -2410,7 +2426,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                         ),
                                       ),
                                       child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
                                         children: [
                                           if (_editMode) ...[
                                             const Icon(
@@ -2421,7 +2438,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                           ],
                                           Expanded(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 Text(
                                                   group.title,
@@ -2447,23 +2465,35 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                               spacing: 6,
                                               children: [
                                                 IconButton(
-                                                  onPressed: () => _uploadDocument(group.id),
-                                                  icon: const Icon(Icons.upload_file, color: Colors.white),
+                                                  onPressed: () =>
+                                                      _uploadDocument(group.id),
+                                                  icon: const Icon(
+                                                    Icons.upload_file,
+                                                    color: Colors.white,
+                                                  ),
                                                   tooltip: 'Upload Document',
                                                 ),
                                                 IconButton(
-                                                  onPressed: () => _editGroupName(group),
-                                                  icon: const Icon(Icons.edit_outlined, color: Colors.white),
+                                                  onPressed: () =>
+                                                      _editGroupName(group),
+                                                  icon: const Icon(
+                                                    Icons.edit_outlined,
+                                                    color: Colors.white,
+                                                  ),
                                                   tooltip: 'Rename Group',
                                                 ),
                                                 if (!isUntitled)
                                                   IconButton(
-                                                    onPressed: () => _deleteGroup(group),
-                                                    icon: const Icon(Icons.delete_outline, color: Colors.white),
+                                                    onPressed: () =>
+                                                        _deleteGroup(group),
+                                                    icon: const Icon(
+                                                      Icons.delete_outline,
+                                                      color: Colors.white,
+                                                    ),
                                                     tooltip: 'Delete Group',
                                                   ),
                                               ],
-                                            )
+                                            ),
                                         ],
                                       ),
                                     ),
@@ -2471,9 +2501,13 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                       Padding(
                                         padding: const EdgeInsets.all(20),
                                         child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                           children: const [
-                                            Icon(Icons.folder_open, color: _docMuted),
+                                            Icon(
+                                              Icons.folder_open,
+                                              color: _docMuted,
+                                            ),
                                             SizedBox(width: 8),
                                             Text(
                                               'No documents in this group yet.',
@@ -2489,27 +2523,35 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                         padding: const EdgeInsets.all(20),
                                         child: LayoutBuilder(
                                           builder: (context, constraints) {
-                                            final bool isWide = constraints.maxWidth >= 600;
-                                            final int crossAxisCount = isWide ? 3 : 2;
-                                            final double childAspectRatio = isWide ? 0.82 : 0.75;
+                                            final bool isWide =
+                                                constraints.maxWidth >= 600;
+                                            final int crossAxisCount = isWide
+                                                ? 3
+                                                : 2;
+                                            final double childAspectRatio =
+                                                isWide ? 0.82 : 0.75;
 
                                             return GridView.builder(
                                               shrinkWrap: true,
-                                              physics: const NeverScrollableScrollPhysics(),
+                                              physics:
+                                                  const NeverScrollableScrollPhysics(),
                                               gridDelegate:
                                                   SliverGridDelegateWithFixedCrossAxisCount(
-                                                crossAxisCount: crossAxisCount,
-                                                crossAxisSpacing: 16,
-                                                mainAxisSpacing: 16,
-                                                childAspectRatio: childAspectRatio,
-                                              ),
+                                                    crossAxisCount:
+                                                        crossAxisCount,
+                                                    crossAxisSpacing: 16,
+                                                    mainAxisSpacing: 16,
+                                                    childAspectRatio:
+                                                        childAspectRatio,
+                                                  ),
                                               itemCount: files.length,
-                                              itemBuilder: (context, fileIndex) {
-                                                return _buildDocumentCard(
-                                                  group.id,
-                                                  files[fileIndex],
-                                                );
-                                              },
+                                              itemBuilder:
+                                                  (context, fileIndex) {
+                                                    return _buildDocumentCard(
+                                                      group.id,
+                                                      files[fileIndex],
+                                                    );
+                                                  },
                                             );
                                           },
                                         ),
@@ -2534,7 +2576,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         _buildDocumentsHeader(),
         Card(
           elevation: CompanySpacing.cardElevation,
-          shape: RoundedRectangleBorder(borderRadius: CompanySpacing.cardRadius),
+          shape: RoundedRectangleBorder(
+            borderRadius: CompanySpacing.cardRadius,
+          ),
           color: _docSurface,
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -2560,7 +2604,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _docPrimary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -2616,10 +2663,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               const SizedBox(height: 6),
               const Text(
                 'Organise your documents and keep them ready to share with companies.',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white70,
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.white70),
               ),
               const SizedBox(height: 16),
               Wrap(
@@ -2945,6 +2989,43 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
 
 // --- 8. Change Password Screen ---
 
+class PasswordStrength {
+  final bool is8CharsLong;
+  final bool hasUppercase;
+  final bool hasLowercase;
+  final bool hasNumber;
+  final bool hasSymbol;
+  final bool hasNoSpaces;
+
+  PasswordStrength({
+    required this.is8CharsLong,
+    required this.hasUppercase,
+    required this.hasLowercase,
+    required this.hasNumber,
+    required this.hasSymbol,
+    required this.hasNoSpaces,
+  });
+
+  factory PasswordStrength.fromPassword(String password) {
+    return PasswordStrength(
+      is8CharsLong: password.length >= 8,
+      hasUppercase: password.contains(RegExp(r'[A-Z]')),
+      hasLowercase: password.contains(RegExp(r'[a-z]')),
+      hasNumber: password.contains(RegExp(r'[0-9]')),
+      hasSymbol: password.contains(RegExp(r'[!@#$&*~]')),
+      hasNoSpaces: !password.contains(' '),
+    );
+  }
+
+  bool get isValid =>
+      is8CharsLong &&
+      hasUppercase &&
+      hasLowercase &&
+      hasNumber &&
+      hasSymbol &&
+      hasNoSpaces;
+}
+
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
 
@@ -2967,19 +3048,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
   bool _isPasswordFocused = false;
-  bool _hasUppercase = false;
-  bool _hasLowercase = false;
-  bool _hasNumber = false;
-  bool _hasSymbol = false;
-  bool _is8CharsLong = false;
-  bool _hasNoSpaces = true;
-  bool get _isPasswordValid =>
-      _is8CharsLong &&
-      _hasUppercase &&
-      _hasLowercase &&
-      _hasNumber &&
-      _hasSymbol &&
-      _hasNoSpaces;
+  PasswordStrength _passwordStrength = PasswordStrength.fromPassword('');
+  bool get _isPasswordValid => _passwordStrength.isValid;
 
   @override
   void initState() {
@@ -3002,14 +3072,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }
 
   void _checkPasswordStrength() {
-    String password = _newPasswordController.text;
+    final password = _newPasswordController.text;
     setState(() {
-      _is8CharsLong = password.length >= 8;
-      _hasUppercase = password.contains(RegExp(r'[A-Z]'));
-      _hasLowercase = password.contains(RegExp(r'[a-z]'));
-      _hasNumber = password.contains(RegExp(r'[0-9]'));
-      _hasSymbol = password.contains(RegExp(r'[!@#$&*~]'));
-      _hasNoSpaces = !password.contains(' ');
+      _passwordStrength = PasswordStrength.fromPassword(password);
     });
   }
 
@@ -3088,12 +3153,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   double _calculatePasswordStrength() {
     int metCriteria = 0;
-    if (_is8CharsLong) metCriteria++;
-    if (_hasUppercase) metCriteria++;
-    if (_hasLowercase) metCriteria++;
-    if (_hasNumber) metCriteria++;
-    if (_hasSymbol) metCriteria++;
-    if (_hasNoSpaces) metCriteria++;
+    if (_passwordStrength.is8CharsLong) metCriteria++;
+    if (_passwordStrength.hasUppercase) metCriteria++;
+    if (_passwordStrength.hasLowercase) metCriteria++;
+    if (_passwordStrength.hasNumber) metCriteria++;
+    if (_passwordStrength.hasSymbol) metCriteria++;
+    if (_passwordStrength.hasNoSpaces) metCriteria++;
     return metCriteria / 6.0;
   }
 
@@ -3146,12 +3211,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty)
+                  if (value == null || value.isEmpty) {
                     return 'Please enter new password';
-                  if (value.contains(' '))
+                  }
+                  if (value.contains(' ')) {
                     return 'Password cannot contain spaces';
-                  if (!_isPasswordValid)
+                  }
+                  if (!_isPasswordValid) {
                     return 'Please meet all password requirements';
+                  }
                   return null;
                 },
               ),
@@ -3165,27 +3233,27 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     children: [
                       _buildPasswordCriteriaRow(
                         'At least 8 characters',
-                        _is8CharsLong,
+                        _passwordStrength.is8CharsLong,
                       ),
                       _buildPasswordCriteriaRow(
                         'Contains an uppercase letter',
-                        _hasUppercase,
+                        _passwordStrength.hasUppercase,
                       ),
                       _buildPasswordCriteriaRow(
                         'Contains a lowercase letter',
-                        _hasLowercase,
+                        _passwordStrength.hasLowercase,
                       ),
                       _buildPasswordCriteriaRow(
                         'Contains a number',
-                        _hasNumber,
+                        _passwordStrength.hasNumber,
                       ),
                       _buildPasswordCriteriaRow(
                         'Contains a symbol (!@#\$&*~)',
-                        _hasSymbol,
+                        _passwordStrength.hasSymbol,
                       ),
                       _buildPasswordCriteriaRow(
                         'Does not contain spaces',
-                        _hasNoSpaces,
+                        _passwordStrength.hasNoSpaces,
                       ),
                       const SizedBox(height: 8),
                       if (!_isPasswordValid)
